@@ -43,58 +43,64 @@ import { ChatViewPane } from './widgetHosts/viewPane/chatViewPane.js';
  * one that does not — and the answer is always the same, so asking is just
  * friction.
  *
- * Only the *view* is withheld. Everything else chat provides — inline chat,
- * the agent surfaces, the participant API — stays registered and working, so
- * this is one constant to flip, not a feature torn out.
+ * The *container* goes with the view, not just the view. Leaving the container
+ * registered left two containers in the auxiliary bar both claiming
+ * `isDefault: true`, and on a narrow window the layout restored the chat one —
+ * which, with its only view withheld, is an empty panel with nothing to tap.
+ * That is what a phone got: the CloudeIDE panel never rendered at all.
+ *
+ * Everything else chat provides — inline chat, the agent surfaces, the
+ * participant API — stays registered and working, so this is one constant to
+ * flip, not a feature torn out.
  */
 const REGISTER_BUILTIN_CHAT_VIEW = false;
 
 const chatViewIcon = registerIcon('chat-view-icon', Codicon.chatSparkle, localize('chatViewIcon', 'View icon of the chat view.'));
 
-const chatViewContainer: ViewContainer = Registry.as<IViewContainersRegistry>(ViewExtensions.ViewContainersRegistry).registerViewContainer({
-	id: ChatViewContainerId,
-	title: localize2('chat.viewContainer.label', "Chat"),
-	icon: chatViewIcon,
-	ctorDescriptor: new SyncDescriptor(ViewPaneContainer, [ChatViewContainerId, { mergeViewWithContainerWhenSingleView: true }]),
-	storageId: ChatViewContainerId,
-	hideIfEmpty: true,
-	order: 1,
-}, ViewContainerLocation.AuxiliaryBar, { isDefault: true, doNotRegisterOpenCommand: true });
-
-const chatViewDescriptor: IViewDescriptor = {
-	id: ChatViewId,
-	containerIcon: chatViewContainer.icon,
-	containerTitle: chatViewContainer.title.value,
-	singleViewPaneContainerTitle: chatViewContainer.title.value,
-	name: localize2('chat.viewContainer.label', "Chat"),
-	canToggleVisibility: false,
-	canMoveView: true,
-	openCommandActionDescriptor: {
-		id: ChatViewContainerId,
-		title: chatViewContainer.title,
-		mnemonicTitle: localize({ key: 'miToggleChat', comment: ['&& denotes a mnemonic'] }, "&&Chat"),
-		keybindings: {
-			primary: KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.KeyI,
-			mac: {
-				primary: KeyMod.CtrlCmd | KeyMod.WinCtrl | KeyCode.KeyI
-			}
-		},
-		order: 1
-	},
-	ctorDescriptor: new SyncDescriptor(ChatViewPane),
-	when: ContextKeyExpr.and(
-		ChatContextKeys.accountPolicyGateActive.negate(),
-		ContextKeyExpr.or(
-			ContextKeyExpr.and(
-				ChatContextKeys.Setup.hidden.negate(),
-				ChatContextKeys.Setup.disabledInWorkspace.negate(),
-			),
-			ChatContextKeys.panelParticipantRegistered,
-			ChatContextKeys.extensionInvalid
-		)
-	)
-};
 if (REGISTER_BUILTIN_CHAT_VIEW) {
+	const chatViewContainer: ViewContainer = Registry.as<IViewContainersRegistry>(ViewExtensions.ViewContainersRegistry).registerViewContainer({
+		id: ChatViewContainerId,
+		title: localize2('chat.viewContainer.label', "Chat"),
+		icon: chatViewIcon,
+		ctorDescriptor: new SyncDescriptor(ViewPaneContainer, [ChatViewContainerId, { mergeViewWithContainerWhenSingleView: true }]),
+		storageId: ChatViewContainerId,
+		hideIfEmpty: true,
+		order: 1,
+	}, ViewContainerLocation.AuxiliaryBar, { isDefault: true, doNotRegisterOpenCommand: true });
+
+	const chatViewDescriptor: IViewDescriptor = {
+		id: ChatViewId,
+		containerIcon: chatViewContainer.icon,
+		containerTitle: chatViewContainer.title.value,
+		singleViewPaneContainerTitle: chatViewContainer.title.value,
+		name: localize2('chat.viewContainer.label', "Chat"),
+		canToggleVisibility: false,
+		canMoveView: true,
+		openCommandActionDescriptor: {
+			id: ChatViewContainerId,
+			title: chatViewContainer.title,
+			mnemonicTitle: localize({ key: 'miToggleChat', comment: ['&& denotes a mnemonic'] }, "&&Chat"),
+			keybindings: {
+				primary: KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.KeyI,
+				mac: {
+					primary: KeyMod.CtrlCmd | KeyMod.WinCtrl | KeyCode.KeyI
+				}
+			},
+			order: 1
+		},
+		ctorDescriptor: new SyncDescriptor(ChatViewPane),
+		when: ContextKeyExpr.and(
+			ChatContextKeys.accountPolicyGateActive.negate(),
+			ContextKeyExpr.or(
+				ContextKeyExpr.and(
+					ChatContextKeys.Setup.hidden.negate(),
+					ChatContextKeys.Setup.disabledInWorkspace.negate(),
+				),
+				ChatContextKeys.panelParticipantRegistered,
+				ChatContextKeys.extensionInvalid
+			)
+		)
+	};
 	Registry.as<IViewsRegistry>(ViewExtensions.ViewsRegistry).registerViews([chatViewDescriptor], chatViewContainer);
 }
 

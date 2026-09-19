@@ -4,6 +4,7 @@
 
 import * as DOM from '../../../../base/browser/dom.js';
 import { Codicon } from '../../../../base/common/codicons.js';
+import { Gesture } from '../../../../base/browser/touch.js';
 import { ThemeIcon } from '../../../../base/common/themables.js';
 import { localize } from '../../../../nls.js';
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
@@ -82,6 +83,22 @@ export class CloudeidePanel extends ViewPane {
 		super.renderBody(container);
 
 		this.root = DOM.append(container, $('.cloudeide-panel'));
+
+		/*
+		 * Hands touch back to the browser inside this panel.
+		 *
+		 * The workbench installs a document-level gesture handler that calls
+		 * preventDefault on touchstart to build its own tap and swipe events.
+		 * That is right for a tree or a tab bar, and wrong for a text field: it
+		 * cancels the tap before the browser can move the caret, so on a phone
+		 * the token box could not be focused and the on-screen keyboard never
+		 * came up. Nothing here needs a custom gesture — it is a form.
+		 *
+		 * Registered on the root, and `ignoreTarget` matches descendants, so
+		 * every control inside is covered.
+		 */
+		this._register(Gesture.ignoreTarget(this.root));
+
 		this.connectView = DOM.append(this.root, $('.cloudeide-connect'));
 		this.mainView = DOM.append(this.root, $('.cloudeide-main'));
 

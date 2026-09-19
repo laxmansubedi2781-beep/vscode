@@ -91,6 +91,10 @@
 
 .cloudeide-input {
 	flex: 1;
+	/* The workbench turns selection off everywhere; a text field is the one
+	   place that has to have it back, or there is no caret to place. */
+	user-select: text;
+	-webkit-user-select: text;
 	min-width: 0;
 	padding: 6px 8px;
 	font-family: var(--monaco-monospace-font);
@@ -184,6 +188,8 @@
 }
 
 .cloudeide-turn-body {
+	user-select: text;
+	-webkit-user-select: text;
 	line-height: 1.6;
 	white-space: pre-wrap;
 	overflow-wrap: anywhere;
@@ -207,6 +213,8 @@
 
 .cloudeide-textarea {
 	width: 100%;
+	user-select: text;
+	-webkit-user-select: text;
 	box-sizing: border-box;
 	resize: none;
 	padding: 7px 9px;
