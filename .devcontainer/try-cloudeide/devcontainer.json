@@ -1,0 +1,30 @@
+// A Codespace whose only job is to open the built CloudeIDE and let someone
+// look at it.
+//
+// The configuration next door builds the source: it wants a Dockerfile, nine
+// gigabytes and a long first start. This one wants none of that. It takes a
+// stock Ubuntu, adds a desktop that is reachable from a browser, and pulls the
+// finished Linux package down from the last green run of the desktop workflow.
+// That makes it usable from a phone, which is the whole point — a desktop
+// application needs a desktop, and this borrows one from GitHub.
+{
+	"name": "Try CloudeIDE (desktop in the browser)",
+	"image": "mcr.microsoft.com/devcontainers/base:ubuntu-22.04",
+	"features": {
+		// Fluxbox plus a VNC server plus noVNC, which serves the desktop over
+		// plain HTTP on 6080. The password is the feature's default, and this
+		// container holds nothing worth protecting.
+		"ghcr.io/devcontainers/features/desktop-lite:1": {}
+	},
+	"forwardPorts": [6080],
+	"portsAttributes": {
+		"6080": {
+			"label": "Desktop (open this one)",
+			"onAutoForward": "openBrowserOnce"
+		}
+	},
+	"onCreateCommand": "./.devcontainer/try-cloudeide/fetch.sh",
+	"remoteEnv": {
+		"DISPLAY": ":1"
+	}
+}
