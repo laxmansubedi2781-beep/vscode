@@ -99,14 +99,17 @@ jobs:
           sudo apt-get install -y xvfb imagemagick x11-utils xdotool
           cd ../VSCode-linux-x64
 
-          echo "--- does it answer at all? ---"
-          ./cloudeide --version --no-sandbox || echo "::warning::--version did not succeed"
-
           mkdir -p /tmp/ws && printf 'const price = 120;\n' > /tmp/ws/menu.js
 
+          # The screen comes first. Electron wants one even to print its
+          # version, so asking before Xvfb was running is what made the last
+          # run's --version die with "Missing X server or $DISPLAY".
           export DISPLAY=:99
           Xvfb :99 -screen 0 1600x1000x24 >/dev/null 2>&1 &
           sleep 3
+
+          echo "--- does it answer at all? ---"
+          ./cloudeide --version --no-sandbox || echo "::warning::--version did not succeed"
 
           # --no-sandbox because the chrome sandbox wants privileges a runner
           # does not grant; the rest keeps a headless machine from stalling.
@@ -132,6 +135,18 @@ jobs:
           kill "$app" 2>/dev/null || true
           echo "--- the application's own output ---"
           tail -25 /tmp/app.log || true
+
+          # The picture itself, through the log.
+          #
+          # The artifact is the real copy, but it is served from a host this
+          # session cannot reach, so the only way to actually look at the
+          # screen is to carry it in the one channel that does come back: a
+          # small JPEG, base64, in fixed-width lines.
+          convert /tmp/desktop.png -resize 900x -quality 52 /tmp/desktop.jpg
+          ls -l /tmp/desktop.jpg
+          echo "--- BEGIN SCREENSHOT BASE64 ---"
+          base64 -w 500 /tmp/desktop.jpg
+          echo "--- END SCREENSHOT BASE64 ---"
 
       - uses: actions/upload-artifact@v4
         if: always()
