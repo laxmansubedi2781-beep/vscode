@@ -2,7 +2,6 @@
  *  CloudeIDE
  *--------------------------------------------------------------------------------------------*/
 
-import { IStorageService, StorageScope, StorageTarget } from '../../../../platform/storage/common/storage.js';
 import { ISecretStorageService } from '../../../../platform/secrets/common/secrets.js';
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
 
@@ -19,7 +18,6 @@ import { IConfigurationService } from '../../../../platform/configuration/common
  */
 
 const TOKEN_KEY = 'cloudeide.apiToken';
-const PROJECT_KEY = 'cloudeide.projectId';
 
 export interface ChatMessage {
 	readonly role: 'user' | 'assistant';
@@ -42,7 +40,6 @@ export class CloudeideClient {
 
 	constructor(
 		private readonly secretStorageService: ISecretStorageService,
-		private readonly storageService: IStorageService,
 		private readonly configurationService: IConfigurationService,
 	) { }
 
@@ -63,16 +60,13 @@ export class CloudeideClient {
 		await this.secretStorageService.delete(TOKEN_KEY);
 	}
 
+	/**
+	 * The setting, not workspace storage. `cloudeide.projectId` is registered
+	 * per-resource, so a person can point each folder at its own project and see
+	 * the value they set in the place the panel tells them to set it.
+	 */
 	get projectId(): string | undefined {
-		return this.storageService.get(PROJECT_KEY, StorageScope.WORKSPACE);
-	}
-
-	set projectId(id: string | undefined) {
-		if (id) {
-			this.storageService.store(PROJECT_KEY, id, StorageScope.WORKSPACE, StorageTarget.MACHINE);
-		} else {
-			this.storageService.remove(PROJECT_KEY, StorageScope.WORKSPACE);
-		}
+		return this.configurationService.getValue<string>('cloudeide.projectId')?.trim() || undefined;
 	}
 
 	private async request<T>(path: string, init: RequestInit = {}): Promise<T> {

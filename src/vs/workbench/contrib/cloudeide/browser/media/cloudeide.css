@@ -52,15 +52,19 @@
 	color: var(--vscode-errorForeground);
 }
 
-.cloudeide-link {
+/* Scoped to the panel on purpose: the workbench styles anchors with
+   `.monaco-workbench a`, which outranks a bare class and would leave a link
+   looking like ordinary text. */
+.cloudeide-panel .cloudeide-link {
 	color: var(--vscode-textLink-foreground);
 	cursor: pointer;
 	text-decoration: underline;
-	text-underline-offset: 2px;
+	text-underline-offset: 3px;
 }
 
-.cloudeide-link:hover {
+.cloudeide-panel .cloudeide-link:hover {
 	color: var(--vscode-textLink-activeForeground);
+	text-decoration: underline;
 }
 
 /* ── connect ─────────────────────────────────────────────────────────────── */
@@ -141,7 +145,7 @@
 
 .cloudeide-button-primary:focus-visible,
 .cloudeide-button-quiet:focus-visible,
-.cloudeide-link:focus-visible {
+.cloudeide-panel .cloudeide-link:focus-visible {
 	outline: 1px solid var(--vscode-focusBorder);
 	outline-offset: 2px;
 }
@@ -253,4 +257,19 @@
 
 .cloudeide-status-ok {
 	font-family: var(--monaco-monospace-font);
+}
+
+/* The live URL, once there is one. Given room of its own because it is the
+   thing the whole panel exists to produce. */
+.cloudeide-status-ok::before {
+	content: '';
+	display: inline-block;
+	width: 6px;
+	height: 6px;
+	margin-right: 7px;
+	border-radius: 50%;
+	/* The theme foreground, not a green: this palette is monochrome by
+	   choice, and a status dot is not worth breaking it for. */
+	background: var(--vscode-foreground);
+	vertical-align: middle;
 }

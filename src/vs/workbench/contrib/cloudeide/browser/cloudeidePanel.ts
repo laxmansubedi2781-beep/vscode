@@ -12,7 +12,6 @@ import { IInstantiationService } from '../../../../platform/instantiation/common
 import { IKeybindingService } from '../../../../platform/keybinding/common/keybinding.js';
 import { IOpenerService } from '../../../../platform/opener/common/opener.js';
 import { ISecretStorageService } from '../../../../platform/secrets/common/secrets.js';
-import { IStorageService } from '../../../../platform/storage/common/storage.js';
 import { IThemeService } from '../../../../platform/theme/common/themeService.js';
 import { URI } from '../../../../base/common/uri.js';
 import { ViewPane } from '../../../browser/parts/views/viewPane.js';
@@ -67,7 +66,6 @@ export class CloudeidePanel extends ViewPane {
 		@IThemeService themeService: IThemeService,
 		@IHoverService hoverService: IHoverService,
 		@ISecretStorageService secretStorageService: ISecretStorageService,
-		@IStorageService storageService: IStorageService,
 		@ITextFileService private readonly textFileService: ITextFileService,
 		@IFileService private readonly fileService: IFileService,
 		@IWorkspaceContextService private readonly contextService: IWorkspaceContextService,
@@ -75,7 +73,7 @@ export class CloudeidePanel extends ViewPane {
 		super(options, keybindingService, contextMenuService, configurationService, contextKeyService,
 			viewDescriptorService, instantiationService, openerService, themeService, hoverService);
 
-		this.client = new CloudeideClient(secretStorageService, storageService, configurationService);
+		this.client = new CloudeideClient(secretStorageService, configurationService);
 	}
 
 	protected override renderBody(container: HTMLElement): void {
