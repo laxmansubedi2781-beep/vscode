@@ -1,10 +1,10 @@
 # Builds CloudeIDE as a desktop application and attaches it to a release.
 #
-# Linux first, on its own. The desktop build has never been run here, and the
-# Electron download it needs is blocked from the machine this was written on —
-# so the first honest test of it is this workflow. Windows follows once this
-# one is known to work; two untried platforms in one file would mean two
-# unknowns and one log to read them from.
+# Linux first, on its own: the desktop build had never been run here, and the
+# Electron download it needs is blocked from the machine this was written on,
+# so the first honest test of it was this workflow. Linux now builds, starts
+# and photographs, which is why Windows joins it — one unknown at a time was
+# the point, and Linux is no longer one.
 name: Desktop app
 
 # A workflow that only offers a manual run, and lives outside the default
@@ -92,24 +92,29 @@ jobs:
       # not "it runs". The runner is a Linux machine, so the application is
       # started here, on a virtual screen, and photographed. That is the only
       # evidence available that the thing actually opens.
+      #
+      # Everything that touches the application or the screen now carries its
+      # own `timeout`, and the shell traces what it runs. An earlier run sat in
+      # this step for forty minutes against seventy-eight seconds of intended
+      # waiting, and with no per-command limit and no trace the log could not
+      # say which command was stuck. The `--version` probe that run introduced
+      # is gone: a window on screen proves more than it did.
       - name: Start it and take a picture
         id: smoke
+        timeout-minutes: 15
         run: |
-          set -uo pipefail
+          set -uxo pipefail
           sudo apt-get install -y xvfb imagemagick x11-utils xdotool
           cd ../VSCode-linux-x64
 
           mkdir -p /tmp/ws && printf 'const price = 120;\n' > /tmp/ws/menu.js
 
-          # The screen comes first. Electron wants one even to print its
-          # version, so asking before Xvfb was running is what made the last
-          # run's --version die with "Missing X server or $DISPLAY".
+          # The screen comes first, and the app waits for it to answer rather
+          # than for a fixed number of seconds.
           export DISPLAY=:99
           Xvfb :99 -screen 0 1600x1000x24 >/dev/null 2>&1 &
-          sleep 3
-
-          echo "--- does it answer at all? ---"
-          ./cloudeide --version --no-sandbox || echo "::warning::--version did not succeed"
+          timeout 30 bash -c 'until xdpyinfo -display :99 >/dev/null 2>&1; do sleep 1; done' \
+            || echo "::warning::the virtual screen never answered"
 
           # --no-sandbox because the chrome sandbox wants privileges a runner
           # does not grant; the rest keeps a headless machine from stalling.
@@ -129,9 +134,10 @@ jobs:
             exit 1
           fi
 
-          xdotool search --name "." getwindowname %@ 2>/dev/null | head -10 || true
-          import -window root /tmp/desktop.png
-          identify /tmp/desktop.png
+          timeout 30 xdotool search --name "." getwindowname %@ 2>/dev/null | head -10 || true
+          timeout 60 import -window root /tmp/desktop.png \
+            || echo "::warning::the screen could not be photographed"
+          identify /tmp/desktop.png || true
           kill "$app" 2>/dev/null || true
           echo "--- the application's own output ---"
           tail -25 /tmp/app.log || true
@@ -142,11 +148,13 @@ jobs:
           # session cannot reach, so the only way to actually look at the
           # screen is to carry it in the one channel that does come back: a
           # small JPEG, base64, in fixed-width lines.
-          convert /tmp/desktop.png -resize 900x -quality 52 /tmp/desktop.jpg
-          ls -l /tmp/desktop.jpg
-          echo "--- BEGIN SCREENSHOT BASE64 ---"
-          base64 -w 500 /tmp/desktop.jpg
-          echo "--- END SCREENSHOT BASE64 ---"
+          timeout 60 convert /tmp/desktop.png -resize 900x -quality 52 /tmp/desktop.jpg || true
+          if [ -s /tmp/desktop.jpg ]; then
+            ls -l /tmp/desktop.jpg
+            echo "--- BEGIN SCREENSHOT BASE64 ---"
+            base64 -w 500 /tmp/desktop.jpg
+            echo "--- END SCREENSHOT BASE64 ---"
+          fi
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -173,3 +181,151 @@ jobs:
             --title "CloudeIDE ${{ steps.package.outputs.version }} — Linux" \
             --notes "Unpack and run ./cloudeide. Built from ${{ github.sha }}." \
             || gh release upload "$tag" "${{ steps.package.outputs.name }}.tar.gz" --clobber
+
+  # Windows, once Linux was known to build. Same two gulp tasks with the other
+  # platform's name; what differs is the packaging (a zip, because Windows has
+  # no tar in its shell by default) and the smoke test, which has no Xvfb to
+  # lean on — the runner's own session is the screen.
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 150
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install dependencies
+        run: npm ci
+        env:
+          npm_config_arch: x64
+
+      - name: Build
+        run: |
+          npm run gulp compile-build-without-mangling
+          npm run gulp vscode-win32-x64
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+
+      - name: Package
+        id: package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $built = Join-Path (Split-Path $PWD -Parent) 'VSCode-win32-x64'
+          if (-not (Test-Path $built)) {
+            Write-Output "::error::the build produced no VSCode-win32-x64"
+            exit 1
+          }
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          $name = "CloudeIDE-win32-x64-$version"
+          # 7z ships on the runner and is an order of magnitude faster than
+          # Compress-Archive on a folder this size.
+          7z a -tzip -mx=5 "$name.zip" "$built" | Select-Object -Last 5
+          "name=$name" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Get-Item "$name.zip" | Select-Object Name, Length
+          Write-Output "--- what is in it ---"
+          Get-ChildItem $built | Select-Object -First 20 -ExpandProperty Name
+          Write-Output "--- the binary ---"
+          Get-Item (Join-Path $built 'CloudeIDE.exe') | Select-Object Name, Length
+
+      # No virtual screen here: the runner has a session of its own, so the
+      # application is started into it and the desktop is copied off with the
+      # same drawing calls a screenshot key would use. None of this is allowed
+      # to fail the job — the package is the deliverable, the picture is
+      # evidence about it.
+      - name: Start it and take a picture
+        id: smoke
+        timeout-minutes: 15
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $built = Join-Path (Split-Path $PWD -Parent) 'VSCode-win32-x64'
+          $exe = Join-Path $built 'CloudeIDE.exe'
+          New-Item -ItemType Directory -Force -Path C:\ws | Out-Null
+          Set-Content -Path C:\ws\menu.js -Value 'const price = 120;'
+
+          $app = Start-Process -FilePath $exe -PassThru -ArgumentList @(
+            'C:\ws',
+            '--disable-gpu',
+            '--user-data-dir', 'C:\cloudeide-data',
+            '--extensions-dir', 'C:\cloudeide-ext'
+          )
+          Start-Sleep -Seconds 75
+
+          if ($app.HasExited) {
+            Write-Output "::error::the application exited before it could be photographed (code $($app.ExitCode))"
+            exit 1
+          }
+          Write-Output "the application is still running; main window title: $((Get-Process -Id $app.Id).MainWindowTitle)"
+
+          try {
+            Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+            $screen = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $bitmap = New-Object System.Drawing.Bitmap $screen.Width, $screen.Height
+            $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+            $graphics.CopyFromScreen($screen.X, $screen.Y, 0, 0, $bitmap.Size)
+            $shot = Join-Path $env:RUNNER_TEMP 'desktop.png'
+            $bitmap.Save($shot, [System.Drawing.Imaging.ImageFormat]::Png)
+            Write-Output "wrote $shot at $($screen.Width)x$($screen.Height)"
+          } catch {
+            Write-Output "::warning::the screen could not be photographed: $_"
+          }
+
+          Stop-Process -Id $app.Id -Force -ErrorAction SilentlyContinue
+
+          # Same trick as on Linux: the artifact host is unreachable from the
+          # session that reads these logs, so a small copy rides back in the
+          # log itself.
+          $shot = Join-Path $env:RUNNER_TEMP 'desktop.png'
+          if (Test-Path $shot) {
+            # Resized with the same drawing library that took it, rather than
+            # an image tool the runner may or may not carry.
+            $full = [System.Drawing.Image]::FromFile($shot)
+            $small = New-Object System.Drawing.Bitmap 900, ([int](900 * $full.Height / $full.Width))
+            $g = [System.Drawing.Graphics]::FromImage($small)
+            $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+            $g.DrawImage($full, 0, 0, $small.Width, $small.Height)
+            $jpg = Join-Path $env:RUNNER_TEMP 'desktop.jpg'
+            $codec = [System.Drawing.Imaging.ImageCodecInfo]::GetImageEncoders() |
+              Where-Object { $_.MimeType -eq 'image/jpeg' }
+            $params = New-Object System.Drawing.Imaging.EncoderParameters 1
+            $params.Param[0] = New-Object System.Drawing.Imaging.EncoderParameter(
+              [System.Drawing.Imaging.Encoder]::Quality, 52)
+            $small.Save($jpg, $codec, $params)
+            $full.Dispose()
+            Get-Item $jpg | Select-Object Name, Length
+            Write-Output "--- BEGIN SCREENSHOT BASE64 ---"
+            [Convert]::ToBase64String([IO.File]::ReadAllBytes($jpg)) -split '(.{500})' |
+              Where-Object { $_ } | ForEach-Object { Write-Output $_ }
+            Write-Output "--- END SCREENSHOT BASE64 ---"
+          }
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cloudeide-windows-screenshot
+          path: ${{ runner.temp }}/desktop.png
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cloudeide-win32-x64
+          path: ${{ steps.package.outputs.name }}.zip
+          retention-days: 14
+
+      - name: Publish a release
+        if: inputs.release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="v${{ steps.package.outputs.version }}-windows"
+          gh release create "$tag" "${{ steps.package.outputs.name }}.zip" \
+            --title "CloudeIDE ${{ steps.package.outputs.version }} — Windows" \
+            --notes "Unzip and run CloudeIDE.exe. Built from ${{ github.sha }}." \
+            || gh release upload "$tag" "${{ steps.package.outputs.name }}.zip" --clobber
