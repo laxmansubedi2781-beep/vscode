@@ -1,11 +1,18 @@
-# Builds CloudeIDE for the browser and publishes it to GitHub Pages.
+# Publishes the CloudeIDE site: the landing page at the root, and the browser
+# build of the editor under /editor/.
 #
 # Everything happens on a GitHub runner, so nobody needs a machine with the
 # sources on it to get a working link.
 #
+# The landing page lives here rather than beside the rest of the product
+# because GitHub Pages does not serve a private repository without a paid
+# plan, and this one is public. Only the page is here — it is the same HTML
+# anyone can already read from the served site. The server, the database and
+# the enterprise code stay where they were.
+#
 # `enablement: true` turns Pages on for this repository the first time the
 # workflow runs, so the site comes up without a visit to the settings page.
-name: CloudeIDE preview
+name: CloudeIDE site
 
 on:
   workflow_dispatch:
@@ -15,6 +22,7 @@ on:
       - '.github/workflows/cloudeide-preview.yml'
       - 'build/cloudeide/**'
       - 'src/vs/workbench/contrib/cloudeide/**'
+      - 'landing/**'
 
 permissions:
   contents: read
@@ -71,7 +79,23 @@ jobs:
 
       - name: Assemble the static site
         run: |
-          node build/cloudeide/make-static.mjs ../vscode-web site "$PWD"
+          set -euo pipefail
+
+          # The landing page is the front door, so it takes the root; the
+          # editor sits one level down where a link can point at it.
+          mkdir -p site
+          cp -r landing/. site/
+          node build/cloudeide/make-static.mjs ../vscode-web site/editor "$PWD"
+
+          # `/app/...` is right when the application serves the page from its
+          # own origin and wrong from a project path, where the root belongs to
+          # the account rather than the repository. Rewritten in the published
+          # copy only; the source keeps the form the application needs.
+          find site -maxdepth 1 -name '*.html' -print0 | xargs -0 sed -i \
+            -e 's#href="/app/#href="https://cloudeide.com/app/#g' \
+            -e 's#href="/site.webmanifest"#href="site.webmanifest"#g'
+
+          touch site/.nojekyll
           du -sh site
           find site -type f | wc -l
 

@@ -1,0 +1,1225 @@
+/* CloudeIDE marketing site. Shares the product's warm-neutral language but
+   runs a stop darker: the page is near-black (#0D0C0B) where the app sits at
+   #171512, which suits a marketing surface holding large video panels. Text
+   and the no-gradient / no-hue rule are unchanged. */
+
+/* Self-hosted (not a Google Fonts CDN link) — same choice the app itself
+   makes via @fontsource, so the site works offline and never blocks first
+   paint on a third-party request. */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("assets/fonts/inter-latin-400-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("assets/fonts/inter-latin-500-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("assets/fonts/inter-latin-600-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("assets/fonts/inter-latin-700-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("assets/fonts/jetbrains-mono-latin-500-normal.woff2") format("woff2");
+}
+
+:root {
+  /* Deeper than the app's #171512 and with the warmth pulled back — a near
+     black that still has a trace of brown in it, so the page reads as rich
+     rather than the flat blue-black every other dev tool uses. The surface
+     ramp keeps its steps: each layer is a clear increment above the last, so
+     panels still separate from the page without needing heavy borders. */
+  --bg: #0d0c0b;
+  --panel: #161513;
+  --panel-raised: #1d1b19;
+  --border: #272522;
+  --border-strong: #4a453f;
+  --text-primary: #f2f2f0;
+  --text-secondary: #a8a39c;
+  --text-tertiary: #6e6963;
+  --overlay-2: rgba(242, 242, 240, 0.04);
+  --overlay-3: rgba(242, 242, 240, 0.055);
+  --overlay-4: rgba(242, 242, 240, 0.075);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --max-width: 1120px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Same neutral focus language as the app itself: a brightness ring, not the
+   browser's default blue outline, which would be the one stray hue on an
+   otherwise monochrome page. */
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(242, 242, 240, 0.18);
+}
+
+.wrap {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+section {
+  position: relative;
+}
+
+.skip-link {
+  position: absolute;
+  left: 16px;
+  top: -48px;
+  z-index: 200;
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--text-primary);
+  color: #0d0c0b;
+  font-size: 13px;
+  font-weight: 600;
+  transition: top 0.15s var(--ease);
+}
+
+.skip-link:focus {
+  top: 16px;
+}
+
+/* ---------------------------------------------------------------- nav -- */
+
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1px solid var(--border);
+  background: rgba(13, 12, 11, 0.86);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.nav-inner {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+
+.brand img {
+  width: 22px;
+  height: 22px;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  font-size: 13.5px;
+  color: var(--text-secondary);
+}
+
+.nav-links a {
+  transition: color 0.15s var(--ease);
+}
+
+.nav-links a:hover {
+  color: var(--text-primary);
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-toggle {
+  display: none;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.mobile-menu {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+  padding: 8px 24px 16px;
+  gap: 2px;
+}
+
+.mobile-menu a {
+  padding: 11px 4px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.mobile-menu a:last-child {
+  border-bottom: none;
+}
+
+.mobile-menu[hidden] {
+  display: none;
+}
+
+/* ------------------------------------------------------------ buttons -- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  padding: 7px 14px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color 0.15s var(--ease), border-color 0.15s var(--ease), transform 0.15s var(--ease);
+  white-space: nowrap;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn-ghost {
+  color: var(--text-secondary);
+  border-color: transparent;
+  background: transparent;
+}
+
+.btn-ghost:hover {
+  color: var(--text-primary);
+  background: var(--overlay-3);
+}
+
+.btn-secondary {
+  color: var(--text-primary);
+  background: var(--panel);
+  border-color: var(--border);
+}
+
+.btn-secondary:hover {
+  background: var(--panel-raised);
+  border-color: var(--border-strong);
+}
+
+.btn-primary {
+  color: #0d0c0b;
+  background: var(--text-primary);
+  border-color: var(--text-primary);
+  font-weight: 600;
+}
+
+.btn-primary:hover {
+  background: #fafaf8;
+}
+
+
+.btn svg {
+  flex-shrink: 0;
+}
+
+/* The brand mark on the primary calls to action.
+   The mark is white, so on the white button it needs a ground of its own. The
+   dark chip is the same lockup the app's toolbar uses, and it reads as
+   deliberate rather than as an image dropped onto a button. */
+.btn-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 17px;
+  height: 17px;
+  border-radius: 4px;
+  background: #0d0c0b;
+}
+
+.btn-mark img {
+  width: 64%;
+  height: 64%;
+  object-fit: contain;
+}
+
+
+/* --------------------------------------------------------------- hero -- */
+
+.hero {
+  padding: 96px 0 72px;
+  text-align: center;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  font-weight: 500;
+  margin-bottom: 28px;
+}
+
+.eyebrow .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--text-primary);
+}
+
+.hero h1 {
+  font-size: clamp(33px, 5.2vw, 56px);
+  line-height: 1.06;
+  letter-spacing: -0.035em;
+  font-weight: 700;
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.hero p.sub {
+  margin: 18px auto 0;
+  max-width: 460px;
+  color: var(--text-secondary);
+  font-size: 16.5px;
+  line-height: 1.6;
+}
+
+
+
+/* ------------------------------------------------------------ filmstrip -- */
+
+/*
+   The film runs edge to edge, and the page adds nothing around it.
+
+   What was here before — a scenery stage, application-window chrome, and a
+   fixed 16:9 box with `object-fit: contain` — existed to frame a screen
+   recording. These films arrive already composed inside their own dark
+   surround, so every one of those layers was a second frame drawn around a
+   picture that had one, and the contain-inside-16:9 is exactly what produced
+   the black bars above and below.
+
+   Sizing is intrinsic on purpose: `width: 100%` with `height: auto` makes the
+   element the film's own aspect ratio, which is the only way to be certain
+   there is nothing to letterbox and nothing cropped off. No `object-fit`
+   anywhere — it cannot do anything useful when the box already fits.
+*/
+.filmstrip {
+  position: relative;
+  width: 100%;
+  /* Outside `.wrap`, so this is already the full width of the page. No
+     `100vw`: that measures past the scrollbar and would add a horizontal
+     scroll on every desktop browser that shows one. */
+  background: var(--bg);
+  margin-top: 56px;
+}
+
+/* The title sequence is cream, so it gets a cream ground rather than the
+   page's black — otherwise the poster and the first frame arrive against a
+   colour the film never uses. */
+.filmstrip--promo,
+.filmstrip--promo video {
+  background: #f3efe8;
+}
+
+.filmstrip video {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* Reserved before the file loads, so the page below does not jump. Matches
+     whichever <source> the same breakpoint selects. */
+  aspect-ratio: var(--ar-narrow, 1080 / 1350);
+  /* The film's own ground, so a frame that has not painted yet is the same
+     colour as one that has. */
+  background: var(--bg);
+}
+
+@media (min-width: 760px) {
+  .filmstrip video {
+    aspect-ratio: 16 / 9;
+  }
+}
+
+.filmstrip-caption {
+  margin-top: 18px;
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+/* ---------------------------------------------------------------- panel -- */
+
+/*
+   One card treatment, used by every section that holds prose. The showcases
+   already had it; this gives the integrations strip, "how it works" and the
+   CLI block the same ground, radius and padding, so the page reads as one
+   set of cards rather than three different ideas about what a section is.
+*/
+.panel {
+  background: var(--panel);
+  border-radius: 14px;
+  padding: 64px;
+}
+
+/* ---------------------------------------------------------- integrations -- */
+
+#integrations {
+  margin-top: 44px;
+}
+
+.integrations-label {
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.integrations-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin: 20px auto 0;
+  max-width: 820px;
+  padding: 0;
+  list-style: none;
+}
+
+/*
+   Primary text, not secondary. These are the four names the page most wants
+   read, and at --text-secondary they measured 7.29:1 against the panel — legible
+   on paper, but the weakest thing in the first screen. This is 13:1.
+*/
+.integration {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 18px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  text-align: center;
+}
+
+/* Sized and placed now so a logo file drops in without touching layout. */
+.integration img {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 819px) {
+  .panel {
+    padding: 32px;
+  }
+
+  .integrations-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ------------------------------------------------------------- showcase -- */
+
+/*
+   A product film beside its copy, sides alternating down the page.
+
+   The card is one step up the surface ramp (--panel over --bg), which is the
+   whole separation — no shadow, and no new hex values: every colour here is an
+   existing token, or the hairline the brief specifies.
+
+   The window frame returns for these two only. It was right to strip it when
+   the films ran edge-to-edge, because they arrive composed inside their own
+   dark surround and a full-bleed film needs no second border. At half the page
+   width that stops being true: the film needs an edge to sit against, and the
+   title bar says which surface you are looking at. The hero film is untouched
+   and still runs full-bleed.
+*/
+.showcase {
+  display: grid;
+  /* The film column is wider. Copy caps out at 46ch long before the column
+     does, so the extra width goes where it is legible. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  align-items: center;
+  gap: 56px;
+  padding: 64px;
+  border-radius: 14px;
+  background: var(--panel);
+}
+
+.showcase + .showcase {
+  margin-top: 32px;
+}
+
+/* Alternate the sides. `order` rather than a swapped source order, so the
+   copy still comes first for a screen reader and for the single column.
+   The track sizes have to swap with it: `order` moves the items but not the
+   columns, so without this the reversed row hands the film the narrow track
+   and the copy the wide one — the opposite of the intent, and visibly a
+   different film size on alternate rows. */
+.showcase--reverse {
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+}
+
+.showcase--reverse .showcase-copy {
+  order: 2;
+}
+
+.showcase-copy h2 {
+  font-size: 30px;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.showcase-copy p {
+  margin-top: 14px;
+  color: var(--text-secondary);
+  font-size: 17px;
+  line-height: 1.6;
+  /* The measure, not the column, decides where the line breaks. */
+  max-width: 46ch;
+}
+
+/* A step down from the body line above it in both size and weight of colour —
+   it qualifies that line rather than adding a second claim beside it.
+   Scoped through .showcase-copy deliberately: `.showcase-copy p` sets the 17px
+   body size and secondary colour, and a bare `.showcase-note` loses to it on
+   specificity — the note rendered identical to the line it sits under. */
+.showcase-copy .showcase-note {
+  margin-top: 10px;
+  /* Between the two text tokens rather than at tertiary. Tertiary measured
+     3.36:1 here — dimmer as asked, but under the 4.5:1 floor for text this
+     size, and unreadable small print is the thing this page was just fixed
+     for. The mix lands at 5.7:1: still a clear step down from the 7.3:1 line
+     above it. The plain token is the fallback where color-mix is unsupported. */
+  color: var(--text-tertiary);
+  color: color-mix(in srgb, var(--text-secondary) 65%, var(--text-tertiary));
+  font-size: 14px;
+  line-height: 1.5;
+  max-width: var(--measure);
+}
+
+/* Quiet by intent: the page already has one filled button in the nav, and a
+   second primary surface beside every film would compete with it. */
+.showcase-link {
+  display: inline-block;
+  margin-top: 22px;
+  color: var(--text-primary);
+  font-size: 14.5px;
+  text-decoration: none;
+  border-bottom: 1px solid var(--border-strong);
+  padding-bottom: 2px;
+}
+
+.showcase-link:hover {
+  border-bottom-color: var(--text-primary);
+}
+
+/* ----- window frame ----- */
+
+.window {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  /* Clips the film to the radius, which is what puts it flush to the edges
+     without a second inner rectangle. */
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.window-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.window-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.window-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--overlay-4);
+}
+
+.window-title {
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+.window video,
+.window img {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* Held before the file loads so the row does not jump. Matches whichever
+     <source> the same breakpoint picks. */
+  aspect-ratio: var(--ar-narrow, 1080 / 1350);
+  background: var(--bg);
+}
+
+/* The screenshots are of a 16:9 and a 4:5 screen respectively, so each fills
+   its box exactly — but a stray pixel of rounding should crop, never letterbox
+   against a different black than the one in the picture. */
+.window img {
+  object-fit: cover;
+}
+
+@media (min-width: 760px) {
+  .window video,
+  .window img {
+    aspect-ratio: 16 / 9;
+  }
+}
+
+/* One column below 820px, copy above the film. Resetting `order` is what puts
+   it there — the copy is already first in the source. */
+@media (max-width: 819px) {
+  .showcase {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+    padding: 32px;
+  }
+
+  .showcase--reverse .showcase-copy {
+    order: 0;
+  }
+
+  .showcase-copy h2 {
+    font-size: 26px;
+  }
+
+  .showcase-copy p {
+    font-size: 16px;
+  }
+}
+
+/* ------------------------------------------------------------- section header -- */
+
+.section {
+  padding: 96px 0;
+  border-top: 1px solid var(--border);
+}
+
+.section-head {
+  max-width: 540px;
+  margin: 0 auto 40px;
+  text-align: center;
+}
+
+.section-label {
+  color: var(--text-tertiary);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+.section-head h2 {
+  font-size: clamp(23px, 3.2vw, 30px);
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  font-weight: 600;
+}
+
+.section-head p {
+  margin-top: 12px;
+  color: var(--text-secondary);
+  font-size: 14.5px;
+  line-height: 1.65;
+}
+
+/* --------------------------------------------------------------- steps -- */
+
+.steps {
+  margin-top: 28px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.step {
+  background: var(--panel);
+  padding: 24px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.step-n {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+}
+
+.step h3 {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.step p {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* ------------------------------------------------------------------ why -- */
+
+/*
+ * One card holding every point, rather than six cards holding one each.
+ *
+ * Six equal tiles ask the reader to scan all of them to find the one that
+ * answers their question — and on a phone, where the grid collapses to a
+ * single column, it is six screens of scrolling. Collapsed rows let the whole
+ * set be read at a glance and opened one at a time.
+ *
+ * Built on <details>/<summary>: it opens, closes, takes keyboard focus and
+ * reports its state to a screen reader with no JavaScript at all.
+ */
+
+/*
+ * A question list, opened one at a time.
+ *
+ * Deliberately unboxed: hairline rules between rows rather than a card around
+ * each one, because the point of the change was to take up less room, and six
+ * bordered panels is what it replaced. The rule is the only decoration a list
+ * of questions needs.
+ *
+ * Built on <details>/<summary>, so it opens, closes, takes keyboard focus and
+ * reports its state to a screen reader with no JavaScript at all.
+ */
+
+.qa {
+  max-width: 760px;
+  border-top: 1px solid var(--border);
+}
+
+.qa-item {
+  border-bottom: 1px solid var(--border);
+}
+
+.qa-q {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 18px 4px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: var(--text-primary);
+  /* Both are needed: the standard property, and WebKit's own marker, which
+     ignores it. Without the second, Safari shows a stray triangle. */
+  list-style: none;
+}
+
+.qa-q::-webkit-details-marker {
+  display: none;
+}
+
+/* The whole row is the target, so the focus ring belongs on the row. */
+.qa-q:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.qa-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.qa-chev {
+  flex: none;
+  color: var(--text-secondary);
+  transition: transform 0.2s var(--ease);
+}
+
+.qa-q:hover .qa-chev {
+  color: var(--text-primary);
+}
+
+.qa-item[open] .qa-chev {
+  transform: rotate(180deg);
+}
+
+.qa-a {
+  padding: 0 4px 20px;
+}
+
+.qa-a p {
+  max-width: 62ch;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qa-chev {
+    transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------- mark -- */
+
+.section-mark {
+  text-align: center;
+  font-size: clamp(22px, 3vw, 28px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+/* -------------------------------------------------------------- footer -- */
+
+.footer {
+  border-top: 1px solid var(--border);
+  padding: 40px 0;
+}
+
+.footer-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.footer .brand {
+  color: var(--text-secondary);
+}
+
+.footer-links {
+  display: flex;
+  gap: 22px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.footer-links a:hover {
+  color: var(--text-primary);
+}
+
+.footer-copy {
+  color: var(--text-tertiary);
+  font-size: 12.5px;
+}
+
+.footer-legal {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.footer-legal a {
+  color: var(--text-tertiary);
+  font-size: 12.5px;
+}
+
+.footer-legal a:hover {
+  color: var(--text-secondary);
+}
+
+/* ------------------------------------------------------------- reveal -- */
+
+/* Scoped to `.js`, which the guard in the head sets and takes away again if
+   script.js has not reported for duty. Unscoped, a script that never loads
+   leaves every section on the page invisible. */
+.js .reveal {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.42s var(--ease), transform 0.42s var(--ease);
+  will-change: opacity, transform;
+}
+
+.js .reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .js .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* ------------------------------------------------------------ responsive -- */
+
+@media (max-width: 860px) {
+  .qa-q {
+    font-size: 14.5px;
+    gap: 14px;
+  }
+}
+
+@media (max-width: 720px) {
+  .nav-links {
+    display: none;
+  }
+
+  .nav-toggle {
+    display: flex;
+  }
+
+  .steps {
+    grid-template-columns: 1fr;
+  }
+
+  .section {
+    padding: 64px 0;
+  }
+
+  .hero {
+    padding: 64px 0 48px;
+  }
+
+  .filmstrip {
+    margin-top: 40px;
+  }
+}
+
+
+/* ---------------------------------------------------------- legal pages -- */
+/* Shared by privacy.html, terms.html, data-use.html. Long-form prose, so it
+   gets its own readable measure and type scale rather than reusing the
+   landing sections' centered/marketing typography. */
+
+.legal-header {
+  padding: 56px 0 32px;
+  border-bottom: 1px solid var(--border);
+}
+
+.legal-header-wrap {
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+.legal-header .back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+
+.legal-header .back-link:hover {
+  color: var(--text-secondary);
+}
+
+.legal-header h1 {
+  font-size: clamp(26px, 4vw, 34px);
+  letter-spacing: -0.02em;
+  font-weight: 600;
+}
+
+.legal-header .updated {
+  margin-top: 10px;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+
+.legal-body {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 56px 0 96px;
+}
+
+.legal-body > .intro {
+  color: var(--text-secondary);
+  font-size: 15px;
+  line-height: 1.7;
+  margin-bottom: 40px;
+}
+
+.legal-section {
+  padding: 28px 0;
+  border-top: 1px solid var(--border);
+}
+
+.legal-section:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.legal-section h2 {
+  font-size: 15.5px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  margin-bottom: 12px;
+}
+
+.legal-section p {
+  color: var(--text-secondary);
+  font-size: 14.5px;
+  line-height: 1.75;
+}
+
+.legal-section p + p {
+  margin-top: 12px;
+}
+
+.legal-section ul {
+  margin-top: 12px;
+  padding-left: 20px;
+  color: var(--text-secondary);
+  font-size: 14.5px;
+  line-height: 1.7;
+}
+
+.legal-section li {
+  margin-top: 8px;
+}
+
+.legal-section li::marker {
+  color: var(--text-tertiary);
+}
+
+.legal-section strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.legal-section a {
+  color: var(--text-primary);
+  text-decoration: underline;
+  text-decoration-color: var(--border-strong);
+  text-underline-offset: 2px;
+}
+
+.legal-section a:hover {
+  text-decoration-color: var(--text-primary);
+}
+
+.legal-note {
+  margin-top: 40px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+  color: var(--text-tertiary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* ----------------------------------------------------------------- cli -- */
+
+/*
+ * Commands as real text, not a picture of a terminal.
+ *
+ * Every line in this block exists to be copied, so it stays selectable text
+ * with a copy button beside it: a screenshot cannot be pasted, cannot be read
+ * aloud, and quietly goes stale the day a flag changes. The `$` marks are
+ * decoration only — they sit outside the <code> and are hidden from assistive
+ * tech, so neither the copy button nor a screen reader ever picks up a prompt
+ * character that would break the paste.
+ *
+ * Colours here are the page's existing tokens throughout. Nothing in this
+ * block introduces a new one.
+ */
+.cli-block {
+  margin-top: 28px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.cli-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.cli-row:last-child {
+  border-bottom: 0;
+}
+
+/* The command scrolls inside its own row rather than widening the page: a
+   long flag list must never hand the whole document a horizontal scrollbar. */
+.cli-code {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  white-space: nowrap;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.cli-prompt {
+  color: var(--text-tertiary);
+  user-select: none;
+}
+
+.cli-copy {
+  flex-shrink: 0;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 5px 11px;
+  cursor: pointer;
+  transition: color 0.15s var(--ease), background-color 0.15s var(--ease);
+}
+
+.cli-copy:hover {
+  color: var(--text-primary);
+  background: var(--overlay-3);
+}
+
+/* Set by the copy handler. Says what happened in words rather than by colour
+   alone, so it still reads for anyone who cannot distinguish the two states. */
+.cli-copy.is-copied {
+  color: var(--text-primary);
+  background: var(--overlay-4);
+}
+
+.cli-note {
+  margin-top: 18px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.65;
+  max-width: 62ch;
+}
+
+.cli-note code,
+.step p code,
+.step h3 code {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.9em;
+  color: var(--text-primary);
+  background: var(--overlay-3);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+/* The per-editor command inside a step card. Pinned to the bottom so the three
+   cards line their commands up even when the sentences above differ in length. */
+.cli-mini {
+  margin-top: auto;
+  padding-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cli-mini code {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  white-space: nowrap;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12.5px;
+  color: var(--text-primary);
+}
+
+@media (max-width: 560px) {
+  /* Below this the button and a long command cannot share a line without one
+     of them being squeezed to nothing, so the button moves under the command. */
+  .cli-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .cli-copy {
+    align-self: flex-start;
+  }
+}

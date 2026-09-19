@@ -55,9 +55,25 @@ const values = {
 
 // The packaged build puts the PWA icons at its root; the template expects them
 // under out/. Point at where they actually are.
-const page = html
+let page = html
 	.replace(/\{\{([^}]+)\}\}/g, (_, key) => values[key] ?? '')
 	.replace(/\.\/out\/code-/g, './code-');
+
+/*
+ * Where the workbench loads its own files from.
+ *
+ * The template resolves the base against `window.location.origin`, which
+ * throws the path away: at /editor/ it still asked for /out/… and got the
+ * landing page's 404 instead of the bundle, so no theme and no worker.
+ * Resolving against the document's own URL makes the page work wherever it is
+ * served — a subdirectory, a domain root, or a custom domain later.
+ */
+const baseScript = `const baseUrl = new URL('.', window.location.origin).toString();
+		globalThis._VSCODE_FILE_ROOT = baseUrl + '/out/';`;
+if (!page.includes(baseScript)) {
+	throw new Error('base-url script not found in the template — check it upstream before publishing');
+}
+page = page.replace(baseScript, `globalThis._VSCODE_FILE_ROOT = new URL('out/', window.location.href).toString();`);
 
 await rm(OUT, { recursive: true, force: true });
 await mkdir(OUT, { recursive: true });
