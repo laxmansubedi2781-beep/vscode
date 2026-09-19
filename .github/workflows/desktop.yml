@@ -7,6 +7,11 @@
 # unknowns and one log to read them from.
 name: Desktop app
 
+# A workflow that only offers a manual run, and lives outside the default
+# branch, cannot be started at all: GitHub registers it when it first runs
+# from an event. Pushing a change to this file is exactly when it wants
+# testing, so that is the event — and the path filter keeps every other push
+# from starting an hour-long build.
 on:
   workflow_dispatch:
     inputs:
@@ -14,6 +19,10 @@ on:
         description: 'Publish the build as a GitHub release'
         type: boolean
         default: false
+  push:
+    branches: [cloudeide-branding]
+    paths:
+      - '.github/workflows/desktop.yml'
 
 permissions:
   contents: write
