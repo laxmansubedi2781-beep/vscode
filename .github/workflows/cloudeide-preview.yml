@@ -1,0 +1,78 @@
+# Builds CloudeIDE for the browser and publishes it to GitHub Pages.
+#
+# Everything happens on a GitHub runner, so nobody needs a machine with the
+# sources on it to get a working link.
+#
+# `enablement: true` turns Pages on for this repository the first time the
+# workflow runs, so the site comes up without a visit to the settings page.
+name: CloudeIDE preview
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [cloudeide-branding]
+    paths:
+      - '.github/workflows/cloudeide-preview.yml'
+      - 'build/cloudeide/**'
+      - 'src/vs/workbench/contrib/cloudeide/**'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: cloudeide-preview
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      # The runner ships with toolchains this build never touches, and the
+      # build needs the room they occupy.
+      - name: Make room on the disk
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/boost
+          df -h /
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The full build runs a check that fails on upstream source this fork has
+      # not touched, so this takes the path CI itself uses: compile without
+      # mangling, then bundle.
+      - name: Build the web bundle
+        run: |
+          npm run gulp compile-build-without-mangling
+          npm run gulp vscode-web-min-ci
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+
+      - name: Assemble the static site
+        run: |
+          node build/cloudeide/make-static.mjs ../vscode-web site "$PWD"
+          du -sh site
+          find site -type f | wc -l
+
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
