@@ -1,0 +1,97 @@
+# Builds CloudeIDE as a desktop application and attaches it to a release.
+#
+# Linux first, on its own. The desktop build has never been run here, and the
+# Electron download it needs is blocked from the machine this was written on —
+# so the first honest test of it is this workflow. Windows follows once this
+# one is known to work; two untried platforms in one file would mean two
+# unknowns and one log to read them from.
+name: Desktop app
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'Publish the build as a GitHub release'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      # The runner ships toolchains this build never touches, and it needs the
+      # room they occupy: the desktop package carries an entire Electron.
+      - name: Make room on the disk
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/boost
+          df -h /
+
+      # The same packages upstream's own workflow installs; npm ci builds
+      # native modules that need these headers.
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y build-essential pkg-config \
+            libx11-dev libx11-xcb-dev libxkbfile-dev libnotify-bin libkrb5-dev
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Not the minified build: its mangling step fails on upstream source this
+      # fork has not touched, which is the same wall the web build hit. The
+      # unminified one is larger and is a working application.
+      - name: Build
+        run: |
+          npm run gulp compile-build-without-mangling
+          npm run gulp vscode-linux-x64
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+
+      - name: Package
+        id: package
+        run: |
+          set -euo pipefail
+          test -d ../VSCode-linux-x64 || { echo "::error::the build produced no VSCode-linux-x64"; exit 1; }
+          # Named for the product rather than the folder the build writes.
+          version="$(node -p "require('./package.json').version")"
+          name="CloudeIDE-linux-x64-${version}"
+          tar -czf "${name}.tar.gz" -C .. VSCode-linux-x64
+          echo "name=${name}" >> "$GITHUB_OUTPUT"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          ls -lh "${name}.tar.gz"
+          echo "--- what is in it ---"
+          ls ../VSCode-linux-x64 | head -20
+          echo "--- the binary ---"
+          file ../VSCode-linux-x64/cloudeide || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cloudeide-linux-x64
+          path: ${{ steps.package.outputs.name }}.tar.gz
+          retention-days: 14
+
+      - name: Publish a release
+        if: inputs.release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="v${{ steps.package.outputs.version }}-linux"
+          gh release create "$tag" "${{ steps.package.outputs.name }}.tar.gz" \
+            --title "CloudeIDE ${{ steps.package.outputs.version }} — Linux" \
+            --notes "Unpack and run ./cloudeide. Built from ${{ github.sha }}." \
+            || gh release upload "$tag" "${{ steps.package.outputs.name }}.tar.gz" --clobber
