@@ -47,6 +47,15 @@ jobs:
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/boost
           df -h /
 
+      # The same packages upstream's own PR workflow installs: npm ci builds
+      # native modules (kerberos, native-keymap) that need these headers, and
+      # without them the install fails before any of the build runs.
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y build-essential pkg-config \
+            libx11-dev libx11-xcb-dev libxkbfile-dev libnotify-bin libkrb5-dev
+
       - name: Install dependencies
         run: npm ci
 
