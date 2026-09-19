@@ -1,0 +1,256 @@
+/*---------------------------------------------------------------------------------------------
+ *  CloudeIDE panel
+ *
+ *  Every colour here comes from a theme token, never a literal. The CloudeIDE
+ *  themes set those tokens to the warm near-black the web dashboard uses, so
+ *  the panel is that palette by default — and still legible for somebody who
+ *  switches to a light theme, which a hardcoded #0e0d0b would not be.
+ *--------------------------------------------------------------------------------------------*/
+
+.cloudeide-panel {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	overflow: hidden;
+	font-size: 13px;
+}
+
+/* ── shared type ─────────────────────────────────────────────────────────── */
+
+.cloudeide-heading {
+	margin: 0;
+	font-size: 16px;
+	font-weight: 600;
+	letter-spacing: -0.01em;
+	color: var(--vscode-foreground);
+}
+
+.cloudeide-heading-sm {
+	margin: 0;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--vscode-foreground);
+}
+
+.cloudeide-blurb {
+	margin: 6px 0 0;
+	line-height: 1.55;
+	color: var(--vscode-descriptionForeground);
+}
+
+.cloudeide-hint {
+	margin: 12px 0 0;
+	font-size: 12px;
+	line-height: 1.5;
+	color: var(--vscode-descriptionForeground);
+}
+
+.cloudeide-error {
+	margin: 10px 0 0;
+	font-size: 12px;
+	line-height: 1.5;
+	color: var(--vscode-errorForeground);
+}
+
+.cloudeide-link {
+	color: var(--vscode-textLink-foreground);
+	cursor: pointer;
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+.cloudeide-link:hover {
+	color: var(--vscode-textLink-activeForeground);
+}
+
+/* ── connect ─────────────────────────────────────────────────────────────── */
+
+.cloudeide-connect {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow-y: auto;
+	padding: 20px 16px;
+}
+
+.cloudeide-connect-box {
+	width: 100%;
+	max-width: 340px;
+}
+
+.cloudeide-field {
+	display: flex;
+	gap: 6px;
+	margin-top: 16px;
+}
+
+.cloudeide-input {
+	flex: 1;
+	min-width: 0;
+	padding: 6px 8px;
+	font-family: var(--monaco-monospace-font);
+	font-size: 12px;
+	color: var(--vscode-input-foreground);
+	background: var(--vscode-input-background);
+	border: 1px solid var(--vscode-input-border, transparent);
+	border-radius: 4px;
+}
+
+.cloudeide-input:focus {
+	outline: 1px solid var(--vscode-focusBorder);
+	outline-offset: -1px;
+}
+
+/* ── buttons ─────────────────────────────────────────────────────────────── */
+
+.cloudeide-button-primary,
+.cloudeide-button-quiet {
+	border: 1px solid transparent;
+	border-radius: 4px;
+	padding: 5px 11px;
+	font-size: 12px;
+	font-weight: 500;
+	cursor: pointer;
+	white-space: nowrap;
+}
+
+.cloudeide-button-primary {
+	color: var(--vscode-button-foreground);
+	background: var(--vscode-button-background);
+}
+
+.cloudeide-button-primary:hover:not(:disabled) {
+	background: var(--vscode-button-hoverBackground);
+}
+
+.cloudeide-button-quiet {
+	color: var(--vscode-button-secondaryForeground);
+	background: var(--vscode-button-secondaryBackground);
+}
+
+.cloudeide-button-quiet:hover:not(:disabled) {
+	background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.cloudeide-button-primary:disabled,
+.cloudeide-button-quiet:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+
+.cloudeide-button-primary:focus-visible,
+.cloudeide-button-quiet:focus-visible,
+.cloudeide-link:focus-visible {
+	outline: 1px solid var(--vscode-focusBorder);
+	outline-offset: 2px;
+}
+
+/* ── transcript ──────────────────────────────────────────────────────────── */
+
+.cloudeide-main {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-height: 0;
+}
+
+.cloudeide-transcript {
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+	padding: 12px 14px;
+}
+
+.cloudeide-empty {
+	padding: 28px 2px;
+}
+
+.cloudeide-turn {
+	margin-bottom: 14px;
+}
+
+.cloudeide-turn-who {
+	margin-bottom: 3px;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--vscode-descriptionForeground);
+}
+
+.cloudeide-turn-body {
+	line-height: 1.6;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	color: var(--vscode-foreground);
+}
+
+.cloudeide-turn-assistant .cloudeide-turn-body {
+	color: var(--vscode-foreground);
+}
+
+.cloudeide-turn-failed {
+	color: var(--vscode-errorForeground);
+}
+
+/* ── composer ────────────────────────────────────────────────────────────── */
+
+.cloudeide-composer {
+	padding: 10px 14px 12px;
+	border-top: 1px solid var(--vscode-panel-border, var(--vscode-editorWidget-border));
+}
+
+.cloudeide-textarea {
+	width: 100%;
+	box-sizing: border-box;
+	resize: none;
+	padding: 7px 9px;
+	font-family: inherit;
+	font-size: 13px;
+	line-height: 1.5;
+	color: var(--vscode-input-foreground);
+	background: var(--vscode-input-background);
+	border: 1px solid var(--vscode-input-border, transparent);
+	border-radius: 5px;
+}
+
+.cloudeide-textarea:focus {
+	outline: 1px solid var(--vscode-focusBorder);
+	outline-offset: -1px;
+}
+
+.cloudeide-textarea:disabled {
+	opacity: 0.6;
+}
+
+/* Deploy on the left, Send on the right: the two are not alternatives, and
+   putting them side by side invites the reader to choose between them. */
+.cloudeide-composer-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	margin-top: 8px;
+}
+
+/* ── status ──────────────────────────────────────────────────────────────── */
+
+.cloudeide-status {
+	padding: 0 14px 12px;
+	font-size: 12px;
+	line-height: 1.5;
+	overflow-wrap: anywhere;
+}
+
+.cloudeide-status-muted {
+	color: var(--vscode-descriptionForeground);
+}
+
+.cloudeide-status-error {
+	color: var(--vscode-errorForeground);
+}
+
+.cloudeide-status-ok {
+	font-family: var(--monaco-monospace-font);
+}

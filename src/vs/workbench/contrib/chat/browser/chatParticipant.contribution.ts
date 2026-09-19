@@ -35,6 +35,20 @@ import { ChatViewPane } from './widgetHosts/viewPane/chatViewPane.js';
 
 // --- Chat Container &  View Registration
 
+/**
+ * Whether the built-in Chat panel is offered alongside CloudeIDE's.
+ *
+ * Off in this fork. Two assistant panels in the same sidebar is a choice the
+ * person has to make before they can start, between one panel that deploys and
+ * one that does not — and the answer is always the same, so asking is just
+ * friction.
+ *
+ * Only the *view* is withheld. Everything else chat provides — inline chat,
+ * the agent surfaces, the participant API — stays registered and working, so
+ * this is one constant to flip, not a feature torn out.
+ */
+const REGISTER_BUILTIN_CHAT_VIEW = false;
+
 const chatViewIcon = registerIcon('chat-view-icon', Codicon.chatSparkle, localize('chatViewIcon', 'View icon of the chat view.'));
 
 const chatViewContainer: ViewContainer = Registry.as<IViewContainersRegistry>(ViewExtensions.ViewContainersRegistry).registerViewContainer({
@@ -80,7 +94,9 @@ const chatViewDescriptor: IViewDescriptor = {
 		)
 	)
 };
-Registry.as<IViewsRegistry>(ViewExtensions.ViewsRegistry).registerViews([chatViewDescriptor], chatViewContainer);
+if (REGISTER_BUILTIN_CHAT_VIEW) {
+	Registry.as<IViewsRegistry>(ViewExtensions.ViewsRegistry).registerViews([chatViewDescriptor], chatViewContainer);
+}
 
 const chatParticipantExtensionPoint = extensionsRegistry.ExtensionsRegistry.registerExtensionPoint<IRawChatParticipantContribution[]>({
 	extensionPoint: 'chatParticipants',
