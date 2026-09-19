@@ -228,7 +228,7 @@
 	opacity: 0.6;
 }
 
-/* Deploy on the left, Send on the right: the two are not alternatives, and
+/* Deploy on the left, send on the right: the two are not alternatives, and
    putting them side by side invites the reader to choose between them. */
 .cloudeide-composer-row {
 	display: flex;
@@ -236,6 +236,48 @@
 	justify-content: space-between;
 	gap: 8px;
 	margin-top: 8px;
+}
+
+/* ── send ────────────────────────────────────────────────────────────────── */
+
+/* A round arrow rather than a labelled button. It sits beside Deploy, which
+   does carry a consequence and keeps its word; marking both with words makes
+   them read as a pair of equals, which they are not. */
+.cloudeide-send {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex: 0 0 auto;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	border: none;
+	border-radius: 50%;
+	cursor: pointer;
+	color: var(--vscode-button-foreground);
+	background: var(--vscode-button-background);
+	transition: background 80ms ease, opacity 80ms ease;
+}
+
+.cloudeide-send .codicon {
+	font-size: 16px;
+	line-height: 16px;
+}
+
+.cloudeide-send:hover:not(:disabled) {
+	background: var(--vscode-button-hoverBackground);
+}
+
+/* Dimmed with nothing to send, so the arrow reads as "type first" rather than
+   as a button that silently does nothing. */
+.cloudeide-send:disabled {
+	opacity: 0.35;
+	cursor: default;
+}
+
+.cloudeide-send:focus-visible {
+	outline: 1px solid var(--vscode-focusBorder);
+	outline-offset: 2px;
 }
 
 /* ── status ──────────────────────────────────────────────────────────────── */

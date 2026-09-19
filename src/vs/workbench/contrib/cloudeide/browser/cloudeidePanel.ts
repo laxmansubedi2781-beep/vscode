@@ -3,6 +3,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as DOM from '../../../../base/browser/dom.js';
+import { Codicon } from '../../../../base/common/codicons.js';
+import { ThemeIcon } from '../../../../base/common/themables.js';
 import { localize } from '../../../../nls.js';
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
 import { IContextKeyService } from '../../../../platform/contextkey/common/contextkey.js';
@@ -180,12 +182,21 @@ export class CloudeidePanel extends ViewPane {
 		this.deployButton.textContent = localize('cloudeide.deploy', "Deploy");
 		this.deployButton.title = localize('cloudeide.deployTitle', "Build the open folder and put it on a live URL");
 
-		this.sendButton = DOM.append(row, $('button.cloudeide-button-primary')) as HTMLButtonElement;
-		this.sendButton.textContent = localize('cloudeide.send', "Send");
+		// An arrow, not the word "Send". Deploy beside it is the button that
+		// carries a consequence and deserves the words; sending a message is
+		// the ordinary act, and every chat the person already uses marks it
+		// with an upward arrow.
+		this.sendButton = DOM.append(row, $('button.cloudeide-send')) as HTMLButtonElement;
+		DOM.append(this.sendButton, $(`span${ThemeIcon.asCSSSelector(Codicon.arrowUp)}`));
+		const sendLabel = localize('cloudeide.send', "Send");
+		this.sendButton.title = sendLabel;
+		this.sendButton.setAttribute('aria-label', sendLabel);
 
 		this.statusLine = DOM.append(this.mainView, $('.cloudeide-status'));
 		this.statusLine.style.display = 'none';
 
+		this.updateSendEnablement();
+		this._register(DOM.addDisposableListener(this.input, 'input', () => this.updateSendEnablement()));
 		this._register(DOM.addDisposableListener(this.sendButton, 'click', () => void this.send()));
 		this._register(DOM.addDisposableListener(this.deployButton, 'click', () => void this.deploy()));
 		this._register(DOM.addDisposableListener(this.input, 'keydown', (e: KeyboardEvent) => {
@@ -256,9 +267,14 @@ export class CloudeidePanel extends ViewPane {
 
 	private setBusy(busy: boolean): void {
 		this.busy = busy;
-		this.sendButton.disabled = busy;
 		this.deployButton.disabled = busy;
 		this.input.disabled = busy;
+		this.updateSendEnablement();
+	}
+
+	/** The arrow is live only when there is something to send. */
+	private updateSendEnablement(): void {
+		this.sendButton.disabled = this.busy || this.input.value.trim().length === 0;
 	}
 
 	private appendTurn(role: 'user' | 'assistant', text: string): HTMLElement {

@@ -3267,7 +3267,17 @@ registerWorkbenchContribution2(ChatPromoNotificationContribution.ID, ChatPromoNo
 registerWorkbenchContribution2(ChatExpNotificationContribution.ID, ChatExpNotificationContribution, WorkbenchPhase.AfterRestored);
 registerWorkbenchContribution2(HasByokModelsContribution.ID, HasByokModelsContribution, WorkbenchPhase.BlockRestore);
 registerWorkbenchContribution2(ChatTeardownContribution.ID, ChatTeardownContribution, WorkbenchPhase.AfterRestored);
-registerWorkbenchContribution2(ChatStatusBarEntry.ID, ChatStatusBarEntry, WorkbenchPhase.BlockRestore);
+/*
+ * The Copilot status bar entry, withheld for the same reason as the built-in
+ * chat view: it puts a second AI in front of the person, with its own icon and
+ * its own sign-in, next to a CloudeIDE panel that already does the job. One
+ * constant, so turning it back on is one edit rather than an archaeology
+ * exercise.
+ */
+const REGISTER_COPILOT_STATUS_ENTRY = false;
+if (REGISTER_COPILOT_STATUS_ENTRY) {
+	registerWorkbenchContribution2(ChatStatusBarEntry.ID, ChatStatusBarEntry, WorkbenchPhase.BlockRestore);
+}
 registerWorkbenchContribution2(BuiltinToolsContribution.ID, BuiltinToolsContribution, WorkbenchPhase.Eventually);
 registerWorkbenchContribution2(ClientToolSetsContribution.ID, ClientToolSetsContribution, WorkbenchPhase.Eventually);
 registerWorkbenchContribution2(UsagesToolContribution.ID, UsagesToolContribution, WorkbenchPhase.BlockRestore);
