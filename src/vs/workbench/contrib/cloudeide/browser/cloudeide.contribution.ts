@@ -75,12 +75,25 @@ Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Configuration).regis
 			description: localize('cloudeide.serverUrl',
 				"The CloudeIDE server this editor talks to. Change it to point at a self-hosted install."),
 		},
+		'cloudeide.environment': {
+			type: 'string',
+			enum: ['development', 'preview', 'production'],
+			default: 'development',
+			scope: 5 /* ConfigurationScope.RESOURCE */,
+			enumDescriptions: [
+				localize('cloudeide.environment.development', "A throwaway URL for checking a change."),
+				localize('cloudeide.environment.preview', "A shareable URL for review."),
+				localize('cloudeide.environment.production', "The live site."),
+			],
+			description: localize('cloudeide.environment',
+				"Where the Deploy button publishes. It starts at development so a first press cannot replace a live site."),
+		},
 		'cloudeide.projectId': {
 			type: 'string',
 			default: '',
 			scope: 5 /* ConfigurationScope.RESOURCE */,
 			description: localize('cloudeide.projectId',
-				"Which CloudeIDE project the Deploy button publishes this folder to. Set it per workspace."),
+				"Which CloudeIDE project to deploy to. Leave empty unless the account has more than one — the server picks the default."),
 		},
 	},
 });

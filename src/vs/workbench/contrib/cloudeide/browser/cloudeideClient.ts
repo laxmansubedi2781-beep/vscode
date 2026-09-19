@@ -12,6 +12,12 @@ import { IConfigurationService } from '../../../../platform/configuration/common
  * model, and put the project live. Everything else the editor already does
  * better than a panel could.
  *
+ * Every route and payload here is the one the server actually serves. An
+ * earlier version of this file invented `/user/me` and `/deploy/deployments`
+ * and parsed the chat reply as JSON, and it all passed against a stand-in
+ * server written from the same wrong assumptions. The stand-in is not the
+ * contract; the server is.
+ *
  * The token is a CloudeIDE API token (`cide_…`), the same credential the CLI
  * uses, held in secret storage rather than settings so it never lands in a
  * synced settings file or a screenshot of one.
@@ -24,10 +30,21 @@ export interface ChatMessage {
 	readonly content: string;
 }
 
-export interface DeployResult {
-	readonly id: number;
+/** The environments `/deploy/run` accepts. Anything else is a 400. */
+export type DeployEnvironment = 'development' | 'preview' | 'production';
+
+export interface DeployStarted {
+	/** A string, not a number: the server's `deploymentId`. */
+	readonly deploymentId: string;
 	readonly status: string;
-	readonly url?: string;
+}
+
+export interface DeployStatus {
+	readonly id: string;
+	readonly status: string;
+	readonly liveUrl?: string;
+	readonly errorSummary?: string;
+	readonly failedPhase?: string;
 }
 
 export class CloudeideRequestError extends Error {
@@ -48,6 +65,24 @@ export class CloudeideClient {
 		return (configured || 'https://cloudeide.com').replace(/\/+$/, '');
 	}
 
+	/**
+	 * Which environment Deploy publishes to. The server requires one; there is
+	 * no sensible silent default for "where does this go live", so the setting
+	 * carries it and `development` is the safe starting point.
+	 */
+	get environment(): DeployEnvironment {
+		const configured = this.configurationService.getValue<string>('cloudeide.environment');
+		return configured === 'preview' || configured === 'production' ? configured : 'development';
+	}
+
+	/**
+	 * Optional. The server resolves the account's default project when this is
+	 * absent, so it only matters for an account with more than one.
+	 */
+	get projectId(): string | undefined {
+		return this.configurationService.getValue<string>('cloudeide.projectId')?.trim() || undefined;
+	}
+
 	async getToken(): Promise<string | undefined> {
 		return this.secretStorageService.get(TOKEN_KEY);
 	}
@@ -60,25 +95,16 @@ export class CloudeideClient {
 		await this.secretStorageService.delete(TOKEN_KEY);
 	}
 
-	/**
-	 * The setting, not workspace storage. `cloudeide.projectId` is registered
-	 * per-resource, so a person can point each folder at its own project and see
-	 * the value they set in the place the panel tells them to set it.
-	 */
-	get projectId(): string | undefined {
-		return this.configurationService.getValue<string>('cloudeide.projectId')?.trim() || undefined;
-	}
-
-	private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
+	private async send(path: string, init: RequestInit, timeoutMs: number): Promise<Response> {
 		const token = await this.getToken();
 		if (!token) {
 			throw new CloudeideRequestError('Not connected to CloudeIDE.', 401);
 		}
 
 		// Aborted rather than left hanging: a request the editor is still
-		// waiting on after half a minute is one the person has given up on.
+		// waiting on after two minutes is one the person has given up on.
 		const controller = new AbortController();
-		const timer = setTimeout(() => controller.abort(), 120_000);
+		const timer = setTimeout(() => controller.abort(), timeoutMs);
 
 		let response: Response;
 		try {
@@ -116,6 +142,11 @@ export class CloudeideClient {
 			throw new CloudeideRequestError(message, response.status);
 		}
 
+		return response;
+	}
+
+	private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
+		const response = await this.send(path, init, 120_000);
 		if (response.status === 204) {
 			return undefined as T;
 		}
@@ -124,15 +155,81 @@ export class CloudeideClient {
 
 	/** Confirms the token works, and returns who it belongs to. */
 	async whoami(): Promise<{ email: string }> {
-		return this.request<{ email: string }>('/user/me');
+		const body = await this.request<{ user?: { email?: string } }>('/user/profile');
+		const email = body.user?.email;
+		if (!email) {
+			throw new CloudeideRequestError('The server did not say who this token belongs to.', 0);
+		}
+		return { email };
 	}
 
-	async chat(messages: readonly ChatMessage[], system?: string): Promise<string> {
-		const body = await this.request<{ content?: string; message?: string }>('/ai/chat', {
+	/**
+	 * Asks the model, streaming.
+	 *
+	 * `/ai/chat` answers with server-sent events, not a JSON document: one
+	 * `text` event per fragment, then `done`. `onText` is called for each, so
+	 * the answer appears as it is written instead of after it is finished.
+	 */
+	async chat(
+		messages: readonly ChatMessage[],
+		onText: (chunk: string) => void,
+		system?: string,
+	): Promise<string> {
+		const response = await this.send('/ai/chat', {
 			method: 'POST',
 			body: JSON.stringify({ messages, system }),
-		});
-		return body.content ?? body.message ?? '';
+		}, 300_000);
+
+		const body = response.body;
+		if (!body) {
+			throw new CloudeideRequestError('The server sent an empty reply.', 0);
+		}
+
+		const reader = body.getReader();
+		const decoder = new TextDecoder();
+		let buffered = '';
+		let full = '';
+
+		try {
+			while (true) {
+				const { done, value } = await reader.read();
+				if (done) {
+					break;
+				}
+				buffered += decoder.decode(value, { stream: true });
+
+				// Events are separated by a blank line, and a chunk can split one
+				// in half, so anything after the last separator stays buffered.
+				const events = buffered.split('\n\n');
+				buffered = events.pop() ?? '';
+
+				for (const event of events) {
+					const line = event.split('\n').find(l => l.startsWith('data:'));
+					if (!line) {
+						continue;
+					}
+					let payload: { type?: string; text?: string; message?: string };
+					try {
+						payload = JSON.parse(line.slice(5).trim());
+					} catch {
+						continue; // A frame we cannot read is not worth failing the turn over.
+					}
+
+					if (payload.type === 'text' && typeof payload.text === 'string') {
+						full += payload.text;
+						onText(payload.text);
+					} else if (payload.type === 'error') {
+						throw new CloudeideRequestError(payload.message ?? 'The request failed.', 0);
+					}
+					// `meta`, `thinking` and `done` need nothing from this end:
+					// thinking is the model's scratch work, not its answer.
+				}
+			}
+		} finally {
+			reader.releaseLock();
+		}
+
+		return full;
 	}
 
 	async listProjects(): Promise<{ id: number; name: string }[]> {
@@ -140,14 +237,27 @@ export class CloudeideClient {
 		return body.projects ?? [];
 	}
 
-	async deploy(projectId: string, files: { path: string; content: string }[]): Promise<DeployResult> {
-		return this.request<DeployResult>('/deploy/deployments', {
+	/**
+	 * Starts a deployment of the given files.
+	 *
+	 * The server takes an environment, not a project: a project is resolved
+	 * from the account, and named only when the account has more than one.
+	 */
+	async deploy(files: { path: string; content: string }[], commitMessage?: string): Promise<DeployStarted> {
+		return this.request<DeployStarted>('/deploy/run', {
 			method: 'POST',
-			body: JSON.stringify({ projectId, files, trigger: 'manual' }),
+			body: JSON.stringify({
+				environment: this.environment,
+				files,
+				trigger: 'manual',
+				...(commitMessage ? { commitMessage } : {}),
+			}),
 		});
 	}
 
-	async deploymentStatus(id: number): Promise<DeployResult> {
-		return this.request<DeployResult>(`/deploy/deployments/${id}`);
+	async deploymentStatus(deploymentId: string): Promise<DeployStatus> {
+		const projectId = this.projectId;
+		const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : '';
+		return this.request<DeployStatus>(`/deploy/deployments/${encodeURIComponent(deploymentId)}${query}`);
 	}
 }

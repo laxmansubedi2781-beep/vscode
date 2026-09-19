@@ -22,7 +22,7 @@ import { IViewDescriptorService } from '../../../common/views.js';
 import { ITextFileService } from '../../../services/textfile/common/textfiles.js';
 import { IFileService } from '../../../../platform/files/common/files.js';
 import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
-import { CloudeideClient, type ChatMessage } from './cloudeideClient.js';
+import { CloudeideClient, type ChatMessage, type DeployStatus } from './cloudeideClient.js';
 
 const $ = DOM.$;
 
@@ -306,7 +306,19 @@ export class CloudeidePanel extends ViewPane {
 		const pending = this.appendTurn('assistant', localize('cloudeide.thinking', "Thinking…"));
 
 		try {
-			const reply = await this.client.chat(this.messages);
+			// The server streams, so the answer lands a fragment at a time. The
+			// placeholder is cleared by the first one rather than up front, so
+			// a turn that fails before any text still reads "Thinking…" and
+			// then the error, never a blank bubble.
+			let started = false;
+			const reply = await this.client.chat(this.messages, chunk => {
+				if (!started) {
+					pending.textContent = '';
+					started = true;
+				}
+				pending.textContent += chunk;
+				this.transcript.scrollTop = this.transcript.scrollHeight;
+			});
 			pending.textContent = reply;
 			this.messages.push({ role: 'assistant', content: reply });
 			this.setStatus('', 'muted');
@@ -330,13 +342,6 @@ export class CloudeidePanel extends ViewPane {
 			return;
 		}
 
-		const projectId = this.client.projectId;
-		if (!projectId) {
-			this.setStatus(localize('cloudeide.noProject',
-				"Set cloudeide.projectId in settings to choose which project this folder deploys to."), 'error');
-			return;
-		}
-
 		// Unsaved buffers first. Deploying the version on disk while the editor
 		// shows a newer one is the single most confusing thing this button
 		// could do.
@@ -355,11 +360,13 @@ export class CloudeidePanel extends ViewPane {
 
 			this.setStatus(localize('cloudeide.deployingN',
 				"Building {0} file{1}…", files.length, files.length === 1 ? '' : 's'), 'muted');
-			const started = await this.client.deploy(projectId, files);
-			const finished = await this.pollDeployment(started.id);
+			const started = await this.client.deploy(files);
+			const finished = await this.pollDeployment(started.deploymentId);
 
-			if (finished.url) {
-				this.setStatus(finished.url.replace(/^https?:\/\//, ''), 'ok', finished.url);
+			if (finished.liveUrl) {
+				this.setStatus(finished.liveUrl.replace(/^https?:\/\//, ''), 'ok', finished.liveUrl);
+			} else if (finished.errorSummary) {
+				this.setStatus(finished.errorSummary, 'error');
 			} else {
 				this.setStatus(localize('cloudeide.deployFinished', "Deployment {0}.", finished.status), 'muted');
 			}
@@ -457,13 +464,21 @@ export class CloudeidePanel extends ViewPane {
 	 * after ten minutes with the last status it saw, instead of spinning
 	 * forever on a build that will never report.
 	 */
-	private async pollDeployment(id: number): Promise<{ id: number; status: string; url?: string }> {
+	/*
+	 * The statuses the server actually writes. An earlier version waited for
+	 * "ready" or "live", which it never writes, and spelled cancelled with two
+	 * letters l — so a finished deployment kept being reported as building
+	 * until the poll timed out.
+	 */
+	private static readonly IN_PROGRESS = ['queued', 'building', 'deploying'];
+
+	private async pollDeployment(deploymentId: string): Promise<DeployStatus> {
 		const deadline = Date.now() + 10 * 60 * 1000;
-		let last = { id, status: 'queued' } as { id: number; status: string; url?: string };
+		let last: DeployStatus = { id: deploymentId, status: 'queued' };
 
 		while (Date.now() < deadline) {
-			last = await this.client.deploymentStatus(id);
-			if (['ready', 'live', 'success', 'failed', 'error', 'cancelled'].includes(last.status)) {
+			last = await this.client.deploymentStatus(deploymentId);
+			if (!CloudeidePanel.IN_PROGRESS.includes(last.status)) {
 				return last;
 			}
 			this.setStatus(localize('cloudeide.deployStatus', "Building… ({0})", last.status), 'muted');
