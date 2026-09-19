@@ -1,1 +1,16 @@
-<svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><style>.st0{fill:#f6f6f6;fill-opacity:0}.st1{fill:#fff}.st2{fill:#167abf}</style><path class="st0" d="M1024 1024H0V0h1024v1024z"/><path class="st1" d="M1024 85.333v853.333H0V85.333h1024z"/><path class="st2" d="M0 85.333h298.667v853.333H0V85.333zm1024 0v853.333H384V85.333h640zm-554.667 160h341.333v-64H469.333v64zm341.334 533.334H469.333v64h341.333l.001-64zm128-149.334H597.333v64h341.333l.001-64zm0-149.333H597.333v64h341.333l.001-64zm0-149.333H597.333v64h341.333l.001-64z"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!--
+    The CloudeIDE mark. Same geometry as the Logomark component in the web
+    dashboard, scaled into this file's 1024 box, so the title bar, the welcome
+    tab and the update tooltip all carry the drawing the rest of the product
+    already uses.
+
+    This file kept its name on purpose: five stylesheets reference it by path,
+    and renaming it would mean touching all of them for no gain.
+  -->
+  <rect width="1024" height="1024" rx="188" fill="#0E0D0B"/>
+  <g fill="#F2F2F2" transform="translate(512 512) scale(14.6) translate(-50 -50)">
+    <path d="M71.59 30.28A29.24 29.24 0 1 0 71.59 69.72L64.59 63.33A19.76 19.76 0 1 1 64.59 36.67Z"/>
+    <rect x="63.43" y="44.28" width="11.44" height="11.44" rx="1.99"/>
+  </g>
+</svg>
