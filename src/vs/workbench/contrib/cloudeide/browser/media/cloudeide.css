@@ -323,3 +323,79 @@
 	background: var(--vscode-foreground);
 	vertical-align: middle;
 }
+
+/* ------------------------------------------------------------- sign in -- */
+/*
+ * The door. Covers the window rather than sitting in a corner, because until
+ * there is an account this is the only thing on screen worth reading — and a
+ * dialog that can be scrolled behind invites being ignored, which is how the
+ * token step got lost three clicks away in the first place.
+ */
+.cloudeide-signin {
+	position: absolute;
+	inset: 0;
+	z-index: 2600;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 24px;
+	background: var(--vscode-editor-background);
+}
+
+.cloudeide-signin-box {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	gap: 12px;
+	width: 100%;
+	max-width: 360px;
+	text-align: center;
+}
+
+.cloudeide-signin-title {
+	margin: 0;
+	font-size: 22px;
+	font-weight: 600;
+	color: var(--vscode-foreground);
+}
+
+.cloudeide-signin-sub {
+	margin: 0 0 8px;
+	font-size: 13px;
+	line-height: 1.5;
+	color: var(--vscode-descriptionForeground);
+}
+
+.cloudeide-signin-primary {
+	padding: 8px 14px;
+	font-size: 13px;
+}
+
+/* A separator that says which way is the main way. */
+.cloudeide-signin-or {
+	margin: 10px 0 0;
+	font-size: 11.5px;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--vscode-descriptionForeground);
+}
+
+.cloudeide-signin-error {
+	margin: 0;
+	text-align: left;
+}
+
+.cloudeide-signin-skip {
+	margin-top: 6px;
+	padding: 6px;
+	border: none;
+	background: transparent;
+	color: var(--vscode-descriptionForeground);
+	font-size: 12.5px;
+	cursor: pointer;
+}
+
+.cloudeide-signin-skip:hover {
+	color: var(--vscode-foreground);
+	text-decoration: underline;
+}
