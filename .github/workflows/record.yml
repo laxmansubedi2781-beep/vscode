@@ -57,7 +57,7 @@ jobs:
           npm run gulp compile-build-without-mangling
           npm run gulp vscode-web-min-ci
         env:
-          NODE_OPTIONS: --max-old-space-size=8192
+          NODE_OPTIONS: --max-old-space-size=12288
           GITHUB_TOKEN: ${{ github.token }}
 
       - name: Serve it

@@ -69,7 +69,7 @@ jobs:
           npm run gulp compile-build-without-mangling
           npm run gulp vscode-linux-x64
         env:
-          NODE_OPTIONS: --max-old-space-size=8192
+          NODE_OPTIONS: --max-old-space-size=12288
           # The build downloads the js-debug extensions from the GitHub API,
           # which rate limits unauthenticated callers by runner IP — shared,
           # so the budget can already be gone on arrival. That is what stopped
@@ -266,7 +266,7 @@ jobs:
           npm run gulp compile-build-without-mangling
           npm run gulp vscode-win32-x64
         env:
-          NODE_OPTIONS: --max-old-space-size=8192
+          NODE_OPTIONS: --max-old-space-size=12288
           # The build downloads the js-debug extensions from the GitHub API,
           # which rate limits unauthenticated callers by runner IP — shared,
           # so the budget can already be gone on arrival. That is what stopped

@@ -75,7 +75,12 @@ jobs:
           npm run gulp compile-build-without-mangling
           npm run gulp vscode-web-min-ci
         env:
-          NODE_OPTIONS: --max-old-space-size=8192
+          # 8192 aborted the compile with a core dump — exit 134, a heap
+          # limit, not a code error: the same task had passed on the same
+          # runner an hour earlier. The tree has grown enough that eight
+          # gigabytes is the edge rather than the ceiling, and a limit that
+          # only sometimes holds is not a limit. These runners carry sixteen.
+          NODE_OPTIONS: --max-old-space-size=12288
 
       - name: Assemble the static site
         run: |
