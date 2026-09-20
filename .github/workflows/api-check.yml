@@ -1,0 +1,81 @@
+# Asks the API host whether it is there, using the token the way the panel
+# does — and answers in status codes only.
+#
+# This exists so a broken token or an unfinished DNS change is a one-minute
+# answer rather than something discovered at the end of a half-hour build. It
+# is the same call the editor's panel makes first: GET /api/user/profile with
+# a bearer token.
+#
+# Nothing here prints the token, or any part of a response that could carry
+# one. Only HTTP status codes and byte counts come back.
+name: API check
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Is the secret set
+        env:
+          TOKEN: ${{ secrets.CLOUDEIDE_API_TOKEN }}
+        run: |
+          set -uo pipefail
+          if [ -z "${TOKEN}" ]; then
+            echo "::error::CLOUDEIDE_API_TOKEN is not set on this repository"
+            exit 1
+          fi
+          # Length and prefix only. Enough to catch a paste that picked up a
+          # newline or lost its first characters; not enough to reconstruct.
+          echo "secret is set, ${#TOKEN} characters, starts ${TOKEN:0:5}"
+
+      - name: Does the host answer
+        run: |
+          set -uo pipefail
+          for host in cloudeide.com api.cloudeide.com; do
+            echo "--- ${host} ---"
+            getent hosts "$host" || echo "(no address yet)"
+            curl -s -o /dev/null -w 'HTTP %{http_code} in %{time_total}s, %{size_download} bytes\n' \
+              --max-time 20 "https://${host}/" || echo "(no answer)"
+          done
+
+      - name: Does the token work
+        env:
+          TOKEN: ${{ secrets.CLOUDEIDE_API_TOKEN }}
+        run: |
+          set -uo pipefail
+          # The panel's first call. 200 means connected; 401 means the token is
+          # wrong; anything else means the host is not the application.
+          code="$(curl -s -o /tmp/body -w '%{http_code}' --max-time 30 \
+            -H "Authorization: Bearer ${TOKEN}" \
+            https://api.cloudeide.com/api/user/profile)"
+          echo "GET /api/user/profile -> HTTP ${code}, $(wc -c < /tmp/body) bytes"
+
+          case "$code" in
+            200) echo "the token works";;
+            401|403) echo "::error::the host answered, but refused the token (${code})";;
+            404) echo "::error::reached something at api.cloudeide.com, but it is not the application (404)";;
+            000) echo "::error::could not reach api.cloudeide.com at all — DNS or certificate not ready";;
+            *)   echo "::warning::unexpected status ${code}";;
+          esac
+
+          # The body can name the account, so only its shape is reported.
+          python3 - <<'PY'
+          import json
+          try:
+              with open('/tmp/body') as f:
+                  data = json.load(f)
+          except Exception as err:
+              print('body is not JSON:', type(err).__name__)
+          else:
+              def shape(v):
+                  if isinstance(v, dict):
+                      return {k: shape(x) for k, x in v.items()}
+                  if isinstance(v, list):
+                      return [shape(v[0])] if v else []
+                  return type(v).__name__
+              print('body shape:', json.dumps(shape(data)))
+          PY
