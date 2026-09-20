@@ -117,12 +117,15 @@ jobs:
               -vf "crop=1440:824:0:0" \
               -c:v libx264 -crf 25 -pix_fmt yuv420p -movflags +faststart -an "/tmp/cut/${name}.mp4"
 
-            # A narrow cut for phones. The full frame is 1440 wide and most of
-            # its right half is panel; at phone width the whole thing shrinks
-            # to nothing, so this crops to the working area instead of scaling
-            # it away.
+            # A narrow cut for phones, taken from the RIGHT of the frame.
+            #
+            # The first version cropped from x250 and kept the editor, which
+            # rendered on a phone as a large black rectangle with the panel
+            # sliced off at the edge — and the panel is where the answer
+            # arrives. It is the half worth keeping when there is only room
+            # for half.
             ffmpeg -nostdin -v error -ss "$from" -t "$len" -i "$raw" \
-              -vf "crop=900:824:250:0,scale=720:-2" \
+              -vf "crop=800:824:640:0,scale=720:-2" \
               -c:v libx264 -crf 26 -pix_fmt yuv420p -movflags +faststart -an "/tmp/cut/${name}-narrow.mp4"
 
             # A still for the poster, a second in so it is never a blank frame.

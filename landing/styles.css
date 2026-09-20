@@ -521,12 +521,16 @@ section {
 */
 .showcase {
   display: grid;
-  /* The film column is wider. Copy caps out at 46ch long before the column
-     does, so the extra width goes where it is legible. */
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  /* The film column is much wider, and deliberately so. At 1.15fr with 64px
+     of padding the film came out 473px across inside a 1072px card — a whole
+     IDE, editor and panel, rendered smaller than a phone screen. Measured, it
+     was the reason these sections read as thin: the copy caps out at 46ch and
+     then stops, while the film is the thing that has to be legible.
+  */
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.6fr);
   align-items: center;
-  gap: 56px;
-  padding: 64px;
+  gap: 40px;
+  padding: 44px;
   border-radius: 14px;
   background: var(--panel);
 }
@@ -699,8 +703,10 @@ section {
 @media (max-width: 819px) {
   .showcase {
     grid-template-columns: minmax(0, 1fr);
-    gap: 32px;
-    padding: 32px;
+    gap: 28px;
+    /* Every pixel of padding is a pixel off the film, and on a phone the film
+       has none to spare: at 32px it was 276px across. */
+    padding: 20px;
   }
 
   .showcase--reverse .showcase-copy {
