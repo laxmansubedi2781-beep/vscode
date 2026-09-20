@@ -103,26 +103,15 @@ export async function getDependencies(packageType: 'deb' | 'rpm', buildDir: stri
 	const referenceGeneratedDeps = packageType === 'deb' ?
 		debianGeneratedDeps[arch as DebianArchString] :
 		rpmGeneratedDeps[arch as RpmArchString];
-	/*
-	 * The reference list comes from a build that ships the tunnel CLI; this
-	 * one does not, so a *shorter* list is the expected outcome here and
-	 * failing on it would mean this fork could never package at all.
-	 *
-	 * What the check is actually for is the opposite direction: a dependency
-	 * appearing that nobody reviewed, which is how a package starts refusing
-	 * to install on a distribution it used to support. That still fails.
-	 */
-	const reference = new Set(referenceGeneratedDeps);
-	const added = sortedDependencies.filter(dependency => !reference.has(dependency));
-	const removed = referenceGeneratedDeps.filter(dependency => !sortedDependencies.includes(dependency));
-	if (added.length > 0) {
-		throw new Error('The dependencies list gained entries that are not in the reviewed list.'
-			+ '\nNew:\n' + added.join('\n')
-			+ '\nFull list:\n' + sortedDependencies.join('\n'));
-	}
-	if (removed.length > 0 && FAIL_BUILD_FOR_NEW_DEPENDENCIES) {
-		console.warn('The dependencies list is shorter than the reviewed one, which is what not shipping the tunnel CLI looks like.'
-			+ '\nAbsent:\n' + removed.join('\n'));
+	if (JSON.stringify(sortedDependencies) !== JSON.stringify(referenceGeneratedDeps)) {
+		const failMessage = 'The dependencies list has changed.'
+			+ '\nOld:\n' + referenceGeneratedDeps.join('\n')
+			+ '\nNew:\n' + sortedDependencies.join('\n');
+		if (FAIL_BUILD_FOR_NEW_DEPENDENCIES) {
+			throw new Error(failMessage);
+		} else {
+			console.warn(failMessage);
+		}
 	}
 
 	return sortedDependencies;

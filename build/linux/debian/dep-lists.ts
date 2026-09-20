@@ -23,18 +23,34 @@ export const recommendedDeps = [
 ];
 
 export const referenceGeneratedDepsByArch = {
+	/*
+	 * Regenerated for this fork, from a real amd64 package build.
+	 *
+	 * It is not upstream's list any more, and the differences are the fork:
+	 * libstdc++6 appears because a native module here links to it, and the
+	 * libc6 floor moves to 2.29 because a prebuilt module here needs symbols
+	 * the build sysroot's 2.28 does not have. Both are honest — a package
+	 * that understates what it needs installs and then crashes.
+	 *
+	 * Practically: Ubuntu 20.04, Debian 11 and anything newer. Debian 10 is
+	 * below the glibc floor and was never tested here.
+	 *
+	 * Reviewed once, on purpose. The check against this list is what makes a
+	 * dependency appearing later something a person has to look at rather
+	 * than something users discover when the package stops installing.
+	 */
 	'amd64': [
 		'ca-certificates',
 		'libasound2 (>= 1.0.17)',
 		'libatk-bridge2.0-0 (>= 2.5.3)',
 		'libatk1.0-0 (>= 2.11.90)',
 		'libatspi2.0-0 (>= 2.9.90)',
+		'libc6 (>= 2.14)',
 		'libc6 (>= 2.15)',
-		'libc6 (>= 2.16)',
 		'libc6 (>= 2.17)',
-		'libc6 (>= 2.2.5)',
 		'libc6 (>= 2.25)',
 		'libc6 (>= 2.28)',
+		'libc6 (>= 2.29)',
 		'libc6 (>= 2.4)',
 		'libcairo2 (>= 1.6.0)',
 		'libcups2 (>= 1.6.0)',
@@ -50,6 +66,9 @@ export const referenceGeneratedDepsByArch = {
 		'libnss3 (>= 2:3.30)',
 		'libnss3 (>= 3.26)',
 		'libpango-1.0-0 (>= 1.14.0)',
+		'libstdc++6 (>= 5)',
+		'libstdc++6 (>= 6)',
+		'libstdc++6 (>= 9)',
 		'libudev1 (>= 183)',
 		'libx11-6',
 		'libx11-6 (>= 2:1.4.99.1)',
