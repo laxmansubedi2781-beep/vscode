@@ -570,6 +570,10 @@
 }
 
 .cloudeide-signin-provider {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 9px;
 	padding: 9px 14px;
 	font-family: inherit;
 	font-size: 13px;
@@ -579,6 +583,21 @@
 	border: 1px solid var(--vscode-button-border, var(--vscode-contrastBorder, var(--vscode-panel-border)));
 	border-radius: 6px;
 	cursor: pointer;
+}
+
+/* One size for both kinds of mark — Google's is an inline SVG, the other two
+   come from the icon font — so the three labels line up with each other. */
+.cloudeide-signin-provider > svg,
+.cloudeide-signin-provider > .codicon {
+	flex: 0 0 auto;
+	width: 16px;
+	height: 16px;
+	font-size: 16px;
+	line-height: 16px;
+}
+
+.cloudeide-signin-provider-label {
+	line-height: 16px;
 }
 
 .cloudeide-signin-provider:hover:not(:disabled) {
