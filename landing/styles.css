@@ -545,8 +545,13 @@ section {
    columns, so without this the reversed row hands the film the narrow track
    and the copy the wide one — the opposite of the intent, and visibly a
    different film size on alternate rows. */
+/* The mirror of `.showcase`, and it has to be kept in step with it: `order`
+   moves the items but not the tracks, so a reversed row that kept the
+   original ratios hands the film the narrow track. Left unchanged after the
+   film column was widened, that is exactly what happened — 629px of film on
+   one row and 505px on the next, in the same page. */
 .showcase--reverse {
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.8fr);
 }
 
 .showcase--reverse .showcase-copy {
@@ -719,6 +724,15 @@ section {
 
   .showcase-copy p {
     font-size: 16px;
+  }
+
+  /* The narrow screenshots are 1080x1350 — taller than they are wide — and
+     at full column width that makes a window 829px tall on a 720px screen:
+     one section swallowing the whole page. Capped against the viewport, and
+     `object-fit: cover` crops rather than squashing what is inside. */
+  .window img,
+  .window video {
+    max-height: 56vh;
   }
 }
 
