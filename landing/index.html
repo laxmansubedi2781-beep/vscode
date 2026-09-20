@@ -126,6 +126,16 @@
       <h1>Your whole dev environment,<br />in a browser tab.</h1>
       <p class="sub">An AI agent that reads your real code. Nothing to install.</p>
 
+      <!--
+        The hero asked for nothing. Someone convinced by the first screen had
+        to scroll past four sections to find a way in, which is the one thing
+        a first screen has to get right.
+      -->
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="editor/">Open the editor</a>
+        <a class="btn btn-secondary" href="#desktop">Download for desktop</a>
+      </div>
+
     </div>
 
     <!--
@@ -266,22 +276,28 @@
         <p>Everything before the first line of code, and after the last one.</p>
       </div>
 
-      <!-- ------------------------------------------------------ how it works -- -->
+      <!--
+        These three used to begin with "Sign in", and step three promised a
+        sandbox instead of your laptop. Neither is true any more: there is no
+        account to make, and the desktop build runs on the machine in front of
+        you. A page that describes a product nobody can get is worse than a
+        plain one, so they now describe what actually happens.
+      -->
       <div class="steps reveal" aria-label="How it works">
         <div class="step">
           <span class="step-n">1</span>
-          <h3>Sign in</h3>
-          <p>Email, Google or GitHub.</p>
+          <h3>Open it</h3>
+          <p>A browser tab, or the desktop build. No account.</p>
         </div>
         <div class="step">
           <span class="step-n">2</span>
-          <h3>Build</h3>
+          <h3>Ask</h3>
           <p>The agent reads the same files you do.</p>
         </div>
         <div class="step">
           <span class="step-n">3</span>
-          <h3>Run</h3>
-          <p>Your code runs in a sandbox, not on your laptop.</p>
+          <h3>Ship</h3>
+          <p>One button, and the address comes back in the panel.</p>
         </div>
       </div>
       </div>
@@ -362,10 +378,15 @@
   <!--
     The desktop build, and deliberately last.
 
-    The hero says "nothing to install", and that stays true — the browser is
-    still the way in. This is the other way in, for someone who has already
-    decided they want it on their own machine, so it sits after they have seen
-    what the thing does rather than competing with the first screen.
+    The hero offers the browser first and that stays true — it is still the
+    way in that costs nothing. This is for someone who has already decided
+    they want it on their own machine, so it sits after they have seen what
+    the thing does rather than competing with the first screen.
+
+    It is a showcase like the two above it rather than a panel with two
+    buttons in it, because there is now a photograph worth showing: the
+    application running, taken on a Linux machine by the build that produced
+    the very file these links download.
 
     Two links, no version numbers: /releases/latest/download/<name> always
     resolves to the newest release, so the page never goes stale and never
@@ -373,18 +394,35 @@
   -->
   <section class="section" id="desktop">
     <div class="wrap">
-      <div class="panel reveal">
-        <div class="section-head reveal">
+      <div class="showcase reveal">
+        <div class="showcase-copy">
           <div class="section-label">Desktop app</div>
-          <h2>Or keep it on your machine.</h2>
-          <p>The same editor and the same panel, installed.</p>
+          <h2>Or keep it on your machine</h2>
+          <p>
+            The same editor and the same panel, installed. Your files stay
+            where they are.
+          </p>
+
+          <div class="download-row">
+            <a class="btn btn-primary" href="https://github.com/laxmansubedi7/cloudevs/releases/latest/download/CloudeIDE-linux-x64.tar.gz">Download for Linux</a>
+            <a class="btn btn-secondary" href="https://github.com/laxmansubedi7/cloudevs/releases/latest/download/CloudeIDE-win32-x64.zip">Download for Windows</a>
+          </div>
+          <p class="showcase-note">64-bit. macOS is not built yet.</p>
         </div>
 
-        <div class="download-row reveal">
-          <a class="btn btn-primary" href="https://github.com/laxmansubedi7/cloudevs/releases/latest/download/CloudeIDE-linux-x64.tar.gz">Download for Linux</a>
-          <a class="btn btn-secondary" href="https://github.com/laxmansubedi7/cloudevs/releases/latest/download/CloudeIDE-win32-x64.zip">Download for Windows</a>
+        <div class="window" style="--ar-narrow: 1080 / 844">
+          <div class="window-bar">
+            <span class="window-dots" aria-hidden="true">
+              <span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span>
+            </span>
+            <span class="window-title">Desktop</span>
+          </div>
+          <picture>
+            <source srcset="assets/shot-desktop-wide.jpg" media="(min-width: 760px)" />
+            <img src="assets/shot-desktop.jpg" loading="lazy" decoding="async" width="1080" height="844"
+                 alt="CloudeIDE running as a desktop application on Linux, with the panel open on the right" />
+          </picture>
         </div>
-        <p class="download-note reveal">64-bit. macOS is not built yet.</p>
       </div>
     </div>
   </section>
