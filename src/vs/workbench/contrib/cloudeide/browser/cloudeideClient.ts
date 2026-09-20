@@ -102,16 +102,20 @@ export class CloudeideClient {
 	}
 
 	/**
-	 * cloudeide.com — the dashboard, not the API.
+	 * Where the dashboard is, which is not where the marketing site is.
 	 *
-	 * Signing in happens in a browser, and a browser needs the site a person
-	 * recognises. Separate from `serverUrl` because the two genuinely are: the
-	 * apex serves the marketing site and the dashboard, the api subdomain
-	 * serves this editor's requests.
+	 * The apex moved to static hosting and now serves the landing page and the
+	 * browser build of the editor, and nothing else — /app there is a 404. The
+	 * dashboard a person signs in to is served by the same host as the API, so
+	 * that is where sign-in has to send them.
+	 *
+	 * Still its own setting rather than reusing `serverUrl`: these are one host
+	 * today and there is no reason they must stay one, and a self-hosted
+	 * install may well split them.
 	 */
 	get webUrl(): string {
 		const configured = this.configurationService.getValue<string>('cloudeide.webUrl');
-		return (configured || 'https://cloudeide.com').replace(/\/+$/, '');
+		return (configured || 'https://api.cloudeide.com').replace(/\/+$/, '');
 	}
 
 	/**
