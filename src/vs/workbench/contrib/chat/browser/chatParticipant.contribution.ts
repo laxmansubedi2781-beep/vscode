@@ -53,7 +53,25 @@ import { ChatViewPane } from './widgetHosts/viewPane/chatViewPane.js';
  * participant API — stays registered and working, so this is one constant to
  * flip, not a feature torn out.
  */
-const REGISTER_BUILTIN_CHAT_VIEW = false;
+/*
+ * Temporarily true, to find out what the chat view is now.
+ *
+ * It was turned off because it arrived Copilot-branded and, with its only
+ * view withheld, left an empty container that beat the CloudeIDE panel to the
+ * auxiliary bar on a narrow window. Two things have changed since: the
+ * Copilot extension is no longer packaged at all, and a CloudeIDE language
+ * model is registered against the server.
+ *
+ * The chat stack is also the only way into the agent host — the harness with
+ * Read, Write, Edit, Bash and changesets that this fork already carries, and
+ * the only thing here that can make "ask, and it ships" true. Whether that
+ * path is open is a question about what the view actually renders now, and
+ * the cheapest way to answer it is to build it and look, not to read the two
+ * hundred and sixty-five files underneath it.
+ *
+ * Back to false unless the answer is good.
+ */
+const REGISTER_BUILTIN_CHAT_VIEW = true;
 
 const chatViewIcon = registerIcon('chat-view-icon', Codicon.chatSparkle, localize('chatViewIcon', 'View icon of the chat view.'));
 
