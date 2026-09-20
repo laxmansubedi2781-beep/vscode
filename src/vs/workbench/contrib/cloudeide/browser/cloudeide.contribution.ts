@@ -19,6 +19,7 @@ import {
 } from '../../../common/views.js';
 import { CloudeidePanel } from './cloudeidePanel.js';
 import { CloudeideLanguageModelContribution } from './cloudeideLanguageModel.js';
+import { CloudeideChatAgentContribution } from './cloudeideChatAgent.js';
 import { registerWorkbenchContribution2, WorkbenchPhase } from '../../../common/contributions.js';
 
 const CONTAINER_ID = 'workbench.view.cloudeideContainer';
@@ -112,5 +113,15 @@ Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Configuration).regis
 registerWorkbenchContribution2(
 	CloudeideLanguageModelContribution.ID,
 	CloudeideLanguageModelContribution,
+	WorkbenchPhase.AfterRestored,
+);
+
+/*
+ * The participant behind the chat panel. Without one, chat has nobody to
+ * hand a request to and sending does nothing at all — no turn, no error.
+ */
+registerWorkbenchContribution2(
+	CloudeideChatAgentContribution.ID,
+	CloudeideChatAgentContribution,
 	WorkbenchPhase.AfterRestored,
 );
