@@ -600,6 +600,33 @@ section {
   border-bottom-color: var(--text-primary);
 }
 
+/*
+ * The arrow moves, the underline does not.
+ *
+ * A link that says "open the editor" is a door; nudging the arrow on hover
+ * says so without the text moving, which an underline growing or a colour
+ * change cannot. Kept to two pixels: enough to notice, not enough to read as
+ * an animation.
+ */
+.showcase-arrow {
+  display: inline-block;
+  transition: transform 0.15s var(--ease);
+}
+
+.showcase-link:hover .showcase-arrow {
+  transform: translateX(2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .showcase-arrow {
+    transition: none;
+  }
+
+  .showcase-link:hover .showcase-arrow {
+    transform: none;
+  }
+}
+
 /* ----- window frame ----- */
 
 .window {
