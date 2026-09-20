@@ -71,7 +71,7 @@ Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Configuration).regis
 	properties: {
 		'cloudeide.serverUrl': {
 			type: 'string',
-			default: 'https://cloudeide.com',
+			default: 'https://api.cloudeide.com',
 			description: localize('cloudeide.serverUrl',
 				"The CloudeIDE server this editor talks to. Change it to point at a self-hosted install."),
 		},

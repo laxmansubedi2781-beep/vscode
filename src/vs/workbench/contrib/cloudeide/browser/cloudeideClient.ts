@@ -60,9 +60,16 @@ export class CloudeideClient {
 		private readonly configurationService: IConfigurationService,
 	) { }
 
+	/**
+	 * api.cloudeide.com, not cloudeide.com.
+	 *
+	 * The apex now serves the marketing site as static files, which has no
+	 * /ai/chat and no /deploy/run — every call from this panel would have come
+	 * back as the landing page's 404. The application kept its own name.
+	 */
 	get serverUrl(): string {
 		const configured = this.configurationService.getValue<string>('cloudeide.serverUrl');
-		return (configured || 'https://cloudeide.com').replace(/\/+$/, '');
+		return (configured || 'https://api.cloudeide.com').replace(/\/+$/, '');
 	}
 
 	/**
