@@ -609,7 +609,20 @@ function packageTask(platform: string, arch: string, sourceFolderName: string, d
 function hasAuthenticodeSignature(filePath: string): Promise<boolean> {
 	return new Promise((resolve, reject) => {
 		const proc = cp.spawn('signtool.exe', ['verify', '/pa', filePath]);
-		proc.on('error', reject);
+		proc.on('error', (err: NodeJS.ErrnoException) => {
+			// No signtool on this machine. That is not a failure to strip a
+			// signature; it is a machine that cannot have applied one, so
+			// there is nothing to strip. The step exists only to clear a
+			// previous Authenticode signature before rcedit rewrites the PE,
+			// and an unsigned build has none — which is what a Windows build
+			// on a plain runner is, since signing needs a certificate this
+			// has no business holding.
+			if (err.code === 'ENOENT') {
+				resolve(false);
+				return;
+			}
+			reject(err);
+		});
 		proc.on('exit', code => resolve(code === 0));
 	});
 }
