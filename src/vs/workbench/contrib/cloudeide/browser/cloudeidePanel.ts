@@ -22,6 +22,8 @@ import { IViewletViewOptions } from '../../../browser/parts/views/viewsViewlet.j
 import { IViewDescriptorService } from '../../../common/views.js';
 import { ITextFileService } from '../../../services/textfile/common/textfiles.js';
 import { IFileService } from '../../../../platform/files/common/files.js';
+import { IEditorService } from '../../../services/editor/common/editorService.js';
+import { IModelService } from '../../../../editor/common/services/model.js';
 import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
 import { CloudeideClient, type ChatMessage, type DeployStatus } from './cloudeideClient.js';
 
@@ -71,6 +73,8 @@ export class CloudeidePanel extends ViewPane {
 		@ISecretStorageService secretStorageService: ISecretStorageService,
 		@ITextFileService private readonly textFileService: ITextFileService,
 		@IFileService private readonly fileService: IFileService,
+		@IEditorService private readonly editorService: IEditorService,
+		@IModelService private readonly modelService: IModelService,
 		@IWorkspaceContextService private readonly contextService: IWorkspaceContextService,
 	) {
 		super(options, keybindingService, contextMenuService, configurationService, contextKeyService,
@@ -309,6 +313,89 @@ export class CloudeidePanel extends ViewPane {
 		return body;
 	}
 
+	/**
+	 * What the person is looking at, written for the model to read.
+	 *
+	 * Without this the panel was asking about code it had never sent. Filmed,
+	 * the answer said so in as many words — "I don't have access to your
+	 * menu.js file... would you like to paste it?" — while the file sat open
+	 * two inches to the left. The page's claim is that the agent reads your
+	 * real code; this is the part that makes it one.
+	 *
+	 * Read from the model rather than from disk, because the editor's copy is
+	 * the one being asked about: an unsaved buffer, or a file that has never
+	 * been saved at all, has nothing on disk to read.
+	 */
+	private async gatherContext(): Promise<string | undefined> {
+		// Budgets, not guesses at what matters. The file in front of the
+		// person gets most of the room; the others are there so the model
+		// knows they exist and can ask about them.
+		const ACTIVE_LIMIT = 60_000;
+		const OTHER_LIMIT = 8_000;
+		const MAX_OTHERS = 5;
+
+		const describe = (uri: URI): string | undefined => {
+			const model = this.modelService.getModel(uri);
+			return model?.getValue();
+		};
+
+		const label = (uri: URI): string => {
+			const folder = this.contextService.getWorkspaceFolder(uri);
+			if (!folder) {
+				return uri.scheme === 'untitled' ? uri.path : uri.fsPath;
+			}
+			const base = folder.uri.path.endsWith('/') ? folder.uri.path : `${folder.uri.path}/`;
+			return uri.path.startsWith(base) ? uri.path.slice(base.length) : uri.path;
+		};
+
+		const clip = (text: string, limit: number): string =>
+			text.length <= limit ? text : `${text.slice(0, limit)}\n… (truncated)`;
+
+		const sections: string[] = [];
+		const seen = new Set<string>();
+
+		const active = this.editorService.activeEditor?.resource;
+		if (active) {
+			const text = describe(active);
+			if (text !== undefined) {
+				seen.add(active.toString());
+				sections.push(
+					`The file the person is currently looking at is ${label(active)}:\n\n\`\`\`\n${clip(text, ACTIVE_LIMIT)}\n\`\`\``,
+				);
+			}
+		}
+
+		const others: string[] = [];
+		for (const editor of this.editorService.editors) {
+			if (others.length >= MAX_OTHERS) {
+				break;
+			}
+			const uri = editor.resource;
+			if (!uri || seen.has(uri.toString())) {
+				continue;
+			}
+			const text = describe(uri);
+			if (text === undefined) {
+				continue;
+			}
+			seen.add(uri.toString());
+			others.push(`${label(uri)}:\n\n\`\`\`\n${clip(text, OTHER_LIMIT)}\n\`\`\``);
+		}
+		if (others.length > 0) {
+			sections.push(`Also open in the editor:\n\n${others.join('\n\n')}`);
+		}
+
+		if (sections.length === 0) {
+			return undefined;
+		}
+
+		return [
+			'You are CloudeIDE, helping inside the editor the person is working in.',
+			'The files below are what they have open right now. Answer about this code rather than asking them to paste it.',
+			...sections,
+		].join('\n\n');
+	}
+
 	private async send(): Promise<void> {
 		const text = this.input.value.trim();
 		if (!text || this.busy) {
@@ -321,6 +408,11 @@ export class CloudeidePanel extends ViewPane {
 		this.setBusy(true);
 
 		const pending = this.appendTurn('assistant', localize('cloudeide.thinking', "Thinking…"));
+
+		// Gathered per turn rather than once: the person may have opened,
+		// edited or switched files since the last question, and stale context
+		// is worse than none.
+		const context = await this.gatherContext();
 
 		try {
 			// The server streams, so the answer lands a fragment at a time. The
@@ -335,7 +427,7 @@ export class CloudeidePanel extends ViewPane {
 				}
 				pending.textContent += chunk;
 				this.transcript.scrollTop = this.transcript.scrollHeight;
-			});
+			}, context);
 			pending.textContent = reply;
 			this.messages.push({ role: 'assistant', content: reply });
 			this.setStatus('', 'muted');

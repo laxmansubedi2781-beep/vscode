@@ -61,6 +61,15 @@ await page.locator('.cloudeide-connect button.cloudeide-button-primary').click()
 await page.waitForSelector('textarea.cloudeide-textarea', { timeout: 60_000 });
 console.log(`connected at ${at().toFixed(1)}s`);
 
+// ---- clear the stage -----------------------------------------------------
+// The walkthrough opens on a new profile and fills two thirds of the frame
+// with a theme picker whose thumbnails do not load — four broken-image icons
+// in the middle of the shot. Nothing about it is the product.
+await page.keyboard.press('Control+KeyK');
+await page.waitForTimeout(400);
+await page.keyboard.press('Control+KeyW');
+await page.waitForTimeout(1200);
+
 // ---- files to work in ----------------------------------------------------
 // Flat statements, no braces: the editor's auto-indent has mangled typed
 // samples before, and it only does that when a line opens a block.
