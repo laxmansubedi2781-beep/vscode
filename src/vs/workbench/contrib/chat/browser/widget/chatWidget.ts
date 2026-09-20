@@ -1723,13 +1723,14 @@ export class ChatWidget extends Disposable implements IChatWidget {
 		} else if (this.input.currentModeKind === ChatModeKind.Edit) {
 			title = localize('editsTitle', "Edit in context");
 		} else {
-			title = localize('agentTitle', "Build with Agent");
+			title = localize('agentTitle', "Build with CloudeIDE");
 		}
 
 		return {
 			title,
 			message: new MarkdownString(DISCLAIMER),
-			icon: Codicon.chatSparkle,
+			// The product's mark, not the generic sparkle every assistant uses.
+			icon: Codicon.rocket,
 			additionalMessage,
 		};
 	}

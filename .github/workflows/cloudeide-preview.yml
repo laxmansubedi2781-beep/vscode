@@ -96,6 +96,24 @@ jobs:
             exit 1
           fi
 
+          # Cache busting, because a stylesheet that does not arrive is
+          # indistinguishable from a fix that was never made. The page is
+          # revalidated but styles.css and script.js are served with a
+          # lifetime, so a layout change can land and still be invisible for
+          # as long as the old copy is held — which is exactly what it looks
+          # like when someone reloads and sees the same broken thing.
+          #
+          # The stamp is the file's own hash: it changes when the file does
+          # and not otherwise, so a rebuild that changes nothing does not
+          # force a re-download.
+          for asset in styles.css script.js; do
+            [ -f "site/$asset" ] || continue
+            stamp="$(sha256sum "site/$asset" | cut -c1-10)"
+            find site -maxdepth 1 -name '*.html' -print0 | xargs -0 sed -i \
+              -e "s#\(href\|src\)=\"$asset\"#\1=\"$asset?v=$stamp\"#g"
+            echo "stamped $asset as $stamp"
+          done
+
           # The custom domain. GitHub Pages reads this file out of the
           # published artifact and serves the site from that name, which also
           # moves it off the /cloudevs/ project path: a custom domain is

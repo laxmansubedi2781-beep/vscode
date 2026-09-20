@@ -16,7 +16,6 @@ import { ContextKeyExpr, IContextKeyService } from '../../../../platform/context
 import { ExtensionIdentifier, IExtensionManifest } from '../../../../platform/extensions/common/extensions.js';
 import { SyncDescriptor } from '../../../../platform/instantiation/common/descriptors.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
-import { isWeb } from '../../../../base/common/platform.js';
 import { Registry } from '../../../../platform/registry/common/platform.js';
 import { registerIcon } from '../../../../platform/theme/common/iconRegistry.js';
 import { ViewPaneContainer } from '../../../browser/parts/views/viewPaneContainer.js';
@@ -55,34 +54,28 @@ import { ChatViewPane } from './widgetHosts/viewPane/chatViewPane.js';
  * flip, not a feature torn out.
  */
 /*
- * Desktop only, and the experiment is what decided it.
+ * On, everywhere, and wearing this product's name.
  *
- * Turned on and built, the view renders properly now that the Copilot
- * extension is gone: "Build with Agent", a composer, a harness picker
- * reading "Local", a model picker. No sign-in wall. But sending does
- * nothing at all — typed, enabled, pressed, and no turn appears and no
- * error is raised. With a mouse and with touch alike, which is what ruled
- * out the gesture problem the CloudeIDE panel had.
+ * It was withheld on the web because sending did nothing — a model is
+ * registered but no agent is, since the participant came from the Copilot
+ * extension that no longer ships. Hiding it was the wrong answer. What this
+ * view carries is the part worth having: the tool surface, where `read`,
+ * `execute`, `agent` and `todo` are already listed and already wired to the
+ * workbench. Throwing that away to keep a text-only panel would be throwing
+ * away the thing that makes an agent an agent.
  *
- * A model is not an agent. The CloudeIDE language model is registered, and
- * chat still has nobody to hand a request to: the participant came from the
- * extension that no longer ships. The agent host supplies one — and it is
- * registered for electron-browser only, so in a browser there is nothing
- * behind this view and never will be without an agent of our own.
- *
- * A panel that looks like it works and silently does nothing is worse than
- * no panel. On the web the CloudeIDE panel already answers; this one is
- * withheld there, and kept on the desktop where the agent host it needs
- * actually exists.
+ * So it stays, and the missing agent is what gets built. Until then it is
+ * named and iconed as CloudeIDE rather than as Chat, because there should be
+ * one chat in this product and it should be ours.
  */
-const REGISTER_BUILTIN_CHAT_VIEW = !isWeb;
+const REGISTER_BUILTIN_CHAT_VIEW = true;
 
-const chatViewIcon = registerIcon('chat-view-icon', Codicon.chatSparkle, localize('chatViewIcon', 'View icon of the chat view.'));
+const chatViewIcon = registerIcon('chat-view-icon', Codicon.rocket, localize('chatViewIcon', 'View icon of the chat view.'));
 
 if (REGISTER_BUILTIN_CHAT_VIEW) {
 	const chatViewContainer: ViewContainer = Registry.as<IViewContainersRegistry>(ViewExtensions.ViewContainersRegistry).registerViewContainer({
 		id: ChatViewContainerId,
-		title: localize2('chat.viewContainer.label', "Chat"),
+		title: localize2('chat.viewContainer.label', "CloudeIDE"),
 		icon: chatViewIcon,
 		ctorDescriptor: new SyncDescriptor(ViewPaneContainer, [ChatViewContainerId, { mergeViewWithContainerWhenSingleView: true }]),
 		storageId: ChatViewContainerId,
@@ -95,13 +88,13 @@ if (REGISTER_BUILTIN_CHAT_VIEW) {
 		containerIcon: chatViewContainer.icon,
 		containerTitle: chatViewContainer.title.value,
 		singleViewPaneContainerTitle: chatViewContainer.title.value,
-		name: localize2('chat.viewContainer.label', "Chat"),
+		name: localize2('chat.viewContainer.label', "CloudeIDE"),
 		canToggleVisibility: false,
 		canMoveView: true,
 		openCommandActionDescriptor: {
 			id: ChatViewContainerId,
 			title: chatViewContainer.title,
-			mnemonicTitle: localize({ key: 'miToggleChat', comment: ['&& denotes a mnemonic'] }, "&&Chat"),
+			mnemonicTitle: localize({ key: 'miToggleChat', comment: ['&& denotes a mnemonic'] }, "&&CloudeIDE"),
 			keybindings: {
 				primary: KeyMod.CtrlCmd | KeyMod.Alt | KeyCode.KeyI,
 				mac: {
