@@ -197,6 +197,43 @@ jobs:
         with:
           node-version-file: .nvmrc
 
+      # npm ci died here with "*** Invalid C/C++ Compiler Toolchain".
+      # build/npm/preinstall.ts looks for Visual Studio under
+      # %ProgramFiles%/Microsoft Visual Studio/<year>/<edition>, trying a fixed
+      # list of editions, and found nothing it recognised on this image. It
+      # also honours a vs<year>_install environment variable, so rather than
+      # hard-code an edition and a year that move with the runner image, ask
+      # the Visual Studio installer's own locator where the C++ toolchain is
+      # and hand preinstall.ts that answer.
+      - name: Find Visual Studio
+        shell: pwsh
+        run: |
+          Write-Output "--- what this runner actually has ---"
+          Get-ChildItem "$env:ProgramFiles\Microsoft Visual Studio" -ErrorAction SilentlyContinue |
+            ForEach-Object { Get-ChildItem $_.FullName -ErrorAction SilentlyContinue } |
+            Select-Object -ExpandProperty FullName
+
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          if (-not (Test-Path $vswhere)) {
+            Write-Output "::error::vswhere.exe is not at $vswhere, so Visual Studio cannot be located"
+            exit 1
+          }
+
+          $installPath = & $vswhere -latest -products * `
+            -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
+            -property installationPath
+          if (-not $installPath) {
+            Write-Output "::error::no Visual Studio with the C++ toolchain is installed on this runner"
+            exit 1
+          }
+
+          # preinstall.ts only knows the names vs2022_install and
+          # vs2019_install. Whatever year the located install belongs to, this
+          # is the path it should use, and node-gyp locates the toolchain
+          # through vswhere itself.
+          Write-Output "Visual Studio: $installPath"
+          "vs2022_install=$installPath" | Out-File -FilePath $env:GITHUB_ENV -Append
+
       - name: Install dependencies
         run: npm ci
         env:

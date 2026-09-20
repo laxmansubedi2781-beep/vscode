@@ -698,6 +698,22 @@ function prepareCopilotRipgrepShimTask(platform: string, arch: string, destinati
 
 const buildRoot = path.dirname(root);
 
+// CloudeIDE does not ship the Copilot extension.
+//
+// The web build never did: `excludedExtensions` in build/lib/extensions.ts has
+// listed 'copilot' all along, which is why only the desktop build ever hit
+// this. Desktop adds it back explicitly, through a compile task and a
+// packaging step that materializes the Copilot CLI SDK into the packaged
+// extension — and that step throws when the SDK is not where it expects, which
+// is how a Linux build that had twice succeeded failed on an unchanged tree.
+//
+// Rather than make that step tolerant of a missing SDK, the extension is left
+// out. This fork has its own panel; the Copilot status entry and the built-in
+// chat view are already turned off, so shipping the extension would only mean
+// carrying a surface nobody can reach. It also takes two minutes and 1123
+// packages off every build.
+const SHIP_COPILOT_EXTENSION = false;
+
 const BUILD_TARGETS = [
 	{ platform: 'win32', arch: 'x64' },
 	{ platform: 'win32', arch: 'arm64' },
@@ -721,8 +737,11 @@ BUILD_TARGETS.forEach(buildTarget => {
 			compileNativeExtensionsBuildTask,
 			util.rimraf(path.join(buildRoot, destinationFolderName)),
 			packageTask(platform, arch, sourceFolderName, destinationFolderName, opts),
-			prepareCopilotRipgrepShimTask(platform, arch, destinationFolderName)
 		];
+
+		if (SHIP_COPILOT_EXTENSION) {
+			packageTasks.push(prepareCopilotRipgrepShimTask(platform, arch, destinationFolderName));
+		}
 
 		if (platform === 'win32') {
 			packageTasks.push(patchWin32DependenciesTask(destinationFolderName));
@@ -747,7 +766,7 @@ BUILD_TARGETS.forEach(buildTarget => {
 				copyCodiconsTask,
 				cleanExtensionsBuildTask,
 				compileNonNativeExtensionsBuildTask,
-				compileCopilotExtensionBuildTask,
+				...(SHIP_COPILOT_EXTENSION ? [compileCopilotExtensionBuildTask] : []),
 				compileExtensionMediaBuildTask,
 				writeISODate('out-build'),
 				esbuildBundleTask,
@@ -758,7 +777,7 @@ BUILD_TARGETS.forEach(buildTarget => {
 				minified ? compileBuildWithManglingTask : compileBuildWithoutManglingTask,
 				cleanExtensionsBuildTask,
 				compileNonNativeExtensionsBuildTask,
-				compileCopilotExtensionBuildTask,
+				...(SHIP_COPILOT_EXTENSION ? [compileCopilotExtensionBuildTask] : []),
 				compileExtensionMediaBuildTask,
 				minified ? minifyVSCodeTask : bundleVSCodeTask,
 				vscodeTaskCI
