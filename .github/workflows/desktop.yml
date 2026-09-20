@@ -171,16 +171,32 @@ jobs:
           path: ${{ steps.package.outputs.name }}.tar.gz
           retention-days: 14
 
+      # One release per version, both platforms inside it.
+      #
+      # Two releases — one tagged -linux, one -windows — would break the very
+      # thing a release is for here: /releases/latest resolves to exactly one
+      # of them, so the landing page's other download link would 404. Both
+      # jobs therefore write to the same tag, whichever gets there first
+      # creating it.
+      #
+      # The asset names carry no version. The landing page links
+      # /releases/latest/download/CloudeIDE-linux-x64.tar.gz, which only keeps
+      # working if the name is the same in every release; the version is in
+      # the release title instead.
       - name: Publish a release
-        if: inputs.release
+        if: github.event_name == 'push' || inputs.release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag="v${{ steps.package.outputs.version }}-linux"
-          gh release create "$tag" "${{ steps.package.outputs.name }}.tar.gz" \
-            --title "CloudeIDE ${{ steps.package.outputs.version }} — Linux" \
-            --notes "Unpack and run ./cloudeide. Built from ${{ github.sha }}." \
-            || gh release upload "$tag" "${{ steps.package.outputs.name }}.tar.gz" --clobber
+          set -euo pipefail
+          tag="v${{ steps.package.outputs.version }}"
+          asset="CloudeIDE-linux-x64.tar.gz"
+          cp "${{ steps.package.outputs.name }}.tar.gz" "$asset"
+          gh release create "$tag" \
+            --title "CloudeIDE ${{ steps.package.outputs.version }}" \
+            --notes "Linux: unpack and run ./cloudeide. Windows: unzip and run CloudeIDE.exe." \
+            || echo "release $tag already exists"
+          gh release upload "$tag" "$asset" --clobber
 
   # Windows, once Linux was known to build. Same two gulp tasks with the other
   # platform's name; what differs is the packaging (a zip, because Windows has
@@ -356,13 +372,17 @@ jobs:
           retention-days: 14
 
       - name: Publish a release
-        if: inputs.release
+        if: github.event_name == 'push' || inputs.release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag="v${{ steps.package.outputs.version }}-windows"
-          gh release create "$tag" "${{ steps.package.outputs.name }}.zip" \
-            --title "CloudeIDE ${{ steps.package.outputs.version }} — Windows" \
-            --notes "Unzip and run CloudeIDE.exe. Built from ${{ github.sha }}." \
-            || gh release upload "$tag" "${{ steps.package.outputs.name }}.zip" --clobber
+          set -euo pipefail
+          tag="v${{ steps.package.outputs.version }}"
+          asset="CloudeIDE-win32-x64.zip"
+          cp "${{ steps.package.outputs.name }}.zip" "$asset"
+          gh release create "$tag" \
+            --title "CloudeIDE ${{ steps.package.outputs.version }}" \
+            --notes "Linux: unpack and run ./cloudeide. Windows: unzip and run CloudeIDE.exe." \
+            || echo "release $tag already exists"
+          gh release upload "$tag" "$asset" --clobber

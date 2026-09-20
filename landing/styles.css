@@ -1223,3 +1223,27 @@ section {
     align-self: flex-start;
   }
 }
+
+/* ------------------------------------------------------------- download -- */
+/*
+ * Two buttons and a line of small print. No colours of its own: the buttons
+ * are the page's existing .btn-primary and .btn-secondary, and the note uses
+ * the same secondary text as every other caption.
+ */
+.download-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.download-row .btn {
+  padding: 10px 18px;
+  font-size: 14px;
+}
+
+.download-note {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
