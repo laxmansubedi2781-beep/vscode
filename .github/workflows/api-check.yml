@@ -10,8 +10,15 @@
 # one. Only HTTP status codes and byte counts come back.
 name: API check
 
+# GitHub will not accept a manual run of a workflow it has never seen fire,
+# and it only sees the default branch. Pushing this file is the event that
+# registers it; the path filter keeps every other push out.
 on:
   workflow_dispatch:
+  push:
+    branches: [cloudeide-branding]
+    paths:
+      - '.github/workflows/api-check.yml'
 
 jobs:
   check:
