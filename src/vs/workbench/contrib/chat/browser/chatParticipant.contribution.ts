@@ -16,6 +16,7 @@ import { ContextKeyExpr, IContextKeyService } from '../../../../platform/context
 import { ExtensionIdentifier, IExtensionManifest } from '../../../../platform/extensions/common/extensions.js';
 import { SyncDescriptor } from '../../../../platform/instantiation/common/descriptors.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
+import { isWeb } from '../../../../base/common/platform.js';
 import { Registry } from '../../../../platform/registry/common/platform.js';
 import { registerIcon } from '../../../../platform/theme/common/iconRegistry.js';
 import { ViewPaneContainer } from '../../../browser/parts/views/viewPaneContainer.js';
@@ -54,24 +55,27 @@ import { ChatViewPane } from './widgetHosts/viewPane/chatViewPane.js';
  * flip, not a feature torn out.
  */
 /*
- * Temporarily true, to find out what the chat view is now.
+ * Desktop only, and the experiment is what decided it.
  *
- * It was turned off because it arrived Copilot-branded and, with its only
- * view withheld, left an empty container that beat the CloudeIDE panel to the
- * auxiliary bar on a narrow window. Two things have changed since: the
- * Copilot extension is no longer packaged at all, and a CloudeIDE language
- * model is registered against the server.
+ * Turned on and built, the view renders properly now that the Copilot
+ * extension is gone: "Build with Agent", a composer, a harness picker
+ * reading "Local", a model picker. No sign-in wall. But sending does
+ * nothing at all — typed, enabled, pressed, and no turn appears and no
+ * error is raised. With a mouse and with touch alike, which is what ruled
+ * out the gesture problem the CloudeIDE panel had.
  *
- * The chat stack is also the only way into the agent host — the harness with
- * Read, Write, Edit, Bash and changesets that this fork already carries, and
- * the only thing here that can make "ask, and it ships" true. Whether that
- * path is open is a question about what the view actually renders now, and
- * the cheapest way to answer it is to build it and look, not to read the two
- * hundred and sixty-five files underneath it.
+ * A model is not an agent. The CloudeIDE language model is registered, and
+ * chat still has nobody to hand a request to: the participant came from the
+ * extension that no longer ships. The agent host supplies one — and it is
+ * registered for electron-browser only, so in a browser there is nothing
+ * behind this view and never will be without an agent of our own.
  *
- * Back to false unless the answer is good.
+ * A panel that looks like it works and silently does nothing is worse than
+ * no panel. On the web the CloudeIDE panel already answers; this one is
+ * withheld there, and kept on the desktop where the agent host it needs
+ * actually exists.
  */
-const REGISTER_BUILTIN_CHAT_VIEW = true;
+const REGISTER_BUILTIN_CHAT_VIEW = !isWeb;
 
 const chatViewIcon = registerIcon('chat-view-icon', Codicon.chatSparkle, localize('chatViewIcon', 'View icon of the chat view.'));
 
