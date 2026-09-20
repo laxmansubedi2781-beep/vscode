@@ -210,6 +210,14 @@ import './contrib/keybindingsExport/electron-browser/keybindingsExport.contribut
 // System-wide (OS global) Keybindings
 import './contrib/keybindings/electron-browser/systemWideKeybindings.contribution.js';
 
+//#region --- CloudeIDE
+
+// Desktop only: the browser hand-off it starts comes back through
+// cloudeide://, which a web page cannot receive.
+import './contrib/cloudeide/electron-browser/cloudeideSignIn.contribution.js';
+
+//#endregion
+
 //#endregion
 
 

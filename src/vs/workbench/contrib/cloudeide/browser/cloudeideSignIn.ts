@@ -114,6 +114,9 @@ export class CloudeideSignInContribution extends Disposable implements IWorkbenc
 	 */
 	private verifier: string | undefined;
 
+	/** SHA-256 of {@link verifier}, computed up front — see `prepareChallenge`. */
+	private challenge: string | undefined;
+
 	/* Held rather than looked up. The screen is small and built in one place;
 	   re-finding its parts by selector later is how a rename becomes a silent
 	   no-op instead of a compile error. */
@@ -177,8 +180,12 @@ export class CloudeideSignInContribution extends Disposable implements IWorkbenc
 
 		const verifier = this.verifier;
 		// Single use here as well as on the server: a verifier that can be
-		// replayed is one an interrupted flow leaves lying around.
+		// replayed is one an interrupted flow leaves lying around. A fresh pair
+		// is prepared straight away, because the screen is still open and the
+		// person may well press another button.
 		this.verifier = undefined;
+		this.challenge = undefined;
+		void this.prepareChallenge();
 
 		try {
 			await this.client.exchangeEditorCode(code, verifier);
@@ -225,7 +232,7 @@ export class CloudeideSignInContribution extends Disposable implements IWorkbenc
 			DOM.append(button, $('span.cloudeide-signin-provider-label')).textContent = provider.label;
 			this.providerButtons.push(button);
 			this.overlayStore.add(DOM.addDisposableListener(button, 'click', () => {
-				void this.startSignIn(provider.id, button);
+				this.startSignIn(provider.id, button);
 			}));
 		}
 
@@ -239,23 +246,45 @@ export class CloudeideSignInContribution extends Disposable implements IWorkbenc
 		const skip = DOM.append(box, $('button.cloudeide-signin-skip')) as HTMLButtonElement;
 		skip.textContent = localize('cloudeide.signIn.skip', "Continue without signing in");
 		this.overlayStore.add(DOM.addDisposableListener(skip, 'click', () => this.dismiss()));
+
+		// Ready before the first button can be pressed, so pressing one opens a
+		// browser in the same tick.
+		void this.prepareChallenge();
 	}
 
-	private async startSignIn(provider: string, button: HTMLButtonElement): Promise<void> {
+	/**
+	 * Picks the secret and hashes it, before anybody presses anything.
+	 *
+	 * This has to happen ahead of the click rather than inside it. Hashing is
+	 * async — `crypto.subtle` returns a promise — and a browser only lets a
+	 * page open a window while it still counts the action as the person's. An
+	 * `await` in between spends that, and the browser blocks the window
+	 * silently: the button appears dead, which is exactly how it looked.
+	 *
+	 * So the click handler below is synchronous all the way to `open`.
+	 */
+	private async prepareChallenge(): Promise<void> {
+		const verifier = randomUrlSafe(32);
+		try {
+			this.challenge = await sha256Base64Url(verifier);
+			this.verifier = verifier;
+		} catch {
+			this.fail(localize('cloudeide.signIn.noCrypto',
+				"This window cannot generate a sign-in code. Restart CloudeIDE and try again."));
+		}
+	}
+
+	private startSignIn(provider: string, button: HTMLButtonElement): void {
 		if (this.errorEl) {
 			this.errorEl.style.display = 'none';
 		}
 
-		const verifier = randomUrlSafe(32);
-		let challenge: string;
-		try {
-			challenge = await sha256Base64Url(verifier);
-		} catch {
-			this.fail(localize('cloudeide.signIn.noCrypto',
-				"This window cannot generate a sign-in code. Restart CloudeIDE and try again."));
+		const challenge = this.challenge;
+		if (!challenge) {
+			this.fail(localize('cloudeide.signIn.notReady',
+				"Still getting ready. Try that again in a moment."));
 			return;
 		}
-		this.verifier = verifier;
 
 		const url = URI.parse(`${this.client.webUrl}/app/editor-auth`).with({
 			query: new URLSearchParams({
@@ -283,5 +312,7 @@ export class CloudeideSignInContribution extends Disposable implements IWorkbenc
 		this.errorEl = undefined;
 		this.waitingEl = undefined;
 		this.providerButtons = [];
+		this.verifier = undefined;
+		this.challenge = undefined;
 	}
 }
