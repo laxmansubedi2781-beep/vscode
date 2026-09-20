@@ -75,11 +75,11 @@ jobs:
           npm run gulp compile-build-without-mangling
           npm run gulp vscode-web-min-ci
         env:
-          # 8192 aborted the compile with a core dump — exit 134, a heap
-          # limit, not a code error: the same task had passed on the same
-          # runner an hour earlier. The tree has grown enough that eight
-          # gigabytes is the edge rather than the ceiling, and a limit that
-          # only sometimes holds is not a limit. These runners carry sixteen.
+          # The limit that actually governs this build is the one in
+          # package.json's `gulp` script, because a flag on the command line
+          # beats NODE_OPTIONS. Setting it here alone did nothing — a run that
+          # died at 8043 MB with this set to 12288 is what proved it. It stays
+          # for the node processes the build spawns without that flag.
           NODE_OPTIONS: --max-old-space-size=12288
 
       - name: Assemble the static site
