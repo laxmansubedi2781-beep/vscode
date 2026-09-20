@@ -216,23 +216,26 @@
         </div>
 
         <!--
-          A photograph of the editor, not a drawing of one: this is the running
-          product with a real file open and a real answer in the panel. Two
-          cuts, because the window serves 16:9 above 760px and a taller frame
-          below it, and a single image would be cropped at one of them.
+          A recording of the product, not a drawing of one and not a still.
+          It was made by driving the real web build against the real server
+          with a real account: the question is typed, and the answer streams
+          in as it actually arrives. The claim this section makes is that the
+          agent reads your code, and the only honest way to show that is to
+          let someone watch it read.
         -->
-        <div class="window" style="--ar-narrow: 1080 / 1350">
+        <div class="window" style="--ar-narrow: 720 / 660; --ar-wide: 1440 / 824">
           <div class="window-bar">
             <span class="window-dots" aria-hidden="true">
               <span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span>
             </span>
             <span class="window-title">Editor</span>
           </div>
-          <picture>
-            <source srcset="assets/shot-editor-wide.jpg" media="(min-width: 760px)" />
-            <img src="assets/shot-editor.jpg" loading="lazy" decoding="async" width="1080" height="1350"
-                 alt="The CloudeIDE editor with src/menu.js open and the panel answering a question about it" />
-          </picture>
+          <video muted loop playsinline preload="none" poster="assets/panel-ask.jpg"
+                 aria-label="A question typed into the CloudeIDE panel, and the answer arriving">
+            <source src="assets/panel-ask.webm" type="video/webm" media="(min-width: 760px)" />
+            <source src="assets/panel-ask.mp4" type="video/mp4" media="(min-width: 760px)" />
+            <source src="assets/panel-ask-narrow.mp4" type="video/mp4" />
+          </video>
         </div>
       </div>
 

@@ -676,15 +676,21 @@ section {
 
 /* The screenshots are of a 16:9 and a 4:5 screen respectively, so each fills
    its box exactly — but a stray pixel of rounding should crop, never letterbox
-   against a different black than the one in the picture. */
-.window img {
+   against a different black than the one in the picture. The recordings get
+   the same treatment: their frame is 1440x824 after the bottom strip is cut
+   off, which is near 16:9 but not on it. */
+.window img,
+.window video {
   object-fit: cover;
 }
 
+/* 16:9 unless the window says otherwise. A recording cropped to 1440x824 is
+   not quite 16:9, and forcing it there would crop a slice off the panel —
+   which is the half of the frame worth looking at. */
 @media (min-width: 760px) {
   .window video,
   .window img {
-    aspect-ratio: 16 / 9;
+    aspect-ratio: var(--ar-wide, 16 / 9);
   }
 }
 
