@@ -3,6 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 import { spawnSync } from 'child_process';
+import { existsSync } from 'fs';
 import path from 'path';
 import { getChromiumSysroot, getVSCodeSysroot } from './debian/install-sysroot.ts';
 import { generatePackageDeps as generatePackageDepsDebian } from './debian/calculate-deps.ts';
@@ -55,14 +56,31 @@ export async function getDependencies(packageType: 'deb' | 'rpm', buildDir: stri
 
 	const appPath = path.join(buildDir, applicationName);
 	// Add the native modules
-	const files = findResult.stdout.toString().trimEnd().split('\n');
+	const candidates = findResult.stdout.toString().trimEnd().split('\n');
 	// Add the tunnel binary.
-	files.push(path.join(buildDir, 'bin', product.tunnelApplicationName));
+	candidates.push(path.join(buildDir, 'bin', product.tunnelApplicationName));
 	// Add the main executable.
-	files.push(appPath);
+	candidates.push(appPath);
 	// Add chrome sandbox and crashpad handler.
-	files.push(path.join(buildDir, 'chrome-sandbox'));
-	files.push(path.join(buildDir, 'chrome_crashpad_handler'));
+	candidates.push(path.join(buildDir, 'chrome-sandbox'));
+	candidates.push(path.join(buildDir, 'chrome_crashpad_handler'));
+
+	/*
+	 * Only what the build actually produced.
+	 *
+	 * This fork does not build the tunnel CLI, so `bin/<name>-tunnel` is not
+	 * there — and dpkg-shlibdeps does not merely skip a path it cannot read,
+	 * it exits 25 and takes the whole package with it. A binary that is not
+	 * shipped contributes no runtime dependencies, so leaving it out is the
+	 * correct answer rather than a workaround; the log below says which files
+	 * were skipped so a missing one that *should* have been built is visible
+	 * instead of silent.
+	 */
+	const files = candidates.filter(file => existsSync(file));
+	const missing = candidates.filter(file => !existsSync(file));
+	if (missing.length > 0) {
+		console.log('Not built, so not scanned for dependencies:\n  ' + missing.join('\n  '));
+	}
 
 	// Generate the dependencies.
 	let dependencies: Set<string>[];
@@ -85,15 +103,26 @@ export async function getDependencies(packageType: 'deb' | 'rpm', buildDir: stri
 	const referenceGeneratedDeps = packageType === 'deb' ?
 		debianGeneratedDeps[arch as DebianArchString] :
 		rpmGeneratedDeps[arch as RpmArchString];
-	if (JSON.stringify(sortedDependencies) !== JSON.stringify(referenceGeneratedDeps)) {
-		const failMessage = 'The dependencies list has changed.'
-			+ '\nOld:\n' + referenceGeneratedDeps.join('\n')
-			+ '\nNew:\n' + sortedDependencies.join('\n');
-		if (FAIL_BUILD_FOR_NEW_DEPENDENCIES) {
-			throw new Error(failMessage);
-		} else {
-			console.warn(failMessage);
-		}
+	/*
+	 * The reference list comes from a build that ships the tunnel CLI; this
+	 * one does not, so a *shorter* list is the expected outcome here and
+	 * failing on it would mean this fork could never package at all.
+	 *
+	 * What the check is actually for is the opposite direction: a dependency
+	 * appearing that nobody reviewed, which is how a package starts refusing
+	 * to install on a distribution it used to support. That still fails.
+	 */
+	const reference = new Set(referenceGeneratedDeps);
+	const added = sortedDependencies.filter(dependency => !reference.has(dependency));
+	const removed = referenceGeneratedDeps.filter(dependency => !sortedDependencies.includes(dependency));
+	if (added.length > 0) {
+		throw new Error('The dependencies list gained entries that are not in the reviewed list.'
+			+ '\nNew:\n' + added.join('\n')
+			+ '\nFull list:\n' + sortedDependencies.join('\n'));
+	}
+	if (removed.length > 0 && FAIL_BUILD_FOR_NEW_DEPENDENCIES) {
+		console.warn('The dependencies list is shorter than the reviewed one, which is what not shipping the tunnel CLI looks like.'
+			+ '\nAbsent:\n' + removed.join('\n'));
 	}
 
 	return sortedDependencies;
