@@ -81,7 +81,6 @@ jobs:
           set -uo pipefail
           node build/cloudeide/record-panel.mjs | tee /tmp/film.log
           status=${PIPESTATUS[0]}
-          grep -E '^(TRIM_START|VIDEO)=' /tmp/film.log >> "$GITHUB_OUTPUT" || true
           ls -l /tmp/recordings || true
           exit "$status"
 
@@ -94,19 +93,34 @@ jobs:
             echo "::error::no recording was produced"
             exit 1
           fi
-          start="${{ steps.film.outputs.TRIM_START }}"
-          start="${start:-0}"
-          echo "trimming from ${start}s of $(ffprobe -v error -show_entries format=duration -of csv=p=0 "$raw")s"
-
+          echo "source is $(ffprobe -v error -show_entries format=duration -of csv=p=0 "$raw")s"
           mkdir -p /tmp/cut
-          # Two encodes, same cut: the page serves webm where it can and mp4
-          # everywhere else, exactly as it does for the title sequence.
-          ffmpeg -nostdin -v error -ss "$start" -i "$raw" \
-            -c:v libvpx-vp9 -b:v 0 -crf 34 -an /tmp/cut/panel-ask.webm
-          ffmpeg -nostdin -v error -ss "$start" -i "$raw" \
-            -c:v libx264 -crf 25 -pix_fmt yuv420p -movflags +faststart -an /tmp/cut/panel-ask.mp4
-          # A still for the poster, taken a second in so it is not a blank frame.
-          ffmpeg -nostdin -v error -ss 1 -i /tmp/cut/panel-ask.mp4 -frames:v 1 -q:v 3 /tmp/cut/panel-ask.jpg
+
+          # One recording, cut at the marks the script printed. Each clip is
+          # capped at twelve seconds: these are loops on a page, not a
+          # screencast, and a long one is worse than no one at all.
+          grep '^MARK ' /tmp/film.log | while read -r _ name from to; do
+            len="$(python3 -c "print(min(12.0, max(1.0, $to - $from)))")"
+            echo "--- ${name}: ${from}s for ${len}s ---"
+
+            # Two encodes, same cut: the page serves webm where it can and mp4
+            # everywhere else, as it already does for the title sequence.
+            ffmpeg -nostdin -v error -ss "$from" -t "$len" -i "$raw" \
+              -c:v libvpx-vp9 -b:v 0 -crf 34 -an "/tmp/cut/${name}.webm"
+            ffmpeg -nostdin -v error -ss "$from" -t "$len" -i "$raw" \
+              -c:v libx264 -crf 25 -pix_fmt yuv420p -movflags +faststart -an "/tmp/cut/${name}.mp4"
+
+            # A narrow cut for phones. The full frame is 1440 wide and most of
+            # its right half is panel; at phone width the whole thing shrinks
+            # to nothing, so this crops to the working area instead of scaling
+            # it away.
+            ffmpeg -nostdin -v error -ss "$from" -t "$len" -i "$raw" \
+              -vf "crop=900:900:250:0,scale=720:-2" \
+              -c:v libx264 -crf 26 -pix_fmt yuv420p -movflags +faststart -an "/tmp/cut/${name}-narrow.mp4"
+
+            # A still for the poster, a second in so it is never a blank frame.
+            ffmpeg -nostdin -v error -ss 1 -i "/tmp/cut/${name}.mp4" -frames:v 1 -q:v 3 "/tmp/cut/${name}.jpg"
+          done
           ls -lh /tmp/cut
 
       - name: Send them back over git
