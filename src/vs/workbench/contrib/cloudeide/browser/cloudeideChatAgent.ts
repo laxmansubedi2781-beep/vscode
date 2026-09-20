@@ -111,6 +111,7 @@ class CloudeideAgent implements IChatAgentImplementation {
 		const clipped = text.length > 60_000 ? `${text.slice(0, 60_000)}\n… (truncated)` : text;
 		return [
 			'You are CloudeIDE, helping inside the editor the person is working in.',
+			'You can read the files they have open. You cannot yet change files or run commands, so give code for them to apply rather than claiming to have applied it.',
 			`The file they are looking at is ${active.path}:`,
 			'```',
 			clipped,
@@ -150,9 +151,17 @@ export class CloudeideChatAgentContribution extends Disposable implements IWorkb
 			metadata: {},
 			slashCommands: [],
 			locations: [ChatAgentLocation.Chat],
-			// Ask only, and honestly so: Edit and Agent promise the model can
-			// change files, and this one can only answer.
-			modes: [ChatModeKind.Ask],
+			// All three, because the composer opens in Agent and an agent
+			// registered only for Ask is an agent nobody reaches: pressing
+			// send in the mode the panel actually starts in did nothing,
+			// which is the exact failure this was written to end.
+			//
+			// It answers in all three and edits in none of them, which is not
+			// what Edit and Agent promise. Saying so in the answer is worse
+			// than silence only if the silence were temporary — it is not,
+			// until the server can ask for a tool call. An answer that
+			// explains itself beats a panel that swallows the question.
+			modes: [ChatModeKind.Ask, ChatModeKind.Edit, ChatModeKind.Agent],
 			disambiguation: [],
 		};
 
