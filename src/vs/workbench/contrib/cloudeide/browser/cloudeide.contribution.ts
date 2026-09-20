@@ -18,6 +18,8 @@ import {
 	ViewContainerLocation,
 } from '../../../common/views.js';
 import { CloudeidePanel } from './cloudeidePanel.js';
+import { CloudeideLanguageModelContribution } from './cloudeideLanguageModel.js';
+import { registerWorkbenchContribution2, WorkbenchPhase } from '../../../common/contributions.js';
 
 const CONTAINER_ID = 'workbench.view.cloudeideContainer';
 
@@ -97,3 +99,18 @@ Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Configuration).regis
 		},
 	},
 });
+
+/*
+ * The server, offered to the rest of the workbench as a language model.
+ *
+ * The panel calls `/ai/chat` itself and that is enough to answer a question.
+ * It is not enough for anything that has to act on the answer: the agent host
+ * and every tool-using surface here take their model from
+ * `ILanguageModelsService`. Registering it after restore keeps it off the
+ * startup path — nothing needs a model before the window is up.
+ */
+registerWorkbenchContribution2(
+	CloudeideLanguageModelContribution.ID,
+	CloudeideLanguageModelContribution,
+	WorkbenchPhase.AfterRestored,
+);
