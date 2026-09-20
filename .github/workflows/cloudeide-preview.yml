@@ -87,13 +87,20 @@ jobs:
           cp -r landing/. site/
           node build/cloudeide/make-static.mjs ../vscode-web site/editor "$PWD"
 
-          # `/app/...` is right when the application serves the page from its
-          # own origin and wrong from a project path, where the root belongs to
-          # the account rather than the repository. Rewritten in the published
-          # copy only; the source keeps the form the application needs.
-          find site -maxdepth 1 -name '*.html' -print0 | xargs -0 sed -i \
-            -e 's#href="/app/#href="https://cloudeide.com/app/#g' \
-            -e 's#href="/site.webmanifest"#href="site.webmanifest"#g'
+          # The /app/ rewrite is gone with the links it fixed: the page no
+          # longer points at an application that this domain does not serve.
+          # Nothing here should hold an absolute path, so the build says so
+          # rather than trusting it.
+          if grep -rn 'href="/' site --include='*.html'; then
+            echo "::error::an absolute link survived into the published site"
+            exit 1
+          fi
+
+          # The custom domain. GitHub Pages reads this file out of the
+          # published artifact and serves the site from that name, which also
+          # moves it off the /cloudevs/ project path: a custom domain is
+          # served from its own root.
+          echo 'cloudeide.com' > site/CNAME
 
           touch site/.nojekyll
           du -sh site

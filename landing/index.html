@@ -25,7 +25,7 @@
 
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
 <link rel="apple-touch-icon" href="assets/logo-180.png" />
-<link rel="manifest" href="/site.webmanifest" />
+<link rel="manifest" href="site.webmanifest" />
 <link rel="stylesheet" href="styles.css" />
 
 <script type="application/ld+json">
@@ -92,9 +92,15 @@
       <a href="#cli">CLI &amp; agents</a>
     </nav>
 
+    <!--
+      No Sign In. There is nothing to sign in to from here any more: the
+      account lived on the old host, and this page is now served from the
+      static site. Get Started opens the editor instead, which needs no
+      account and is the thing the page has just spent a screen describing.
+    -->
     <div class="nav-actions">
-      <a class="btn btn-ghost" href="/app/signin">Sign In</a>
-      <a class="btn btn-primary" href="/app/signup"><span class="btn-mark" aria-hidden="true"><img src="assets/logo.svg" alt="" width="14" height="14" /></span>Get Started</a>
+      <a class="btn btn-ghost" href="#desktop">Download</a>
+      <a class="btn btn-primary" href="editor/"><span class="btn-mark" aria-hidden="true"><img src="assets/logo.svg" alt="" width="14" height="14" /></span>Get Started</a>
       <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
@@ -105,8 +111,8 @@
     <a href="#demo">Demo</a>
     <a href="#why">How it works</a>
     <a href="#cli">CLI &amp; agents</a>
-    <a href="/app/signup">Get Started</a>
-    <a href="/app/signin">Sign In</a>
+    <a href="#desktop">Download</a>
+    <a href="editor/">Get Started</a>
   </div>
 </header>
 
@@ -229,7 +235,7 @@
             comes back in the same panel.
           </p>
           <p class="showcase-note">Static frontends — React, Vue, Svelte, Astro, Next static export.</p>
-          <a class="showcase-link" href="/app/signup">Get Started</a>
+          <a class="showcase-link" href="editor/">Get Started</a>
         </div>
 
         <div class="window" style="--ar-narrow: 1080 / 1350">
