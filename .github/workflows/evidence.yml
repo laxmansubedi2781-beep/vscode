@@ -1,0 +1,77 @@
+# Carries build evidence back to somewhere it can actually be looked at.
+#
+# The smoke test photographs the running application, but the picture lands in
+# two places that are both out of reach from the session that wants to see it:
+# the artifact store, which is served from a host the proxy refuses, and the
+# job log, which delivers base64 interleaved with the shell's own trace and is
+# therefore not safe to reassemble by hand — the first attempt at that lost
+# two and a half kilobytes and produced an unreadable JPEG.
+#
+# Git is the one channel that does come through, so the picture is committed
+# to a branch of its own. Nothing else lives on that branch and it never
+# merges anywhere; it exists so `git fetch` can reach a PNG.
+name: Build evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Workflow run to take the screenshots from (blank: the latest successful desktop build)'
+        required: false
+  push:
+    branches: [cloudeide-branding]
+    paths:
+      - '.github/workflows/evidence.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch the screenshots and commit them
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          run="${{ inputs.run_id }}"
+          if [ -z "$run" ]; then
+            run="$(gh run list --workflow desktop.yml --status success \
+              --limit 1 --json databaseId --jq '.[0].databaseId')"
+          fi
+          echo "taking evidence from run ${run}"
+
+          mkdir -p shots
+          # Each platform's screenshot is a separate artifact and either may be
+          # missing — a job can fail before it photographs anything — so
+          # neither download is allowed to fail the whole collection.
+          gh run download "$run" --name cloudeide-linux-screenshot --dir shots/linux \
+            || echo "::warning::no Linux screenshot in run ${run}"
+          gh run download "$run" --name cloudeide-windows-screenshot --dir shots/windows \
+            || echo "::warning::no Windows screenshot in run ${run}"
+          find shots -type f | head -20
+
+          # An orphan branch, rewritten each time: this is a drop box, not a
+          # history, and the pictures are large enough that keeping every one
+          # of them forever would be the only thing the repository grew.
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git checkout --orphan build-evidence
+          git rm -rf --cached . >/dev/null
+          find . -maxdepth 1 -not -name . -not -name .git -not -name shots -exec rm -rf {} +
+          {
+            echo "Screenshots from desktop build run ${run}."
+            echo
+            echo "Written by .github/workflows/evidence.yml. This branch is a"
+            echo "drop box for pictures the build takes; it is rewritten on"
+            echo "every collection and is not meant to be merged."
+          } > README.md
+          git add -A
+          git commit -m "Screenshots from run ${run}"
+          git push --force origin build-evidence
