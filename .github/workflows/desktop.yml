@@ -94,6 +94,26 @@ jobs:
           echo "--- the binary ---"
           file ../VSCode-linux-x64/cloudeide || true
 
+      # A tarball cannot answer cloudeide:// — on Linux a URL scheme is claimed
+      # by an installed .desktop file, and only a package installs one. Sign-in
+      # hands this app its code through exactly that URL, so here the .deb is
+      # not a nicety for tidy people; it is the difference between the browser
+      # round trip completing and dead-ending in a browser tab. Windows needs
+      # no equivalent: Electron claims the scheme at runtime there.
+      - name: Build the .deb
+        run: |
+          set -euxo pipefail
+          npm run gulp vscode-linux-x64-prepare-deb
+          npm run gulp vscode-linux-x64-build-deb
+          deb="$(find .build/linux/deb -name '*.deb' | head -1)"
+          test -n "$deb" || { echo "::error::no .deb was produced"; exit 1; }
+          cp "$deb" CloudeIDE-linux-x64.deb
+          ls -lh CloudeIDE-linux-x64.deb
+          # Proof the package claims the scheme, rather than a hope that it does.
+          dpkg-deb -c CloudeIDE-linux-x64.deb | grep -F 'url-handler.desktop'
+        env:
+          NODE_OPTIONS: --max-old-space-size=12288
+
       # Neither of us has a Linux desktop to open this on, and "it built" is
       # not "it runs". The runner is a Linux machine, so the application is
       # started here, on a virtual screen, and photographed. That is the only
@@ -200,9 +220,9 @@ jobs:
           cp "${{ steps.package.outputs.name }}.tar.gz" "$asset"
           gh release create "$tag" \
             --title "CloudeIDE ${{ steps.package.outputs.version }}" \
-            --notes "Linux: unpack and run ./cloudeide. Windows: unzip and run CloudeIDE.exe." \
+            --notes "Linux: install the .deb (sudo apt install ./CloudeIDE-linux-x64.deb) so browser sign-in can return to the app; the .tar.gz runs without installing. Windows: unzip and run CloudeIDE.exe." \
             || echo "release $tag already exists"
-          gh release upload "$tag" "$asset" --clobber
+          gh release upload "$tag" "$asset" CloudeIDE-linux-x64.deb --clobber
 
   # Windows, once Linux was known to build. Same two gulp tasks with the other
   # platform's name; what differs is the packaging (a zip, because Windows has

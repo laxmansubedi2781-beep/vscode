@@ -561,17 +561,45 @@
 	color: var(--vscode-descriptionForeground);
 }
 
-.cloudeide-signin-primary {
-	padding: 8px 14px;
-	font-size: 13px;
+/* The three ways in, weighted the same. None of them is the fallback — they
+   are the same three the dashboard offers, because they are the same accounts. */
+.cloudeide-signin-choices {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
 }
 
-/* A separator that says which way is the main way. */
-.cloudeide-signin-or {
-	margin: 10px 0 0;
-	font-size: 11.5px;
-	letter-spacing: 0.04em;
-	text-transform: uppercase;
+.cloudeide-signin-provider {
+	padding: 9px 14px;
+	font-family: inherit;
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
+	background: var(--vscode-button-secondaryBackground, transparent);
+	border: 1px solid var(--vscode-button-border, var(--vscode-contrastBorder, var(--vscode-panel-border)));
+	border-radius: 6px;
+	cursor: pointer;
+}
+
+.cloudeide-signin-provider:hover:not(:disabled) {
+	background: var(--vscode-button-secondaryHoverBackground, var(--vscode-list-hoverBackground));
+}
+
+.cloudeide-signin-provider:focus-visible {
+	outline: 1px solid var(--vscode-focusBorder);
+	outline-offset: 2px;
+}
+
+.cloudeide-signin-provider:disabled {
+	opacity: 0.6;
+	cursor: default;
+}
+
+/* Shown once a browser has been opened, so the window does not look stuck. */
+.cloudeide-signin-waiting {
+	margin: 4px 0 0;
+	font-size: 12px;
+	line-height: 1.5;
 	color: var(--vscode-descriptionForeground);
 }
 

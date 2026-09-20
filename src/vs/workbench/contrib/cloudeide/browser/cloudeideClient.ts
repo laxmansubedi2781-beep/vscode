@@ -102,6 +102,19 @@ export class CloudeideClient {
 	}
 
 	/**
+	 * cloudeide.com — the dashboard, not the API.
+	 *
+	 * Signing in happens in a browser, and a browser needs the site a person
+	 * recognises. Separate from `serverUrl` because the two genuinely are: the
+	 * apex serves the marketing site and the dashboard, the api subdomain
+	 * serves this editor's requests.
+	 */
+	get webUrl(): string {
+		const configured = this.configurationService.getValue<string>('cloudeide.webUrl');
+		return (configured || 'https://cloudeide.com').replace(/\/+$/, '');
+	}
+
+	/**
 	 * Which environment Deploy publishes to. The server requires one; there is
 	 * no sensible silent default for "where does this go live", so the setting
 	 * carries it and `development` is the safe starting point.
@@ -129,6 +142,41 @@ export class CloudeideClient {
 
 	async clearToken(): Promise<void> {
 		await this.secretStorageService.delete(TOKEN_KEY);
+	}
+
+	/**
+	 * Turns the code the browser handed back into a stored token.
+	 *
+	 * The only request in this file that sends no credential, because at this
+	 * point there is none: what authenticates it is `verifier`, the secret
+	 * this editor generated and never put in a URL. The server checks it
+	 * against the digest it was given before the browser ever signed in.
+	 */
+	async exchangeEditorCode(code: string, verifier: string): Promise<{ email: string; name: string }> {
+		let response: Response;
+		try {
+			response = await fetch(`${this.serverUrl}/api/auth/editor/exchange`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ code, verifier }),
+			});
+		} catch {
+			throw new CloudeideRequestError(`Could not reach ${this.serverUrl}.`, 0);
+		}
+
+		let body: { token?: string; user?: { email?: string; name?: string }; error?: string };
+		try {
+			body = await response.json() as typeof body;
+		} catch {
+			throw new CloudeideRequestError(`Sign-in failed (${response.status}).`, response.status);
+		}
+
+		if (!response.ok || !body.token) {
+			throw new CloudeideRequestError(body.error ?? `Sign-in failed (${response.status}).`, response.status);
+		}
+
+		await this.setToken(body.token);
+		return { email: body.user?.email ?? '', name: body.user?.name ?? '' };
 	}
 
 	private async send(path: string, init: RequestInit, timeoutMs: number): Promise<Response> {

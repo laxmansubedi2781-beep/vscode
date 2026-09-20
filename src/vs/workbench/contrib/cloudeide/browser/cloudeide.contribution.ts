@@ -86,6 +86,12 @@ Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Configuration).regis
 			description: localize('cloudeide.serverUrl',
 				"The CloudeIDE server this editor talks to. Change it to point at a self-hosted install."),
 		},
+		'cloudeide.webUrl': {
+			type: 'string',
+			default: 'https://cloudeide.com',
+			description: localize('cloudeide.webUrl',
+				"The CloudeIDE dashboard this editor opens to sign in. Change it alongside the server URL for a self-hosted install."),
+		},
 		'cloudeide.environment': {
 			type: 'string',
 			enum: ['development', 'preview', 'production'],
