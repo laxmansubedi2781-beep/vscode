@@ -342,7 +342,15 @@ configurationRegistry.registerConfiguration({
 		'workbench.welcomePage.experimentalOnboarding': {
 			scope: ConfigurationScope.APPLICATION,
 			type: 'boolean',
-			default: true,
+			// Off in CloudeIDE. This overlay is the first thing a new install
+			// shows, and what it shows is a dialog headed "Welcome to VS Code"
+			// offering to sign the user in to GitHub Copilot. Both strings are
+			// hardcoded rather than taken from the product, so there is nothing
+			// to rebrand — and the account it offers is not one this product
+			// has. Desktop was the only place it appeared: the check above it
+			// returns early on web, which is why the browser build never
+			// showed it and the first desktop screenshot did.
+			default: false,
 			tags: ['experimental'],
 			description: localize('workbench.welcomePage.experimentalOnboarding', "When enabled, show the new onboarding experience instead of the classic walkthrough on first launch."),
 			experiment: {
