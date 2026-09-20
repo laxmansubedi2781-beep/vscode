@@ -1,0 +1,138 @@
+# Films the panel answering, against the real server.
+#
+# The landing page's best asset would be footage of the product doing what the
+# page says it does, and the only way to get that is to run the product. So
+# this builds the web editor, serves it, drives it with Playwright using the
+# account token, and records whatever actually happens — including nothing, if
+# the answer never arrives.
+#
+# The films come back on the build-evidence branch rather than as artifacts:
+# the artifact store is served from a host that cannot be reached from where
+# these get reviewed, and git can.
+name: Record the panel
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [cloudeide-branding]
+    paths:
+      - '.github/workflows/record.yml'
+      - 'build/cloudeide/record-panel.mjs'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: record
+  cancel-in-progress: true
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Make room on the disk
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/boost
+          df -h /
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y build-essential pkg-config \
+            libx11-dev libx11-xcb-dev libxkbfile-dev libnotify-bin libkrb5-dev ffmpeg
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build the web bundle
+        run: |
+          npm run gulp compile-build-without-mangling
+          npm run gulp vscode-web-min-ci
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Serve it
+        run: |
+          set -euo pipefail
+          node build/cloudeide/make-static.mjs ../vscode-web /tmp/site "$PWD"
+          (cd /tmp/site && python3 -m http.server 8099 >/tmp/serve.log 2>&1 &)
+          # Wait for the server to answer rather than for a number of seconds.
+          timeout 30 bash -c 'until curl -sf -o /dev/null http://127.0.0.1:8099/index.html; do sleep 1; done'
+          echo "serving"
+
+      - name: Install the browser Playwright wants
+        run: npx playwright install --with-deps chromium
+
+      - name: Film it
+        id: film
+        env:
+          CLOUDEIDE_API_TOKEN: ${{ secrets.CLOUDEIDE_API_TOKEN }}
+          OUT_DIR: /tmp/recordings
+        run: |
+          set -uo pipefail
+          node build/cloudeide/record-panel.mjs | tee /tmp/film.log
+          status=${PIPESTATUS[0]}
+          grep -E '^(TRIM_START|VIDEO)=' /tmp/film.log >> "$GITHUB_OUTPUT" || true
+          ls -l /tmp/recordings || true
+          exit "$status"
+
+      - name: Cut it
+        if: always()
+        run: |
+          set -uo pipefail
+          raw="$(ls /tmp/recordings/*.webm 2>/dev/null | head -1)"
+          if [ -z "$raw" ]; then
+            echo "::error::no recording was produced"
+            exit 1
+          fi
+          start="${{ steps.film.outputs.TRIM_START }}"
+          start="${start:-0}"
+          echo "trimming from ${start}s of $(ffprobe -v error -show_entries format=duration -of csv=p=0 "$raw")s"
+
+          mkdir -p /tmp/cut
+          # Two encodes, same cut: the page serves webm where it can and mp4
+          # everywhere else, exactly as it does for the title sequence.
+          ffmpeg -nostdin -v error -ss "$start" -i "$raw" \
+            -c:v libvpx-vp9 -b:v 0 -crf 34 -an /tmp/cut/panel-ask.webm
+          ffmpeg -nostdin -v error -ss "$start" -i "$raw" \
+            -c:v libx264 -crf 25 -pix_fmt yuv420p -movflags +faststart -an /tmp/cut/panel-ask.mp4
+          # A still for the poster, taken a second in so it is not a blank frame.
+          ffmpeg -nostdin -v error -ss 1 -i /tmp/cut/panel-ask.mp4 -frames:v 1 -q:v 3 /tmp/cut/panel-ask.jpg
+          ls -lh /tmp/cut
+
+      - name: Send them back over git
+        if: always()
+        run: |
+          set -euo pipefail
+          test -d /tmp/cut || { echo "nothing to send"; exit 0; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          # Its own branch, not the screenshots' one. Both are drop boxes that
+          # get rewritten whole, and sharing a branch would mean each run
+          # deleted the other's output.
+          #
+          # Orphan, so a hundred megabytes of film never sits on top of the
+          # repository's history.
+          git checkout --orphan build-films
+          git rm -rf --cached . >/dev/null 2>&1 || true
+          find . -maxdepth 1 -not -name . -not -name .git -exec rm -rf {} +
+          mkdir -p films && cp /tmp/cut/* films/
+          cp /tmp/film.log films/ 2>/dev/null || true
+          {
+            echo "Films from run ${{ github.run_id }}."
+            echo
+            echo "Written by .github/workflows/record.yml. Rewritten on every"
+            echo "recording; not meant to be merged."
+          } > README.md
+          git add -A
+          git commit -m "Films from run ${{ github.run_id }}"
+          git push --force origin build-films
