@@ -20,6 +20,7 @@ import { IConfigurationService } from '../../configuration/common/configuration.
 import { IEnvironmentService } from '../../environment/common/environment.js';
 import { IInstantiationService } from '../../instantiation/common/instantiation.js';
 import { ILogService } from '../../log/common/log.js';
+import { ISecretStorageService } from '../../secrets/common/secrets.js';
 import { INotificationService } from '../../notification/common/notification.js';
 import { AgentHostIpcChannelTransport } from '../browser/agentHostIpcChannelTransport.js';
 import { AgentHostClientState, AgentHostProtocolClient } from '../browser/agentHostProtocolClient.js';
@@ -35,6 +36,8 @@ import {
 	AgentHostAhpJsonlLoggingSettingId,
 	type AgentHostDebugLogsArtifactKind,
 	AgentHostIpcChannels,
+	AgentHostAnthropicKeySecret,
+	AgentHostAnthropicKeyIpcChannel,
 	AgentHostOTelPolicyIpcChannel,
 	AgentHostRestartIpcChannel,
 	AgentHostWillRestartIpcChannel,
@@ -181,6 +184,7 @@ export class LocalAgentHostServiceClient extends Disposable implements IAgentHos
 		@IEnvironmentService environmentService: IEnvironmentService,
 		@IInstantiationService private readonly _instantiationService: IInstantiationService,
 		@INotificationService private readonly _notificationService: INotificationService,
+		@ISecretStorageService private readonly _secretStorageService: ISecretStorageService,
 	) {
 		super();
 		this._ahpLogger = this._configurationService.getValue<boolean>(AgentHostAhpJsonlLoggingSettingId)
@@ -237,7 +241,32 @@ export class LocalAgentHostServiceClient extends Disposable implements IAgentHos
 			return;
 		}
 		this._connectStarted = true;
+		// Before the connection, because the connection is what spawns the
+		// host and the environment is fixed at spawn.
+		await this._forwardAnthropicKey();
 		await this._requireClient().connect();
+	}
+
+	/**
+	 * Hands the main process the Anthropic key, if one is stored.
+	 *
+	 * Secret storage lives here; the environment of the spawned host belongs
+	 * to the main process. Without this the only way to give the Claude
+	 * harness a credential is to export it in a login shell before launching,
+	 * which is not something to ask of anyone who installs an editor.
+	 *
+	 * Failure is not fatal: no key means the harness falls back to whatever
+	 * the shell already had, which is the behaviour that existed before.
+	 */
+	private async _forwardAnthropicKey(): Promise<void> {
+		try {
+			const key = await this._secretStorageService.get(AgentHostAnthropicKeySecret);
+			if (key) {
+				ipcRenderer.send(AgentHostAnthropicKeyIpcChannel, key);
+			}
+		} catch (error) {
+			this._logService.warn(`${LOG_PREFIX} Could not read the stored Anthropic key`, error);
+		}
 	}
 
 	private _createTransport(): AgentHostIpcChannelTransport {

@@ -458,6 +458,33 @@ export interface IAgentHostOTelSettings {
  */
 export const AgentHostOTelPolicyIpcChannel = 'vscode:agentHostOTelPolicy';
 
+/**
+ * Channel the renderer uses to hand the agent host an Anthropic API key.
+ *
+ * The Claude harness reads `ANTHROPIC_API_KEY` from its own environment, and
+ * the comment in `claudeAgent.ts` says the credential is "established outside
+ * the app" — which in practice means exporting it in a login shell before
+ * launching, and explaining that to every person who installs this.
+ *
+ * A key belongs in secret storage, which lives in the renderer, and the
+ * environment belongs to the process the main side spawns. This carries it
+ * across, the same way the OTel policy already crosses: the renderer sends
+ * before it asks for a connection, and the main side folds it into the env at
+ * spawn. The key is never written to settings, never to disk in the clear,
+ * and never leaves this machine.
+ */
+export const AgentHostAnthropicKeyIpcChannel = 'vscode:agentHostAnthropicKey';
+
+/** The variable the Claude Agent SDK reads its credential from. */
+export const AgentHostAnthropicKeyEnvVar = 'ANTHROPIC_API_KEY';
+
+/**
+ * Where the Anthropic key is kept: secret storage, under one name that the
+ * screen which sets it and the code which forwards it both use. Two spellings
+ * of this would mean a key that saves and never arrives.
+ */
+export const AgentHostAnthropicKeySecret = 'cloudeide.anthropicApiKey';
+
 /** Renderer-to-main request to replace the shared local Agent Host process. */
 export const AgentHostRestartIpcChannel = 'vscode:restartAgentHost';
 

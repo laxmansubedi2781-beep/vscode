@@ -23,7 +23,7 @@ import { UtilityProcess } from '../../utilityProcess/electron-main/utilityProces
 import { AgentHostStartError, IAgentHostConnection, IAgentHostShutdownRequest, IAgentHostStarter, IAgentHostStartRequest, isFatalAgentHostStartError, toFatalAgentHostStartError } from '../common/agent.js';
 import { buildAgentHostTelemetryIdEnv, IAgentHostForwardedTelemetryIds } from '../common/agentHostTelemetryEnv.js';
 import { AgentHostLaunchKind, AgentHostLaunchKindEnvVar, telemetryLevelToAgentHostValue } from '../common/agentHostTelemetry.js';
-import { AgentHostClaudeAgentEnabledSettingId, AgentHostCodexAgentBinaryArgsSettingId, AgentHostCodexAgentEnabledSettingId, AgentHostCodexAgentSdkRootSettingId, AgentHostCodexAgentCodexHomeSettingId, AgentHostIpcChannels, AgentHostOTelCaptureContentSettingId, AgentHostOTelDbSpanExporterEnabledSettingId, AgentHostOTelEnabledSettingId, AgentHostOTelExporterTypeSettingId, AgentHostOTelOtlpEndpointSettingId, AgentHostOTelOtlpProtocolSettingId, AgentHostOTelOutfileSettingId, AgentHostOTelResourceAttributesSettingId, AgentHostOTelServiceNameSettingId, AgentHostOTelPolicyIpcChannel, AgentHostRestartIpcChannel, AgentHostWillRestartIpcChannel, buildAgentHostOTelEnv, buildAgentSdkEnv, IAgentHostManagementService, IAgentHostOTelSettings, sanitizeAgentHostOTelPolicySettings } from '../common/agentService.js';
+import { AgentHostAnthropicKeyEnvVar, AgentHostAnthropicKeyIpcChannel, AgentHostClaudeAgentEnabledSettingId, AgentHostCodexAgentBinaryArgsSettingId, AgentHostCodexAgentEnabledSettingId, AgentHostCodexAgentSdkRootSettingId, AgentHostCodexAgentCodexHomeSettingId, AgentHostIpcChannels, AgentHostOTelCaptureContentSettingId, AgentHostOTelDbSpanExporterEnabledSettingId, AgentHostOTelEnabledSettingId, AgentHostOTelExporterTypeSettingId, AgentHostOTelOtlpEndpointSettingId, AgentHostOTelOtlpProtocolSettingId, AgentHostOTelOutfileSettingId, AgentHostOTelResourceAttributesSettingId, AgentHostOTelServiceNameSettingId, AgentHostOTelPolicyIpcChannel, AgentHostRestartIpcChannel, AgentHostWillRestartIpcChannel, buildAgentHostOTelEnv, buildAgentSdkEnv, IAgentHostManagementService, IAgentHostOTelSettings, sanitizeAgentHostOTelPolicySettings } from '../common/agentService.js';
 import { deepClone } from '../../../base/common/objects.js';
 import '../common/agentHostStarter.config.contribution.js';
 
@@ -48,6 +48,13 @@ export class ElectronAgentHostStarter extends Disposable implements IAgentHostSt
 	 * `buildAgentHostOTelEnv` in `start()`, falling back to main-process policy when absent.
 	 */
 	private _otelPolicyFromRenderer: IAgentHostOTelSettings | undefined = undefined;
+
+	/**
+	 * Anthropic API key forwarded by the renderer, which owns secret storage.
+	 * Folded into the spawned process's environment so the Claude harness can
+	 * read it the only way it knows how. Held in memory only.
+	 */
+	private _anthropicKeyFromRenderer: string | undefined = undefined;
 
 	constructor(
 		private readonly _telemetryIds: IAgentHostForwardedTelemetryIds,
@@ -76,6 +83,18 @@ export class ElectronAgentHostStarter extends Disposable implements IAgentHostSt
 		validatedIpcMain.on(AgentHostOTelPolicyIpcChannel, onOTelPolicy);
 		this._register(toDisposable(() => {
 			validatedIpcMain.removeListener(AgentHostOTelPolicyIpcChannel, onOTelPolicy);
+		}));
+
+		// The Anthropic key, forwarded the same way and before the same spawn.
+		// Anything that is not a non-empty string clears it rather than being
+		// coerced: a key is either present or absent, and a half-valid one
+		// would fail later as an authentication error nobody can place.
+		const onAnthropicKey = (_e: IpcMainEvent, key: unknown) => {
+			this._anthropicKeyFromRenderer = typeof key === 'string' && key.length > 0 ? key : undefined;
+		};
+		validatedIpcMain.on(AgentHostAnthropicKeyIpcChannel, onAnthropicKey);
+		this._register(toDisposable(() => {
+			validatedIpcMain.removeListener(AgentHostAnthropicKeyIpcChannel, onAnthropicKey);
 		}));
 
 		// Listen for new windows to establish a direct MessagePort connection to the agent host
@@ -190,6 +209,13 @@ export class ElectronAgentHostStarter extends Disposable implements IAgentHostSt
 					...sdkEnv,
 					...otelEnv,
 					...telemetryIdEnv,
+					// Last, so a key the person set in the app wins over one
+					// inherited from their shell. Someone who types a key into
+					// the product means that one; a stale export they forgot
+					// about is not a preference.
+					...(this._anthropicKeyFromRenderer
+						? { [AgentHostAnthropicKeyEnvVar]: this._anthropicKeyFromRenderer }
+						: {}),
 				}
 			})) {
 				throw new Error('Agent Host utility process did not start.');

@@ -21,6 +21,13 @@ import { CloudeidePanel } from './cloudeidePanel.js';
 import { CloudeideLanguageModelContribution } from './cloudeideLanguageModel.js';
 import { CloudeideChatAgentContribution } from './cloudeideChatAgent.js';
 import { CloudeideSignInContribution } from './cloudeideSignIn.js';
+import { Action2, registerAction2 } from '../../../../platform/actions/common/actions.js';
+import { ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
+import { IQuickInputService } from '../../../../platform/quickinput/common/quickInput.js';
+import { ISecretStorageService } from '../../../../platform/secrets/common/secrets.js';
+import { IDialogService } from '../../../../platform/dialogs/common/dialogs.js';
+import { ICommandService } from '../../../../platform/commands/common/commands.js';
+import { AgentHostAnthropicKeySecret } from '../../../../platform/agentHost/common/agentService.js';
 import { registerWorkbenchContribution2, WorkbenchPhase } from '../../../common/contributions.js';
 
 const CONTAINER_ID = 'workbench.view.cloudeideContainer';
@@ -137,3 +144,68 @@ registerWorkbenchContribution2(
 	CloudeideSignInContribution,
 	WorkbenchPhase.BlockRestore,
 );
+
+/*
+ * Bring your own key.
+ *
+ * The Claude harness in this fork is a complete coding agent — read, write,
+ * edit, run, undo — and it has never had a credential to run on. It reads
+ * ANTHROPIC_API_KEY from its own environment, which until now meant exporting
+ * one in a login shell before launching the app and explaining that to every
+ * person who installs it.
+ *
+ * This is the other end of that: the key goes into secret storage here, and
+ * the agent host picks it up from the main process at spawn. It is never
+ * written to settings, never to disk in the clear, and never leaves the
+ * machine.
+ *
+ * The window has to reload because the environment of a spawned process is
+ * fixed when it spawns. Asking is better than doing it underneath someone
+ * with unsaved work.
+ */
+registerAction2(class extends Action2 {
+	constructor() {
+		super({
+			id: 'cloudeide.setAnthropicKey',
+			title: localize2('cloudeide.setAnthropicKey', "CloudeIDE: Use My Anthropic API Key"),
+			f1: true,
+		});
+	}
+
+	async run(accessor: ServicesAccessor): Promise<void> {
+		const quickInput = accessor.get(IQuickInputService);
+		const secrets = accessor.get(ISecretStorageService);
+		const dialogs = accessor.get(IDialogService);
+		const commands = accessor.get(ICommandService);
+
+		const key = await quickInput.input({
+			password: true,
+			ignoreFocusLost: true,
+			placeHolder: 'sk-ant-…',
+			prompt: localize('cloudeide.setAnthropicKey.prompt', "Paste an Anthropic API key. It is stored on this machine only, and lets the agent read, write and run code."),
+		});
+		if (key === undefined) {
+			return;
+		}
+
+		const trimmed = key.trim();
+		if (trimmed) {
+			await secrets.set(AgentHostAnthropicKeySecret, trimmed);
+		} else {
+			// An empty box clears the key rather than storing nothing, which
+			// is the only way back to the shell's own credential.
+			await secrets.delete(AgentHostAnthropicKeySecret);
+		}
+
+		const { confirmed } = await dialogs.confirm({
+			message: trimmed
+				? localize('cloudeide.setAnthropicKey.saved', "Key saved. Reload the window to start the agent with it?")
+				: localize('cloudeide.setAnthropicKey.cleared', "Key cleared. Reload the window to stop the agent using it?"),
+			detail: localize('cloudeide.setAnthropicKey.detail', "The agent reads its credential when it starts, so this takes effect after a reload."),
+			primaryButton: localize('cloudeide.setAnthropicKey.reload', "Reload"),
+		});
+		if (confirmed) {
+			await commands.executeCommand('workbench.action.reloadWindow');
+		}
+	}
+});

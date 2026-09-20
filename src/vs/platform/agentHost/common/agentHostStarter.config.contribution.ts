@@ -284,7 +284,12 @@ configurationRegistry.registerConfiguration({
 		[AgentHostByokModelsEnabledSettingId]: {
 			type: 'boolean',
 			description: nls.localize('chat.agentHost.byokModels.enabled', "When enabled, extension-provided BYOK ('bring your own key') models can run in agent-host sessions. Changes are synchronized to the running agent host and do not require a restart."),
-			default: false,
+			// On in CloudeIDE. This is the gate between the models registered
+			// in the window and the agent that can actually act on them, and
+			// with it shut the CloudeIDE model is visible in the picker and
+			// unusable everywhere it matters. Upstream defaults it off because
+			// its own provider ships a model of its own; this fork's does not.
+			default: true,
 			tags: ['experimental', 'advanced'],
 			experiment: { mode: 'startup' },
 			agentHost: { key: AgentHostByokModelsEnabledConfigKey, scope: AgentHostConfigurationSyncScope.Local },
