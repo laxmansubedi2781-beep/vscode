@@ -30,6 +30,35 @@ export interface ChatMessage {
 	readonly content: string;
 }
 
+
+/**
+ * What `/ai/agent` streams back.
+ *
+ * Deliberately the server's own shape rather than a translation of it: the
+ * panel was wired to `/ai/chat` for months on the strength of a guess about
+ * what the server sent, and the guess was wrong in a way that took a filmed
+ * recording to notice. These names are copied from `agentLoop.ts`.
+ */
+export type AgentEvent =
+	| { type: 'run'; runId: string }
+	| { type: 'step'; index: number; summary: string; tool: string; path?: string }
+	| { type: 'step_done'; index: number; isError: boolean }
+	| { type: 'text'; text: string }
+	| { type: 'usage'; inputTokens: number; outputTokens: number; creditsSpent: number; steps: number }
+	| { type: 'proposal'; changes: FileChange[]; runId: string }
+	| { type: 'done'; status: 'completed' | 'failed' | 'cancelled' | 'limit-reached'; reason?: string }
+	| { type: 'error'; message: string };
+
+/** One file the run wants to change, with both sides of the diff. */
+export interface FileChange {
+	readonly path: string;
+	readonly kind: 'create' | 'edit' | 'delete';
+	/** Contents before the run touched it; null for a newly created file. */
+	readonly before: string | null;
+	/** Contents after; null for a deletion. */
+	readonly after: string | null;
+}
+
 /** The environments `/deploy/run` accepts. Anything else is a 400. */
 export type DeployEnvironment = 'development' | 'preview' | 'production';
 
@@ -237,6 +266,92 @@ export class CloudeideClient {
 		}
 
 		return full;
+	}
+
+	/**
+	 * Runs the agent, which is what `/ai/chat` never was.
+	 *
+	 * `/ai/chat` answers. `/ai/agent` reads files, runs tools and comes back
+	 * with a set of changes for approval — the thing this product has claimed
+	 * on its front page for weeks. Same account, same key, same credits; a
+	 * different route.
+	 *
+	 * Nothing is written by this call. The run stages its changes and sends
+	 * them as a `proposal`; applying them is the editor's job, and telling the
+	 * server what was decided is {@link decideProposal}.
+	 */
+	async agent(
+		messages: readonly ChatMessage[],
+		onEvent: (event: AgentEvent) => void,
+		options: { system?: string; allowWrites?: boolean } = {},
+	): Promise<void> {
+		const response = await this.send('/ai/agent', {
+			method: 'POST',
+			body: JSON.stringify({
+				messages,
+				system: options.system,
+				// Off unless asked. A run that edits files without being told
+				// to is a worse surprise than one that refuses to.
+				allowWrites: options.allowWrites === true,
+			}),
+		}, 600_000);
+
+		const body = response.body;
+		if (!body) {
+			throw new CloudeideRequestError('The server sent an empty reply.', 0);
+		}
+
+		const reader = body.getReader();
+		const decoder = new TextDecoder();
+		let buffered = '';
+
+		try {
+			while (true) {
+				const { done, value } = await reader.read();
+				if (done) {
+					break;
+				}
+				buffered += decoder.decode(value, { stream: true });
+
+				// Events are separated by a blank line, and a chunk can split
+				// one in half, so anything after the last separator stays.
+				const frames = buffered.split('\n\n');
+				buffered = frames.pop() ?? '';
+
+				for (const frame of frames) {
+					const line = frame.split('\n').find(l => l.startsWith('data:'));
+					if (!line) {
+						continue;
+					}
+					let event: AgentEvent;
+					try {
+						event = JSON.parse(line.slice(5).trim()) as AgentEvent;
+					} catch {
+						continue; // A frame we cannot read is not worth failing the run over.
+					}
+					if (event.type === 'error') {
+						throw new CloudeideRequestError(event.message, 0);
+					}
+					onEvent(event);
+				}
+			}
+		} finally {
+			reader.releaseLock();
+		}
+	}
+
+	/**
+	 * Tells the server what happened to a proposal.
+	 *
+	 * The decision outlives the connection — the person may accept after a
+	 * reload, from another window — so it travels by run id rather than by
+	 * being implied by the stream ending.
+	 */
+	async decideProposal(runId: string, decision: 'applied' | 'discarded'): Promise<void> {
+		await this.request('/assistant/proposal/decision', {
+			method: 'POST',
+			body: JSON.stringify({ runId, decision }),
+		});
 	}
 
 	async listProjects(): Promise<{ id: number; name: string }[]> {

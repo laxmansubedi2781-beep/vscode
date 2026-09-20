@@ -25,7 +25,9 @@ import { IFileService } from '../../../../platform/files/common/files.js';
 import { IEditorService } from '../../../services/editor/common/editorService.js';
 import { IModelService } from '../../../../editor/common/services/model.js';
 import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
-import { CloudeideClient, type ChatMessage, type DeployStatus } from './cloudeideClient.js';
+import { CloudeideClient, type ChatMessage, type DeployStatus, type FileChange } from './cloudeideClient.js';
+import { VSBuffer } from '../../../../base/common/buffer.js';
+import { linesDiffComputers } from '../../../../editor/common/diff/linesDiffComputers.js';
 
 const $ = DOM.$;
 
@@ -414,24 +416,65 @@ export class CloudeidePanel extends ViewPane {
 		// is worse than none.
 		const context = await this.gatherContext();
 
+		let started = false;
+		let reply = '';
+		let runId: string | undefined;
+
 		try {
-			// The server streams, so the answer lands a fragment at a time. The
-			// placeholder is cleared by the first one rather than up front, so
-			// a turn that fails before any text still reads "Thinking…" and
-			// then the error, never a blank bubble.
-			let started = false;
-			const reply = await this.client.chat(this.messages, chunk => {
-				if (!started) {
-					pending.textContent = '';
-					started = true;
+			await this.client.agent(this.messages, event => {
+				switch (event.type) {
+					case 'run':
+						runId = event.runId;
+						break;
+
+					case 'step':
+						// The run is minutes long and mostly silent otherwise.
+						// Showing each tool as it happens is the difference
+						// between working and hung.
+						this.appendStep(event.summary || event.tool, event.path);
+						break;
+
+					case 'text':
+						if (!started) {
+							pending.textContent = '';
+							started = true;
+						}
+						reply += event.text;
+						pending.textContent = reply;
+						this.transcript.scrollTop = this.transcript.scrollHeight;
+						break;
+
+					case 'usage':
+						this.setStatus(localize(
+							'cloudeide.usage', "{0} credits · {1} steps", event.creditsSpent, event.steps,
+						), 'muted');
+						break;
+
+					case 'proposal':
+						if (event.changes.length > 0) {
+							this.appendProposal(event.runId, event.changes);
+						}
+						break;
+
+					case 'done':
+						if (event.status === 'limit-reached') {
+							this.setStatus(event.reason ?? localize('cloudeide.limit', "Run stopped at its limit."), 'error');
+						}
+						break;
 				}
-				pending.textContent += chunk;
-				this.transcript.scrollTop = this.transcript.scrollHeight;
-			}, context);
-			pending.textContent = reply;
-			this.messages.push({ role: 'assistant', content: reply });
-			this.setStatus('', 'muted');
-			this.statusLine.style.display = 'none';
+			}, {
+				system: context,
+				// The agent may change files. That is the point of this route,
+				// and the proposal is where the person gets a say.
+				allowWrites: true,
+			});
+
+			if (!started) {
+				pending.textContent = reply || localize('cloudeide.noAnswer', "The run finished without an answer.");
+			}
+			if (reply) {
+				this.messages.push({ role: 'assistant', content: reply });
+			}
 		} catch (err) {
 			const message = err instanceof Error ? err.message : String(err);
 			pending.textContent = message;
@@ -444,6 +487,141 @@ export class CloudeidePanel extends ViewPane {
 			this.setBusy(false);
 			this.input.focus();
 		}
+
+		// Mentioned only so the unused-variable rule does not hide a real bug
+		// later: the run id travels on the proposal, which carries its own.
+		void runId;
+	}
+
+	/** One line per tool the run used, as it uses it. */
+	private appendStep(summary: string, path?: string): void {
+		const line = DOM.append(this.transcript, $('.cloudeide-step'));
+		line.textContent = path ? `${summary} — ${path}` : summary;
+		this.transcript.scrollTop = this.transcript.scrollHeight;
+	}
+
+	/**
+	 * What the run wants to change, and the two buttons that decide it.
+	 *
+	 * Nothing has been written at this point. The server stages the changes
+	 * and sends both sides of every file; applying them is this editor's job,
+	 * and the person's call.
+	 */
+	private appendProposal(runId: string, changes: readonly FileChange[]): void {
+		const card = DOM.append(this.transcript, $('.cloudeide-proposal'));
+
+		const head = DOM.append(card, $('.cloudeide-proposal-head'));
+		head.textContent = changes.length === 1
+			? localize('cloudeide.proposal.one', "1 file to change")
+			: localize('cloudeide.proposal.many', "{0} files to change", changes.length);
+
+		for (const change of changes) {
+			const row = DOM.append(card, $('button.cloudeide-proposal-file')) as HTMLButtonElement;
+			const twisty = DOM.append(row, $('span.cloudeide-proposal-twisty'));
+			twisty.textContent = '\u203A';
+			const kind = DOM.append(row, $(`span.cloudeide-proposal-kind.cloudeide-proposal-${change.kind}`));
+			kind.textContent = change.kind;
+			const name = DOM.append(row, $('span.cloudeide-proposal-path'));
+			name.textContent = change.path;
+
+			const counts = countChangedLines(change);
+			if (counts.added > 0 || counts.removed > 0) {
+				const tally = DOM.append(row, $('span.cloudeide-proposal-tally'));
+				if (counts.added > 0) {
+					DOM.append(tally, $('span.cloudeide-proposal-added')).textContent = `+${counts.added}`;
+				}
+				if (counts.removed > 0) {
+					DOM.append(tally, $('span.cloudeide-proposal-removed')).textContent = `-${counts.removed}`;
+				}
+			}
+
+			// The diff is built on first open rather than up front: a proposal
+			// touching a dozen large files would otherwise pay for twelve
+			// diffs the person may never look at.
+			const body = DOM.append(card, $('.cloudeide-proposal-diff'));
+			body.style.display = 'none';
+			let filled = false;
+			this._register(DOM.addDisposableListener(row, 'click', () => {
+				const open = body.style.display === 'none';
+				if (open && !filled) {
+					renderDiff(body, change);
+					filled = true;
+				}
+				body.style.display = open ? '' : 'none';
+				row.classList.toggle('cloudeide-proposal-open', open);
+			}));
+		}
+
+		const actions = DOM.append(card, $('.cloudeide-proposal-actions'));
+		const accept = DOM.append(actions, $('button.cloudeide-button-primary')) as HTMLButtonElement;
+		accept.textContent = localize('cloudeide.proposal.accept', "Apply");
+		const discard = DOM.append(actions, $('button.cloudeide-button-quiet')) as HTMLButtonElement;
+		discard.textContent = localize('cloudeide.proposal.discard', "Discard");
+
+		const settle = (verdict: string) => {
+			accept.remove();
+			discard.remove();
+			const done = DOM.append(actions, $('span.cloudeide-proposal-settled'));
+			done.textContent = verdict;
+		};
+
+		this._register(DOM.addDisposableListener(accept, 'click', async () => {
+			accept.disabled = true;
+			discard.disabled = true;
+			try {
+				const written = await this.applyChanges(changes);
+				await this.client.decideProposal(runId, 'applied');
+				settle(localize('cloudeide.proposal.applied', "Applied to {0} files", written));
+			} catch (err) {
+				accept.disabled = false;
+				discard.disabled = false;
+				this.setStatus(err instanceof Error ? err.message : String(err), 'error');
+			}
+		}));
+
+		this._register(DOM.addDisposableListener(discard, 'click', async () => {
+			accept.disabled = true;
+			discard.disabled = true;
+			// Reported even though nothing was written: the server holds the
+			// proposal open until it hears, and a recap that still lists a
+			// discarded file as pending is a recap that lies.
+			await this.client.decideProposal(runId, 'discarded').catch(() => { /* best effort */ });
+			settle(localize('cloudeide.proposal.discarded', "Discarded"));
+		}));
+
+		this.transcript.scrollTop = this.transcript.scrollHeight;
+	}
+
+	/**
+	 * Writes an accepted proposal to disk.
+	 *
+	 * Paths arrive relative to the workspace root, which is the only place
+	 * they are allowed to land: a path that climbs out of it is refused rather
+	 * than written, because a run that asks to edit something outside the
+	 * folder the person opened is either confused or hostile.
+	 */
+	private async applyChanges(changes: readonly FileChange[]): Promise<number> {
+		const folders = this.contextService.getWorkspace().folders;
+		if (folders.length === 0) {
+			throw new Error(localize('cloudeide.proposal.noFolder', "Open a folder before applying changes."));
+		}
+		const root = folders[0].uri;
+
+		let written = 0;
+		for (const change of changes) {
+			const target = root.with({ path: `${root.path.replace(/\/+$/, '')}/${change.path}` });
+			if (!target.path.startsWith(`${root.path.replace(/\/+$/, '')}/`)) {
+				throw new Error(localize('cloudeide.proposal.outside', "Refused to write outside the folder: {0}", change.path));
+			}
+
+			if (change.kind === 'delete') {
+				await this.fileService.del(target, { useTrash: true }).catch(() => { /* already gone */ });
+			} else {
+				await this.fileService.writeFile(target, VSBuffer.fromString(change.after ?? ''));
+			}
+			written++;
+		}
+		return written;
 	}
 
 	private async deploy(): Promise<void> {
@@ -599,5 +777,130 @@ export class CloudeidePanel extends ViewPane {
 	protected override layoutBody(height: number, width: number): void {
 		super.layoutBody(height, width);
 		this.root.style.height = `${height}px`;
+	}
+}
+
+/** Splits a file's contents the way the diff computer wants it. */
+function toLines(text: string | null): string[] {
+	return text === null || text === '' ? [] : text.split(/\r\n|\r|\n/);
+}
+
+const DIFF_OPTIONS = {
+	ignoreTrimWhitespace: false,
+	// A proposal card is not worth stalling the panel for. Past this the
+	// computer returns an approximation, which is still a fair summary of what
+	// the run wants to do.
+	maxComputationTimeMs: 1000,
+	computeMoves: false,
+};
+
+/** How many lines a change adds and removes, for the tally beside its name. */
+function countChangedLines(change: FileChange): { added: number; removed: number } {
+	const before = toLines(change.before);
+	const after = toLines(change.after);
+	if (change.kind === 'create') {
+		return { added: after.length, removed: 0 };
+	}
+	if (change.kind === 'delete') {
+		return { added: 0, removed: before.length };
+	}
+
+	const diff = linesDiffComputers.getDefault().computeDiff(before, after, DIFF_OPTIONS);
+	let added = 0;
+	let removed = 0;
+	for (const mapping of diff.changes) {
+		removed += mapping.original.endLineNumberExclusive - mapping.original.startLineNumber;
+		added += mapping.modified.endLineNumberExclusive - mapping.modified.startLineNumber;
+	}
+	return { added, removed };
+}
+
+/** Lines of context kept either side of a hunk. */
+const DIFF_CONTEXT = 3;
+
+/** The most lines one file's diff will draw before it stops and says so. */
+const DIFF_MAX_LINES = 240;
+
+/**
+ * Draws a unified diff of one proposed change into `target`.
+ *
+ * This is deliberately a read-only summary and not an editor: the person is
+ * deciding whether to let the run write, and a card they can type into would
+ * invite edits that the Apply below it would then throw away.
+ */
+function renderDiff(target: HTMLElement, change: FileChange): void {
+	const before = toLines(change.before);
+	const after = toLines(change.after);
+
+	let drawn = 0;
+	const line = (kind: 'add' | 'del' | 'ctx' | 'meta', text: string) => {
+		if (drawn >= DIFF_MAX_LINES) {
+			return false;
+		}
+		const el = DOM.append(target, $(`.cloudeide-diff-line.cloudeide-diff-${kind}`));
+		// A zero-width space keeps an empty line's height without a &nbsp;.
+		el.textContent = text === '' ? '​' : text;
+		drawn++;
+		return true;
+	};
+
+	if (change.kind === 'create' || change.kind === 'delete') {
+		const kind = change.kind === 'create' ? 'add' : 'del';
+		const sign = change.kind === 'create' ? '+' : '-';
+		const body = change.kind === 'create' ? after : before;
+		for (const text of body) {
+			if (!line(kind, `${sign}${text}`)) {
+				break;
+			}
+		}
+	} else {
+		const diff = linesDiffComputers.getDefault().computeDiff(before, after, DIFF_OPTIONS);
+		let cursor = 1; // 1-based, in the original file
+		let stopped = false;
+
+		for (const mapping of diff.changes) {
+			if (stopped) {
+				break;
+			}
+			const from = Math.max(cursor, mapping.original.startLineNumber - DIFF_CONTEXT);
+			if (from > cursor) {
+				if (!line('meta', '⋯')) {
+					stopped = true;
+					break;
+				}
+			}
+			for (let n = from; n < mapping.original.startLineNumber; n++) {
+				if (!line('ctx', ` ${before[n - 1]}`)) {
+					stopped = true;
+					break;
+				}
+			}
+			for (let n = mapping.original.startLineNumber; !stopped && n < mapping.original.endLineNumberExclusive; n++) {
+				if (!line('del', `-${before[n - 1]}`)) {
+					stopped = true;
+				}
+			}
+			for (let n = mapping.modified.startLineNumber; !stopped && n < mapping.modified.endLineNumberExclusive; n++) {
+				if (!line('add', `+${after[n - 1]}`)) {
+					stopped = true;
+				}
+			}
+			const until = Math.min(before.length + 1, mapping.original.endLineNumberExclusive + DIFF_CONTEXT);
+			for (let n = mapping.original.endLineNumberExclusive; !stopped && n < until; n++) {
+				if (!line('ctx', ` ${before[n - 1]}`)) {
+					stopped = true;
+				}
+			}
+			cursor = until;
+		}
+
+		if (diff.changes.length === 0) {
+			line('meta', localize('cloudeide.diff.same', "No change to this file."));
+		}
+	}
+
+	if (drawn >= DIFF_MAX_LINES) {
+		const more = DOM.append(target, $('.cloudeide-diff-line.cloudeide-diff-meta'));
+		more.textContent = localize('cloudeide.diff.truncated', "Diff shortened — open the file after applying to see all of it.");
 	}
 }
