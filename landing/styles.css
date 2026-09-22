@@ -1388,6 +1388,26 @@ section {
   font-size: 14px;
 }
 
+/* The two platforms that are not the visitor's.
+ *
+ * They stay reachable and stop competing: three buttons of equal weight is
+ * three decisions before a download, and two of them are about somebody
+ * else's computer. Quiet text, not a third button — but still a real target,
+ * padded to the same height so the row does not go ragged.
+ *
+ * The class is only added by script.js. Without it every platform is a
+ * button, which is the right fallback: plain, and nothing hidden. */
+.download-row .download-other {
+  border-color: transparent;
+  background: none;
+  color: var(--text-secondary);
+}
+
+.download-row .download-other:hover {
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+
 .download-note {
   margin-top: 12px;
   font-size: 12px;

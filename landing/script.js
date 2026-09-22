@@ -185,3 +185,61 @@ if (films.length) {
     });
   });
 }
+
+/* --------------------------------------------------------------- download --
+ *
+ * The button is whichever platform the visitor is on; the other two become
+ * links beside it, and only that platform's note is shown.
+ *
+ * The markup already holds all three, all working. This only reorders and
+ * hides — so a visitor with no JavaScript, or one this guesses wrong about,
+ * still has every download a click away. That is why nothing here removes an
+ * element from the page.
+ *
+ * Apple Silicon is not detected, because it cannot be: Safari and Chrome both
+ * report "MacIntel" on an M-series Mac. The Mac note says which build it is
+ * instead of this pretending to know.
+ */
+{
+  const row = document.querySelector("[data-download]");
+  const ua = navigator.userAgent;
+  const platform = navigator.userAgentData?.platform ?? navigator.platform ?? "";
+  const here = /mac/i.test(platform) || /Mac OS X/i.test(ua)
+    ? "mac"
+    : /win/i.test(platform) || /Windows/i.test(ua)
+      ? "windows"
+      : /linux|android|cros/i.test(platform) || /Linux|Android|CrOS/i.test(ua)
+        ? "linux"
+        : null;
+
+  const buttons = row ? [...row.querySelectorAll("[data-os]")] : [];
+  const mine = here ? buttons.find((b) => b.dataset.os === here) : undefined;
+
+  // Only when there is a button for this platform. Without that guard, a
+  // platform whose build is not published yet — or has been pulled — promotes
+  // nothing and hides every note, leaving a download row with no note under
+  // it at all.
+  if (mine) {
+    buttons.forEach((b) => {
+      const isMine = b === mine;
+      b.classList.toggle("btn-primary", isMine);
+      b.classList.toggle("btn-secondary", !isMine);
+      b.classList.toggle("download-other", !isMine);
+      // "Windows", not "Download for Windows". Demoted, the verb is carried
+      // by the button beside it, and three long labels wrap onto a second
+      // line for no reason. The long one stays in the markup so that without
+      // this the row still reads as a sentence.
+      if (!isMine && b.dataset.osShort) {
+        b.textContent = b.dataset.osShort;
+      }
+    });
+
+    // First in the row, so the button a visitor wants is the one their eye
+    // lands on rather than the one that happened to be authored first.
+    row.prepend(mine);
+
+    document.querySelectorAll("[data-note]").forEach((note) => {
+      note.hidden = note.dataset.note !== here;
+    });
+  }
+}

@@ -437,15 +437,49 @@
             and the agent reads the project you actually have open.
           </p>
 
-          <div class="download-row">
-            <a class="btn btn-primary" href="https://github.com/laxmansubedi7/cloudevs/releases/latest/download/CloudeIDE-linux-x64.deb">Download for Linux</a>
-            <a class="btn btn-secondary" href="https://github.com/laxmansubedi7/cloudevs/releases/latest/download/CloudeIDE-win32-x64.zip">Download for Windows</a>
+          <!--
+            Three platforms, one button.
+
+            Three buttons of equal weight is three decisions to make before a
+            download, and two of them are about somebody else's computer. So
+            the one that matches the visitor is the button and the other two
+            are links beside it, chosen in script.js.
+
+            Everything is in the markup and every link works before any of
+            that runs. With no JavaScript the visitor gets the Linux button,
+            the other two as links, and all three notes — verbose, and not
+            broken, which is the right way round.
+          -->
+          <div class="download-row" data-download>
+            <a class="btn btn-primary" data-os="linux" data-os-short="Linux"
+               href="https://github.com/laxmansubedi7/cloudevs/releases/latest/download/CloudeIDE-linux-x64.deb">Download for Linux</a>
+            <a class="btn btn-secondary" data-os="windows" data-os-short="Windows"
+               href="https://github.com/laxmansubedi7/cloudevs/releases/latest/download/CloudeIDE-win32-x64.zip">Download for Windows</a>
+            <a class="btn btn-secondary" data-os="mac" data-os-short="Mac"
+               href="https://github.com/laxmansubedi7/cloudevs/releases/latest/download/CloudeIDE-darwin-arm64.zip">Download for Mac</a>
           </div>
-          <p class="showcase-note">
+
+          <p class="showcase-note" data-note="linux">
             64-bit. Ubuntu 20.04, Debian 11 or newer.
             <a class="showcase-link" href="https://github.com/laxmansubedi7/cloudevs/releases/latest/download/CloudeIDE-linux-x64.tar.gz">Linux tarball</a>
             if you would rather not install — browser sign-in needs the .deb.
-            macOS is not built yet.
+          </p>
+          <p class="showcase-note" data-note="windows">
+            64-bit Windows 10 or newer. Unzip it and run CloudeIDE.exe.
+          </p>
+          <!--
+            Apple Silicon only, and it says so rather than guessing. A browser
+            on an Apple Silicon Mac still reports "MacIntel", so there is no
+            honest way to tell the two apart from here — and an Intel Mac
+            downloading an arm64 build gets a failure it cannot read.
+
+            The right-click is not a nicety either. The build carries an
+            ad-hoc signature, which is what lets it run at all, but it is not
+            notarized — so the first double-click is refused, once.
+          -->
+          <p class="showcase-note" data-note="mac">
+            Apple Silicon (M1 and newer). Move it to Applications, then
+            right-click and choose Open the first time.
           </p>
         </div>
 
