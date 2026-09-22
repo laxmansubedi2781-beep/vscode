@@ -370,8 +370,12 @@ section {
   line-height: 1.06;
   letter-spacing: -0.035em;
   font-weight: 700;
-  max-width: 760px;
+  max-width: 900px;
   margin: 0;
+  /* Let the browser pick the break rather than a <br> that is right at one
+     width and wrong at every other. A hard break put "software." alone on a
+     third line here and split the sentence in the wrong place on a phone. */
+  text-wrap: balance;
 }
 
 .hero p.sub {
