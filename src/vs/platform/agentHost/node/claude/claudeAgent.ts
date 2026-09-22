@@ -7,6 +7,7 @@ import type { CCAModel } from '@vscode/copilot-api';
 import type { ModelInfo, OnElicitation, Options, SDKSessionInfo, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { Limiter, retry, SequencerByKey } from '../../../../base/common/async.js';
+import { AgentHostCloudeideBaseUrlEnvVar, AgentHostCloudeideTokenEnvVar } from '../../common/agentService.js';
 import { CancellationToken } from '../../../../base/common/cancellation.js';
 import { CancellationError } from '../../../../base/common/errors.js';
 import { Emitter, Event } from '../../../../base/common/event.js';
@@ -749,6 +750,23 @@ export class ClaudeAgent extends Disposable implements IAgent {
 			defaultMode: this._defaultTransportMode(),
 		});
 		if (transport !== 'proxy') {
+			/*
+			 * A signed-in CloudeIDE account wins over the SDK's own credential
+			 * resolution, and that order is the product: the harness should
+			 * run for somebody who installed this editor and signed in, not
+			 * only for somebody who also holds an Anthropic key. A personal
+			 * key still works — it is what this falls back to — so nobody who
+			 * had one before loses it.
+			 *
+			 * Read from the environment because this process was spawned with
+			 * it; the renderer holds the secret and the main process folds it
+			 * into the spawn env. There is nothing else here that could ask.
+			 */
+			const baseUrl = process.env[AgentHostCloudeideBaseUrlEnvVar];
+			const token = process.env[AgentHostCloudeideTokenEnvVar];
+			if (baseUrl && token) {
+				return { kind: 'cloudeide', baseUrl, token };
+			}
 			return { kind: 'native' };
 		}
 		const handle = this._proxyHandle;

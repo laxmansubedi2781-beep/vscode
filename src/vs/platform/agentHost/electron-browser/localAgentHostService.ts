@@ -37,6 +37,11 @@ import {
 	type AgentHostDebugLogsArtifactKind,
 	AgentHostIpcChannels,
 	AgentHostAnthropicKeySecret,
+	AgentHostCloudeideAccountIpcChannel,
+	CloudeideAnthropicPath,
+	CloudeideDefaultServerUrl,
+	CloudeideServerUrlSetting,
+	CloudeideTokenSecret,
 	AgentHostAnthropicKeyIpcChannel,
 	AgentHostOTelPolicyIpcChannel,
 	AgentHostRestartIpcChannel,
@@ -244,6 +249,7 @@ export class LocalAgentHostServiceClient extends Disposable implements IAgentHos
 		// Before the connection, because the connection is what spawns the
 		// host and the environment is fixed at spawn.
 		await this._forwardAnthropicKey();
+		await this._forwardCloudeideAccount();
 		await this._requireClient().connect();
 	}
 
@@ -266,6 +272,33 @@ export class LocalAgentHostServiceClient extends Disposable implements IAgentHos
 			}
 		} catch (error) {
 			this._logService.warn(`${LOG_PREFIX} Could not read the stored Anthropic key`, error);
+		}
+	}
+
+	/**
+	 * Hands the main process the signed-in account, if there is one.
+	 *
+	 * This is what lets the harness run on CloudeIDE's own credits: its tools
+	 * stay on this machine and its model calls go to this product's endpoint,
+	 * billed against the account that is already signed in. Without it the
+	 * only ways to run the harness are somebody's personal Anthropic key or
+	 * not at all.
+	 *
+	 * Read from the same secret the panel writes, and from the same setting
+	 * the panel reads, so there is one answer to "where does this account
+	 * live" rather than two that can disagree.
+	 */
+	private async _forwardCloudeideAccount(): Promise<void> {
+		try {
+			const token = await this._secretStorageService.get(CloudeideTokenSecret);
+			if (!token) {
+				return;
+			}
+			const configured = this._configurationService.getValue<string>(CloudeideServerUrlSetting);
+			const baseUrl = `${(configured || CloudeideDefaultServerUrl).replace(/\/+$/, '')}${CloudeideAnthropicPath}`;
+			ipcRenderer.send(AgentHostCloudeideAccountIpcChannel, { baseUrl, token });
+		} catch (error) {
+			this._logService.warn(`${LOG_PREFIX} Could not read the stored CloudeIDE account`, error);
 		}
 	}
 

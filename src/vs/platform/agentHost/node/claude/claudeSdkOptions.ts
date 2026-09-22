@@ -133,12 +133,22 @@ export async function buildOptions(
 		// uses its own credential resolution from the subprocess env
 		// (`ANTHROPIC_API_KEY`, or `CLAUDE_CODE_OAUTH_TOKEN` from `claude
 		// setup-token` — both forwarded by `buildSubprocessEnv`).
+		// Proxied (Copilot-routed) mode points the SDK at the local proxy on a
+		// per-session bearer. CloudeIDE mode points it at this product's own
+		// endpoint on the account's token — the same two variables, a
+		// different destination, and no local hop because the billing has to
+		// happen somewhere the client cannot edit.
 		...(transport.kind === 'proxy'
 			? {
 				ANTHROPIC_BASE_URL: transport.handle.baseUrl,
 				ANTHROPIC_AUTH_TOKEN: `${transport.handle.nonce}.${input.sessionId}`,
 			}
-			: {}),
+			: transport.kind === 'cloudeide'
+				? {
+					ANTHROPIC_BASE_URL: transport.baseUrl,
+					ANTHROPIC_AUTH_TOKEN: transport.token,
+				}
+				: {}),
 		CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
 		USE_BUILTIN_RIPGREP: '0',
 		// Attribute the CLI's tool subprocesses (`gh`, …) to VS Code.

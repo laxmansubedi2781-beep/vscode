@@ -66,9 +66,15 @@ export interface IClaudeProxyHandle extends ILoopbackProxyHandle {
  *   the user's own credentials (`ANTHROPIC_API_KEY`, or a subscription OAuth
  *   token in `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token`); no proxy is
  *   involved. The SDK's bundled `claude` CLI runs the turn.
+ * - `cloudeide`: this product's own routing. The SDK is pointed straight at
+ *   CloudeIDE's Anthropic-shaped endpoint with the signed-in account's token,
+ *   so the harness keeps running its tools on this machine while the model
+ *   call is billed against the account's credits. No local proxy: the server
+ *   is the only place that can be trusted to count what it charges for.
  */
 export type ClaudeTransport =
 	| { readonly kind: 'proxy'; readonly handle: IClaudeProxyHandle }
+	| { readonly kind: 'cloudeide'; readonly baseUrl: string; readonly token: string }
 	| { readonly kind: 'native' };
 
 /**

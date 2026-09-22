@@ -23,7 +23,7 @@ import { UtilityProcess } from '../../utilityProcess/electron-main/utilityProces
 import { AgentHostStartError, IAgentHostConnection, IAgentHostShutdownRequest, IAgentHostStarter, IAgentHostStartRequest, isFatalAgentHostStartError, toFatalAgentHostStartError } from '../common/agent.js';
 import { buildAgentHostTelemetryIdEnv, IAgentHostForwardedTelemetryIds } from '../common/agentHostTelemetryEnv.js';
 import { AgentHostLaunchKind, AgentHostLaunchKindEnvVar, telemetryLevelToAgentHostValue } from '../common/agentHostTelemetry.js';
-import { AgentHostAnthropicKeyEnvVar, AgentHostAnthropicKeyIpcChannel, AgentHostClaudeAgentEnabledSettingId, AgentHostCodexAgentBinaryArgsSettingId, AgentHostCodexAgentEnabledSettingId, AgentHostCodexAgentSdkRootSettingId, AgentHostCodexAgentCodexHomeSettingId, AgentHostIpcChannels, AgentHostOTelCaptureContentSettingId, AgentHostOTelDbSpanExporterEnabledSettingId, AgentHostOTelEnabledSettingId, AgentHostOTelExporterTypeSettingId, AgentHostOTelOtlpEndpointSettingId, AgentHostOTelOtlpProtocolSettingId, AgentHostOTelOutfileSettingId, AgentHostOTelResourceAttributesSettingId, AgentHostOTelServiceNameSettingId, AgentHostOTelPolicyIpcChannel, AgentHostRestartIpcChannel, AgentHostWillRestartIpcChannel, buildAgentHostOTelEnv, buildAgentSdkEnv, IAgentHostManagementService, IAgentHostOTelSettings, sanitizeAgentHostOTelPolicySettings } from '../common/agentService.js';
+import { AgentHostAnthropicKeyEnvVar, AgentHostAnthropicKeyIpcChannel, AgentHostCloudeideAccountIpcChannel, AgentHostCloudeideBaseUrlEnvVar, AgentHostCloudeideTokenEnvVar, AgentHostClaudeAgentEnabledSettingId, AgentHostCodexAgentBinaryArgsSettingId, AgentHostCodexAgentEnabledSettingId, AgentHostCodexAgentSdkRootSettingId, AgentHostCodexAgentCodexHomeSettingId, AgentHostIpcChannels, AgentHostOTelCaptureContentSettingId, AgentHostOTelDbSpanExporterEnabledSettingId, AgentHostOTelEnabledSettingId, AgentHostOTelExporterTypeSettingId, AgentHostOTelOtlpEndpointSettingId, AgentHostOTelOtlpProtocolSettingId, AgentHostOTelOutfileSettingId, AgentHostOTelResourceAttributesSettingId, AgentHostOTelServiceNameSettingId, AgentHostOTelPolicyIpcChannel, AgentHostRestartIpcChannel, AgentHostWillRestartIpcChannel, buildAgentHostOTelEnv, buildAgentSdkEnv, IAgentHostManagementService, IAgentHostOTelSettings, sanitizeAgentHostOTelPolicySettings } from '../common/agentService.js';
 import { deepClone } from '../../../base/common/objects.js';
 import '../common/agentHostStarter.config.contribution.js';
 
@@ -55,6 +55,9 @@ export class ElectronAgentHostStarter extends Disposable implements IAgentHostSt
 	 * read it the only way it knows how. Held in memory only.
 	 */
 	private _anthropicKeyFromRenderer: string | undefined = undefined;
+
+	/** The signed-in account's endpoint and token, or nothing when signed out. */
+	private _cloudeideAccountFromRenderer: { baseUrl: string; token: string } | undefined = undefined;
 
 	constructor(
 		private readonly _telemetryIds: IAgentHostForwardedTelemetryIds,
@@ -95,6 +98,21 @@ export class ElectronAgentHostStarter extends Disposable implements IAgentHostSt
 		validatedIpcMain.on(AgentHostAnthropicKeyIpcChannel, onAnthropicKey);
 		this._register(toDisposable(() => {
 			validatedIpcMain.removeListener(AgentHostAnthropicKeyIpcChannel, onAnthropicKey);
+		}));
+
+		// The CloudeIDE account, on the same path. Both halves or neither: a
+		// base URL without a token points the SDK at an endpoint that will
+		// refuse it, which reads as the product being broken rather than as
+		// being signed out.
+		const onCloudeideAccount = (_e: IpcMainEvent, account: unknown) => {
+			const value = account as { baseUrl?: unknown; token?: unknown } | undefined;
+			const baseUrl = typeof value?.baseUrl === 'string' && value.baseUrl.length > 0 ? value.baseUrl : undefined;
+			const token = typeof value?.token === 'string' && value.token.length > 0 ? value.token : undefined;
+			this._cloudeideAccountFromRenderer = baseUrl && token ? { baseUrl, token } : undefined;
+		};
+		validatedIpcMain.on(AgentHostCloudeideAccountIpcChannel, onCloudeideAccount);
+		this._register(toDisposable(() => {
+			validatedIpcMain.removeListener(AgentHostCloudeideAccountIpcChannel, onCloudeideAccount);
 		}));
 
 		// Listen for new windows to establish a direct MessagePort connection to the agent host
@@ -215,6 +233,16 @@ export class ElectronAgentHostStarter extends Disposable implements IAgentHostSt
 					// about is not a preference.
 					...(this._anthropicKeyFromRenderer
 						? { [AgentHostAnthropicKeyEnvVar]: this._anthropicKeyFromRenderer }
+						: {}),
+					// After the key, and deliberately not instead of it. Both
+					// can be present: the harness prefers the account, and
+					// someone who has also set their own Anthropic key can
+					// still pick a model that uses it.
+					...(this._cloudeideAccountFromRenderer
+						? {
+							[AgentHostCloudeideBaseUrlEnvVar]: this._cloudeideAccountFromRenderer.baseUrl,
+							[AgentHostCloudeideTokenEnvVar]: this._cloudeideAccountFromRenderer.token,
+						}
 						: {}),
 				}
 			})) {

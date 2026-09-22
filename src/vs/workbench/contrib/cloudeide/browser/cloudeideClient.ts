@@ -3,6 +3,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { ISecretStorageService } from '../../../../platform/secrets/common/secrets.js';
+import { CloudeideDefaultServerUrl, CloudeideTokenSecret } from '../../../../platform/agentHost/common/agentService.js';
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
 
 /**
@@ -23,7 +24,15 @@ import { IConfigurationService } from '../../../../platform/configuration/common
  * synced settings file or a screenshot of one.
  */
 
-const TOKEN_KEY = 'cloudeide.apiToken';
+/*
+ * One name, defined where both halves can reach it.
+ *
+ * The agent host forwards this same secret into its spawn env so the harness
+ * can run on the account's credits, and it lives in `platform` because
+ * workbench may import from there and not the reverse. A second spelling here
+ * would be a token that saves and never arrives.
+ */
+const TOKEN_KEY = CloudeideTokenSecret;
 
 export interface ChatMessage {
 	readonly role: 'user' | 'assistant';
@@ -164,7 +173,7 @@ export class CloudeideClient {
 	 */
 	get serverUrl(): string {
 		const configured = this.configurationService.getValue<string>('cloudeide.serverUrl');
-		return (configured || 'https://api.cloudeide.com').replace(/\/+$/, '');
+		return (configured || CloudeideDefaultServerUrl).replace(/\/+$/, '');
 	}
 
 	/**
@@ -181,7 +190,7 @@ export class CloudeideClient {
 	 */
 	get webUrl(): string {
 		const configured = this.configurationService.getValue<string>('cloudeide.webUrl');
-		return (configured || 'https://api.cloudeide.com').replace(/\/+$/, '');
+		return (configured || CloudeideDefaultServerUrl).replace(/\/+$/, '');
 	}
 
 	/**

@@ -485,6 +485,47 @@ export const AgentHostAnthropicKeyEnvVar = 'ANTHROPIC_API_KEY';
  */
 export const AgentHostAnthropicKeySecret = 'cloudeide.anthropicApiKey';
 
+/**
+ * The CloudeIDE account, carried to the agent host the same way.
+ *
+ * The harness runs its tools on this machine, which is the right place for
+ * them — real files, the real terminal, the real dependencies. Where its model
+ * calls go is a separate question, and until now the only answers were
+ * Copilot's endpoint or the person's own Anthropic key. Neither is this
+ * product: one bills somebody else, the other bills nobody and leaves the
+ * account it belongs to out of the loop entirely.
+ *
+ * So the base URL and the account's token cross into the spawn env, and the
+ * SDK is pointed at CloudeIDE's own Anthropic-shaped endpoint. Tools stay
+ * local; the model call is billed where the credits are.
+ */
+export const AgentHostCloudeideAccountIpcChannel = 'vscode:agentHostCloudeideAccount';
+
+/** What the Claude Agent SDK reads to send its requests somewhere else. */
+export const AgentHostCloudeideBaseUrlEnvVar = 'CLOUDEIDE_ANTHROPIC_BASE_URL';
+
+/** The account token the endpoint above authenticates with. */
+export const AgentHostCloudeideTokenEnvVar = 'CLOUDEIDE_API_TOKEN';
+
+/**
+ * Where the CloudeIDE account lives, named once.
+ *
+ * The panel in `contrib/cloudeide` writes the token and reads the setting;
+ * this layer forwards both into the agent host's environment. Workbench code
+ * may import from platform and not the other way round, so the names live
+ * here and the panel imports them — two spellings of a secret name is a token
+ * that saves and never arrives, which is exactly the class of bug that takes
+ * a day to find.
+ */
+export const CloudeideTokenSecret = 'cloudeide.apiToken';
+
+export const CloudeideServerUrlSetting = 'cloudeide.serverUrl';
+
+export const CloudeideDefaultServerUrl = 'https://api.cloudeide.com';
+
+/** The Anthropic-shaped endpoint the harness is pointed at, under the server. */
+export const CloudeideAnthropicPath = '/api/anthropic';
+
 /** Renderer-to-main request to replace the shared local Agent Host process. */
 export const AgentHostRestartIpcChannel = 'vscode:restartAgentHost';
 
