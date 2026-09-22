@@ -240,7 +240,7 @@ jobs:
           cp "${{ steps.package.outputs.name }}.tar.gz" "$asset"
           gh release create "$tag" \
             --title "CloudeIDE ${{ steps.package.outputs.version }}" \
-            --notes "Linux: install the .deb (sudo apt install ./CloudeIDE-linux-x64.deb) so browser sign-in can return to the app; the .tar.gz runs without installing. Windows: unzip and run CloudeIDE.exe." \
+            --notes "Linux: install the .deb (sudo apt install ./CloudeIDE-linux-x64.deb) so browser sign-in can return to the app; the .tar.gz runs without installing. Windows: unzip and run CloudeIDE.exe. macOS (Apple Silicon): unzip, move CloudeIDE.app to Applications, then right-click it and choose Open the first time. The build is not notarized, so a double-click is refused once. Same thing from a terminal: xattr -dr com.apple.quarantine /Applications/CloudeIDE.app" \
             || echo "release $tag already exists"
           gh release upload "$tag" "$asset" CloudeIDE-linux-x64.deb --clobber
 
@@ -443,6 +443,176 @@ jobs:
           cp "${{ steps.package.outputs.name }}.zip" "$asset"
           gh release create "$tag" \
             --title "CloudeIDE ${{ steps.package.outputs.version }}" \
-            --notes "Linux: unpack and run ./cloudeide. Windows: unzip and run CloudeIDE.exe." \
+            --notes "Linux: install the .deb (sudo apt install ./CloudeIDE-linux-x64.deb) so browser sign-in can return to the app; the .tar.gz runs without installing. Windows: unzip and run CloudeIDE.exe. macOS (Apple Silicon): unzip, move CloudeIDE.app to Applications, then right-click it and choose Open the first time. The build is not notarized, so a double-click is refused once. Same thing from a terminal: xattr -dr com.apple.quarantine /Applications/CloudeIDE.app" \
+            || echo "release $tag already exists"
+          gh release upload "$tag" "$asset" --clobber
+
+  # macOS, and Apple Silicon only to begin with.
+  #
+  # One unknown at a time is how Linux and then Windows got here, and this is
+  # the third. Every MacBook sold since late 2020 is Apple Silicon, so arm64 is
+  # the one that matters; darwin-x64 is a `vscode-darwin-x64` away once this is
+  # known to work, and is only worth adding for an older Intel machine.
+  #
+  # Nothing here is signed with an Apple certificate, and none is needed. The
+  # $99-a-year Developer Program buys notarization — the absence of the "cannot
+  # be opened because Apple cannot check it for malicious software" dialog. It
+  # does not buy the ability to run. That is what the ad-hoc signature in the
+  # packaging step is for, and that is free.
+  macos:
+    runs-on: macos-latest
+    timeout-minutes: 150
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: What this runner has
+        run: |
+          uname -m
+          df -h /
+          xcodebuild -version || true
+
+      - name: Install dependencies
+        run: npm ci
+        env:
+          npm_config_arch: arm64
+
+      - name: Build
+        run: |
+          npm run gulp compile-build-without-mangling
+          npm run gulp vscode-darwin-arm64
+        env:
+          NODE_OPTIONS: --max-old-space-size=12288
+          # The build downloads the js-debug extensions from the GitHub API,
+          # which rate limits unauthenticated callers by runner IP — shared, so
+          # the budget can already be gone on arrival. build/lib/fetch.ts sends
+          # this token when it is set.
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Package
+        id: package
+        run: |
+          set -euo pipefail
+          built="../VSCode-darwin-arm64"
+          app="${built}/CloudeIDE.app"
+          test -d "$app" || { echo "::error::the build produced no CloudeIDE.app"; ls -la "$built" 2>/dev/null; exit 1; }
+
+          # An ad-hoc signature, because on Apple Silicon an arm64 binary that
+          # carries no valid signature at all is killed by the kernel before it
+          # runs — the user sees "CloudeIDE is damaged and can't be opened",
+          # which is neither true nor fixable by them. Electron ships ad-hoc
+          # signed, and packaging breaks that signature by rewriting Info.plist
+          # and moving resources in, so it has to be reapplied afterwards. This
+          # needs no Apple account and no certificate: `--sign -` is the ad-hoc
+          # identity. It does not stop Gatekeeper asking about an unidentified
+          # developer; it is what makes the app launchable at all.
+          codesign --force --deep --sign - "$app"
+          codesign --verify --deep --strict "$app" && echo "ad-hoc signature verifies"
+
+          version="$(node -p "require('./package.json').version")"
+          name="CloudeIDE-darwin-arm64-${version}"
+
+          # ditto, not zip. An .app bundle is full of symlinks — every Electron
+          # framework is a tree of them — and plain zip follows them, producing
+          # an archive several times the size that unpacks into an application
+          # whose signature no longer verifies.
+          ditto -c -k --sequesterRsrc --keepParent "$app" "${name}.zip"
+
+          echo "name=${name}" >> "$GITHUB_OUTPUT"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          ls -lh "${name}.zip"
+          echo "--- what is in the bundle ---"
+          ls "${app}/Contents"
+          echo "--- the executable ---"
+          ls -l "${app}/Contents/MacOS"
+
+      - name: Write the project
+        run: build/cloudeide/sample-project.sh /tmp/ws
+
+      # Started and photographed, as on the other two platforms. The runner has
+      # a window server of its own, so there is no Xvfb here — but a macOS
+      # runner is the least reliable of the three at drawing anything, so none
+      # of this is allowed to fail the job. The package is the deliverable; the
+      # picture is evidence about it.
+      - name: Start it and take a picture
+        id: smoke
+        timeout-minutes: 15
+        run: |
+          set -uxo pipefail
+          app="../VSCode-darwin-arm64/CloudeIDE.app"
+          bin="${app}/Contents/MacOS/$(ls "${app}/Contents/MacOS" | head -1)"
+          test -x "$bin" || { echo "::error::no executable inside the bundle"; exit 1; }
+
+          # The quarantine attribute is applied to downloads, not to a build
+          # made here — but stripping it costs nothing and makes this step the
+          # same shape as what a person does after downloading.
+          xattr -dr com.apple.quarantine "$app" 2>/dev/null || true
+
+          "$bin" /tmp/ws /tmp/ws/src/menu.js \
+            --skip-welcome --skip-release-notes --disable-workspace-trust \
+            --user-data-dir /tmp/cloudeide-data --extensions-dir /tmp/cloudeide-ext \
+            > /tmp/app.log 2>&1 &
+          pid=$!
+
+          # Long enough for a first run: it unpacks, starts an extension host
+          # and paints a window.
+          sleep 75
+
+          if ! kill -0 "$pid" 2>/dev/null; then
+            echo "::error::the application exited before it could be photographed"
+            tail -40 /tmp/app.log || true
+            exit 1
+          fi
+
+          screencapture -x /tmp/desktop.png || echo "::warning::the screen could not be photographed"
+          ls -l /tmp/desktop.png || true
+          kill "$pid" 2>/dev/null || true
+          echo "--- the application's own output ---"
+          tail -25 /tmp/app.log || true
+
+          # The picture itself, through the log — the artifact store is served
+          # from a host the session that reviews these cannot reach.
+          if [ -s /tmp/desktop.png ]; then
+            sips -Z 900 -s format jpeg -s formatOptions 52 /tmp/desktop.png --out /tmp/desktop.jpg >/dev/null 2>&1 || true
+          fi
+          if [ -s /tmp/desktop.jpg ]; then
+            ls -l /tmp/desktop.jpg
+            echo "--- BEGIN SCREENSHOT BASE64 ---"
+            base64 -b 500 -i /tmp/desktop.jpg
+            echo "--- END SCREENSHOT BASE64 ---"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cloudeide-macos-screenshot
+          path: |
+            /tmp/desktop.png
+            /tmp/app.log
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cloudeide-darwin-arm64
+          path: ${{ steps.package.outputs.name }}.zip
+          retention-days: 14
+
+      - name: Publish a release
+        if: github.event_name == 'push' || inputs.release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="v${{ steps.package.outputs.version }}"
+          asset="CloudeIDE-darwin-arm64.zip"
+          cp "${{ steps.package.outputs.name }}.zip" "$asset"
+          gh release create "$tag" \
+            --title "CloudeIDE ${{ steps.package.outputs.version }}" \
+            --notes "Linux: install the .deb (sudo apt install ./CloudeIDE-linux-x64.deb) so browser sign-in can return to the app; the .tar.gz runs without installing. Windows: unzip and run CloudeIDE.exe. macOS (Apple Silicon): unzip, move CloudeIDE.app to Applications, then right-click it and choose Open the first time. The build is not notarized, so a double-click is refused once. Same thing from a terminal: xattr -dr com.apple.quarantine /Applications/CloudeIDE.app" \
             || echo "release $tag already exists"
           gh release upload "$tag" "$asset" --clobber
