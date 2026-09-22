@@ -109,11 +109,23 @@ function prepareDebPackage(arch: string) {
 			.pipe(replace('@@ARCHITECTURE@@', debArch))
 			.pipe(rename('DEBIAN/postinst'));
 
-		const templates = gulp.src('resources/linux/debian/templates.template', { base: '.' })
-			.pipe(replace('@@NAME@@', product.applicationName))
-			.pipe(rename('DEBIAN/templates'));
+		/*
+		 * The debconf question, shipped only by the packages that can act on it.
+		 *
+		 * It asks whether to add Microsoft's apt repository, and postinst now
+		 * only does that for Microsoft's own package names. Shipping the
+		 * template anyway would leave `dpkg-reconfigure` able to put a question
+		 * about a third party's repository in front of somebody who installed
+		 * this, and answering it would change nothing.
+		 */
+		const shipsMicrosoftRepo = ['code', 'code-insiders', 'code-exploration'].includes(product.applicationName);
+		const templates = shipsMicrosoftRepo
+			? [gulp.src('resources/linux/debian/templates.template', { base: '.' })
+				.pipe(replace('@@NAME@@', product.applicationName))
+				.pipe(rename('DEBIAN/templates'))]
+			: [];
 
-		const all = es.merge(control, templates, postinst, postrm, prerm, desktops, appdata, workspaceMime, icon, bash_completion, zsh_completion, code);
+		const all = es.merge(control, ...templates, postinst, postrm, prerm, desktops, appdata, workspaceMime, icon, bash_completion, zsh_completion, code);
 
 		return all.pipe(vfs.dest(destination));
 	};

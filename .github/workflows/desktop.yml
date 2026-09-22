@@ -111,6 +111,16 @@ jobs:
           ls -lh CloudeIDE-linux-x64.deb
           # Proof the package claims the scheme, rather than a hope that it does.
           dpkg-deb -c CloudeIDE-linux-x64.deb | grep -F 'url-handler.desktop'
+          # And proof it does not carry Microsoft's apt repository with it. This
+          # package is not served from there and uninstalling it must not remove
+          # a key a real VS Code install depends on, so the scripts must not
+          # mention either — a grep is the only way to know the guard held.
+          dpkg-deb --control CloudeIDE-linux-x64.deb /tmp/deb-control
+          if grep -rl 'packages.microsoft.com\|microsoft.gpg\|add-microsoft-repo' /tmp/deb-control; then
+            echo "::error::the package still touches Microsoft's apt repository"
+            exit 1
+          fi
+          echo "no Microsoft repository in the maintainer scripts"
         env:
           NODE_OPTIONS: --max-old-space-size=12288
 

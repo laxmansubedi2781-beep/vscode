@@ -15,18 +15,27 @@ if hash update-mime-database 2>/dev/null; then
 	update-mime-database /usr/share/mime
 fi
 
-RET=true
-if [ -e '/usr/share/debconf/confmodule' ]; then
-	. /usr/share/debconf/confmodule
-	db_get @@NAME@@/add-microsoft-repo || true
-fi
-if [ "$RET" = "true" ]; then
-	eval $(apt-config shell APT_SOURCE_PARTS Dir::Etc::sourceparts/d)
-	CODE_SOURCE_PART=${APT_SOURCE_PARTS}vscode.sources
-	rm -f $CODE_SOURCE_PART
+# Only a package that added these may remove them.
+#
+# Unguarded, this was the worse half of the same bug: uninstalling CloudeIDE
+# deleted /usr/share/keyrings/microsoft.gpg and the vscode apt source — files
+# this package never wrote and that a real VS Code install on the same machine
+# depends on. Removing one editor would have quietly stopped another one
+# updating, with nothing to connect the two events.
+if [ "@@NAME@@" = "code" ] || [ "@@NAME@@" = "code-insiders" ] || [ "@@NAME@@" = "code-exploration" ]; then
+	RET=true
+	if [ -e '/usr/share/debconf/confmodule' ]; then
+		. /usr/share/debconf/confmodule
+		db_get @@NAME@@/add-microsoft-repo || true
+	fi
+	if [ "$RET" = "true" ]; then
+		eval $(apt-config shell APT_SOURCE_PARTS Dir::Etc::sourceparts/d)
+		CODE_SOURCE_PART=${APT_SOURCE_PARTS}vscode.sources
+		rm -f $CODE_SOURCE_PART
 
-	CODE_TRUSTED_PART=/usr/share/keyrings/microsoft.gpg
-	rm -f $CODE_TRUSTED_PART
+		CODE_TRUSTED_PART=/usr/share/keyrings/microsoft.gpg
+		rm -f $CODE_TRUSTED_PART
+	fi
 fi
 
 if [ "$1" = "purge" ] && [ -e '/usr/share/debconf/confmodule' ]; then

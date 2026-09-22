@@ -22,7 +22,16 @@ if hash update-mime-database 2>/dev/null; then
 	update-mime-database /usr/share/mime
 fi
 
-if [ "@@NAME@@" != "code-oss" ]; then
+# Microsoft's own packages only.
+#
+# This read "!= code-oss", which meant everything that is not Microsoft's
+# community build — including this one. So installing CloudeIDE asked whether
+# to add packages.microsoft.com and, on a non-interactive install, added it
+# without asking, along with Microsoft's signing key. This package is not
+# distributed from that repository and is not updated by it; adding it put a
+# third party's source on a machine for no reason connected to what was being
+# installed.
+if [ "@@NAME@@" = "code" ] || [ "@@NAME@@" = "code-insiders" ] || [ "@@NAME@@" = "code-exploration" ]; then
 	# Remove the legacy bin command if this is the stable build
 	if [ "@@NAME@@" = "code" ]; then
 		rm -f /usr/local/bin/code
