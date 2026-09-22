@@ -3,12 +3,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import './media/cloudeide.css';
-import { Codicon } from '../../../../base/common/codicons.js';
 import { localize, localize2 } from '../../../../nls.js';
 import { Extensions as ConfigurationExtensions, IConfigurationRegistry } from '../../../../platform/configuration/common/configurationRegistry.js';
 import { SyncDescriptor } from '../../../../platform/instantiation/common/descriptors.js';
 import { Registry } from '../../../../platform/registry/common/platform.js';
-import { registerIcon } from '../../../../platform/theme/common/iconRegistry.js';
+import { FileAccess } from '../../../../base/common/network.js';
 import { ViewPaneContainer } from '../../../browser/parts/views/viewPaneContainer.js';
 import {
 	Extensions as ViewContainerExtensions,
@@ -33,11 +32,15 @@ import { registerWorkbenchContribution2, WorkbenchPhase } from '../../../common/
 
 const CONTAINER_ID = 'workbench.view.cloudeideContainer';
 
-const cloudeideIcon = registerIcon(
-	'cloudeide-view-icon',
-	Codicon.rocket,
-	localize('cloudeideViewIcon', "View icon of the CloudeIDE panel."),
-);
+/*
+ * The product's own mark, not a codicon standing in for it.
+ *
+ * A URI icon is applied as a CSS mask rather than drawn, so the white fill in
+ * the file never reaches the screen — the shape is cut out of the theme's own
+ * foreground colour. That is what makes shipping a brand mark here safe: it
+ * follows a light theme the same way every other icon in the bar does.
+ */
+const cloudeideIcon = FileAccess.asBrowserUri('vs/workbench/contrib/cloudeide/browser/media/logo.svg');
 
 /*
  * The auxiliary bar — the right-hand side — rather than the primary sidebar.

@@ -111,6 +111,8 @@ const vscodeResourceIncludes = [
 	// Welcome
 	'out-build/vs/workbench/contrib/welcomeGettingStarted/common/media/**/*.{svg,png}',
 	'out-build/vs/workbench/contrib/welcomeOnboarding/browser/media/*.svg',
+	// The CloudeIDE mark, used as the icon for its own container and for chat.
+	'out-build/vs/workbench/contrib/cloudeide/browser/media/*.svg',
 
 	// Chat Pet
 	'out-build/vs/workbench/contrib/chat/browser/widget/media/chatPet/**/*.{gif,png}',
