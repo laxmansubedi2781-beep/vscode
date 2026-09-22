@@ -146,6 +146,21 @@ Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Configuration).regis
 			description: localize('cloudeide.webUrl',
 				"The CloudeIDE dashboard this editor opens to sign in. Not the marketing site: that one serves no dashboard. Change it alongside the server URL for a self-hosted install."),
 		},
+		'cloudeide.model': {
+			type: 'string',
+			enum: ['claude-sonnet-5', 'claude-opus-5', 'claude-haiku-4-5', 'gpt-5.6-terra', 'gpt-5.6-sol', 'gpt-5.6-luna'],
+			default: 'claude-sonnet-5',
+			enumDescriptions: [
+				localize('cloudeide.model.sonnet', "The default. Strong at code, and the one most coding turns should use."),
+				localize('cloudeide.model.opus', "The most capable, and the most expensive per turn. For a change that has defeated the default."),
+				localize('cloudeide.model.haiku', "The cheapest and quickest. Good for a question, thin for a refactor."),
+				localize('cloudeide.model.terra', "OpenAI's middle model."),
+				localize('cloudeide.model.sol', "OpenAI's most capable."),
+				localize('cloudeide.model.luna', "OpenAI's cheapest."),
+			],
+			description: localize('cloudeide.model',
+				"Which model the agent runs on. Every model here is billed to your CloudeIDE account, and what a turn costs depends on which one you pick — see Credits in the dashboard."),
+		},
 		'cloudeide.environment': {
 			type: 'string',
 			enum: ['development', 'preview', 'production'],

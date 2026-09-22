@@ -29,6 +29,13 @@ import { CloudeideClient, type ChatMessage, type FileChange } from './cloudeideC
 import { collectWorkspaceFiles, toWorkspaceState } from './cloudeideWorkspace.js';
 import { VSBuffer } from '../../../../base/common/buffer.js';
 import { linesDiffComputers } from '../../../../editor/common/diff/linesDiffComputers.js';
+import { CancellationTokenSource } from '../../../../base/common/cancellation.js';
+import { toDisposable } from '../../../../base/common/lifecycle.js';
+import { ISearchService } from '../../../services/search/common/search.js';
+import { QueryBuilder } from '../../../services/search/common/queryBuilder.js';
+import { AGENT_TOOLS, CloudeideAgentTools, type StagedEdit } from './cloudeideAgentTools.js';
+import { runAgentLoop } from './cloudeideAgentLoop.js';
+import { buildAgentSystemPrompt } from './cloudeideAgentPrompt.js';
 
 const $ = DOM.$;
 
@@ -40,6 +47,55 @@ const $ = DOM.$;
  * compiles for both. An id costs nothing when the command is absent; an import
  * would drag an electron-only surface into the web bundle.
  */
+const CLOUDEIDE_MODEL_SETTING = 'cloudeide.model';
+
+/**
+ * What the agent runs on unless the account says otherwise.
+ *
+ * Sonnet rather than the cheapest or the most capable: a coding turn is a
+ * loop of tool calls, and the difference between models shows up as how many
+ * of them it takes to get somewhere — which is also what it costs.
+ */
+const DEFAULT_AGENT_MODEL = 'claude-sonnet-5';
+
+/**
+ * A tool call in a few words, for the line the person watches go by.
+ *
+ * Named after what it did to their project, not after the tool: "Reading
+ * src/menu.js" rather than "read_file". The path travels separately so the
+ * line can show it quietly beside the summary.
+ */
+function describeTool(name: string, input: Record<string, unknown>): string {
+	const query = typeof input.query === 'string' ? input.query : '';
+	switch (name) {
+		case 'list_files': return localize('cloudeide.tool.list', "Looking through the project");
+		case 'read_file': return localize('cloudeide.tool.read', "Reading");
+		case 'search_files': return localize('cloudeide.tool.search', "Searching for {0}", query);
+		case 'edit_file': return localize('cloudeide.tool.edit', "Editing");
+		case 'write_file': return localize('cloudeide.tool.write', "Writing");
+		default: return name;
+	}
+}
+
+function toolPath(input: Record<string, unknown>): string | undefined {
+	return typeof input.path === 'string' ? input.path : undefined;
+}
+
+/**
+ * A staged edit as the proposal card wants it.
+ *
+ * `before === undefined` is a file that does not exist yet, which the card
+ * calls a create; the card's own type says `null` for the same thing.
+ */
+function toFileChange(edit: StagedEdit): FileChange {
+	return {
+		path: edit.path,
+		kind: edit.before === undefined ? 'create' : 'edit',
+		before: edit.before ?? null,
+		after: edit.after,
+	};
+}
+
 const CLOUDEIDE_SIGN_IN_COMMAND = 'cloudeide.signIn';
 
 /**
@@ -74,6 +130,9 @@ export class CloudeidePanel extends ViewPane {
 	/** The last state uploaded, so an unchanged project is not sent twice. */
 	private syncedState: string | undefined;
 
+	/** The run in flight, so disposing the panel stops it. */
+	private runCancellation: CancellationTokenSource | undefined;
+
 	constructor(
 		options: IViewletViewOptions,
 		@IKeybindingService keybindingService: IKeybindingService,
@@ -91,11 +150,16 @@ export class CloudeidePanel extends ViewPane {
 		@IModelService private readonly modelService: IModelService,
 		@IWorkspaceContextService private readonly contextService: IWorkspaceContextService,
 		@ICommandService private readonly commandService: ICommandService,
+		@ISearchService private readonly searchService: ISearchService,
 	) {
 		super(options, keybindingService, contextMenuService, configurationService, contextKeyService,
 			viewDescriptorService, instantiationService, openerService, themeService, hoverService);
 
 		this.client = new CloudeideClient(secretStorageService, configurationService);
+
+		// A run outlives the panel otherwise: the loop would go on calling
+		// tools against a workspace nobody is watching, and paying for it.
+		this._register(toDisposable(() => this.runCancellation?.cancel()));
 	}
 
 	protected override renderBody(container: HTMLElement): void {
@@ -405,9 +469,38 @@ export class CloudeidePanel extends ViewPane {
 		// is worse than none.
 		const context = await this.gatherContext();
 
-		// And the project itself, so the agent's own tools have something to
-		// read. Failure here is not fatal — the run still gets the open files
-		// in `context` — so it reports and carries on rather than refusing to
+		/*
+		 * Which agent answers this.
+		 *
+		 * A folder open means the tools have something real to read, so the
+		 * run happens here and the project never leaves the machine. With no
+		 * folder — the web build, or a window opened on nothing — there is
+		 * nothing for local tools to work on, and the server's agent answers
+		 * from what was uploaded instead. One product, two situations, rather
+		 * than a setting for the person to get wrong.
+		 */
+		if (this.contextService.getWorkspace().folders.length > 0) {
+			try {
+				const local = await this.runLocalAgent(pending, context);
+				if (local) {
+					this.messages.push({ role: 'assistant', content: local });
+				}
+			} catch (err) {
+				const message = err instanceof Error ? err.message : String(err);
+				pending.textContent = message;
+				pending.classList.add('cloudeide-turn-failed');
+				this.messages.pop();
+				this.setStatus(message, 'error');
+			} finally {
+				this.setBusy(false);
+				this.input.focus();
+			}
+			return;
+		}
+
+		// No folder: the server answers, from the copy this sends ahead of it.
+		// Failure here is not fatal — the run still gets the open files in
+		// `context` — so it reports and carries on rather than refusing to
 		// answer a question it could have answered less well.
 		await this.syncWorkspace();
 
@@ -489,6 +582,113 @@ export class CloudeidePanel extends ViewPane {
 	}
 
 	/**
+	 * A turn of the agent that runs here, on this machine.
+	 *
+	 * The model is the only thing that leaves: the tools read and change the
+	 * real files, in the folder the person has open, and nothing is uploaded.
+	 * The other path — `this.client.agent` — answers from a copy of the
+	 * project sent ahead of the run, which is all the web build can do and
+	 * less than this one should settle for.
+	 *
+	 * Returns what the model said, so the caller can put it in the history.
+	 */
+	private async runLocalAgent(pending: HTMLElement, contextNote: string | undefined): Promise<string> {
+		const tools = new CloudeideAgentTools(
+			this.fileService,
+			this.contextService,
+			this.searchService,
+			this.instantiationService.createInstance(QueryBuilder),
+		);
+
+		const folder = this.contextService.getWorkspace().folders[0];
+		const open = this.editorService.editors
+			.map(editor => editor.resource)
+			.filter((uri): uri is URI => !!uri && uri.scheme === folder.uri.scheme)
+			.map(uri => uri.path.startsWith(folder.uri.path) ? uri.path.slice(folder.uri.path.length + 1) : uri.path);
+
+		const system = buildAgentSystemPrompt({
+			workspaceName: folder.name,
+			openFiles: open,
+			activeFile: open[0],
+		});
+
+		const source = new CancellationTokenSource();
+		this.runCancellation = source;
+
+		let reply = '';
+		let started = false;
+		try {
+			await runAgentLoop({
+				// The conversation, plus whatever the open files add. The note
+				// is a user turn rather than part of the system prompt: it
+				// describes this question's context, not the agent's standing
+				// instructions, and it changes between turns.
+				messages: contextNote
+					? [...this.messages, { role: 'user' as const, content: contextNote }]
+					: this.messages,
+				tools: AGENT_TOOLS,
+				toolHost: tools,
+				model: this.configuredModel(),
+				system,
+				send: body => this.client.anthropicMessages(body),
+				token: source.token,
+				onEvent: event => {
+					switch (event.type) {
+						case 'text':
+							if (!started) {
+								pending.textContent = '';
+								started = true;
+							}
+							reply += event.text;
+							pending.textContent = reply;
+							this.transcript.scrollTop = this.transcript.scrollHeight;
+							break;
+
+						case 'toolStart':
+							this.appendStep(describeTool(event.name, event.input), toolPath(event.input));
+							break;
+
+						case 'toolEnd':
+							// Only failures. A line per tool is already shown
+							// when it starts; repeating it on success turns the
+							// transcript into a log nobody reads.
+							if (event.result.isError) {
+								this.appendStep(localize('cloudeide.toolFailed', "That did not work"), event.result.content);
+							}
+							break;
+
+						case 'done':
+							if (event.reason === 'stepLimit') {
+								this.setStatus(localize('cloudeide.stepLimit',
+									"The run stopped at its step limit. Ask again with a smaller piece of the task."), 'error');
+							}
+							break;
+					}
+				},
+			});
+		} finally {
+			this.runCancellation = undefined;
+			source.dispose();
+		}
+
+		const edits = tools.edits();
+		if (edits.length > 0) {
+			this.appendProposal(undefined, edits.map(toFileChange));
+		}
+
+		if (!started) {
+			pending.textContent = reply || localize('cloudeide.noAnswer', "The run finished without an answer.");
+		}
+		return reply;
+	}
+
+	/** The model this account should use, from settings, with a sensible default. */
+	private configuredModel(): string {
+		const configured = this.configurationService.getValue<string>(CLOUDEIDE_MODEL_SETTING);
+		return typeof configured === 'string' && configured.trim() ? configured.trim() : DEFAULT_AGENT_MODEL;
+	}
+
+	/**
 	 * Uploads the open folder, unless it is the same one already up there.
 	 *
 	 * The hash is over paths and contents, so an answer that changes nothing
@@ -539,7 +739,14 @@ export class CloudeidePanel extends ViewPane {
 	 * and sends both sides of every file; applying them is this editor's job,
 	 * and the person's call.
 	 */
-	private appendProposal(runId: string, changes: readonly FileChange[]): void {
+	/**
+	 * A set of changes, with the diff and the two buttons that decide them.
+	 *
+	 * `runId` is the server's, and is absent for the local agent — which has
+	 * no run on the server to report a verdict to, because the model was the
+	 * only thing that left this machine.
+	 */
+	private appendProposal(runId: string | undefined, changes: readonly FileChange[]): void {
 		const card = DOM.append(this.transcript, $('.cloudeide-proposal'));
 
 		const head = DOM.append(card, $('.cloudeide-proposal-head'));
@@ -602,7 +809,9 @@ export class CloudeidePanel extends ViewPane {
 			discard.disabled = true;
 			try {
 				const written = await this.applyChanges(changes);
-				await this.client.decideProposal(runId, 'applied');
+				if (runId) {
+					await this.client.decideProposal(runId, 'applied');
+				}
 				settle(localize('cloudeide.proposal.applied', "Applied to {0} files", written));
 			} catch (err) {
 				accept.disabled = false;
@@ -617,7 +826,9 @@ export class CloudeidePanel extends ViewPane {
 			// Reported even though nothing was written: the server holds the
 			// proposal open until it hears, and a recap that still lists a
 			// discarded file as pending is a recap that lies.
-			await this.client.decideProposal(runId, 'discarded').catch(() => { /* best effort */ });
+			if (runId) {
+				await this.client.decideProposal(runId, 'discarded').catch(() => { /* best effort */ });
+			}
 			settle(localize('cloudeide.proposal.discarded', "Discarded"));
 		}));
 
