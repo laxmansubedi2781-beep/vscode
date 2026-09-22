@@ -229,26 +229,32 @@
         </div>
 
         <!--
-          A recording of the product, not a drawing of one and not a still.
-          It was made by driving the real web build against the real server
-          with a real account: the question is typed, and the answer streams
-          in as it actually arrives. The claim this section makes is that the
-          agent reads your code, and the only honest way to show that is to
-          let someone watch it read.
+          A detail, not the whole window — because the row below is the whole
+          window, and two pictures of the same workbench one under the other
+          is the repetition this layout was rebuilt to get rid of. Close on
+          the file and the answer beside it, which is what this section claims;
+          the row below pulls back to the frame and ends on a live address.
+
+          It used to be a recording, and the recording went because of what was
+          in it rather than because a still is better. It was filmed against
+          the web build, which opens no folder, so the frame was an empty
+          editor holding three scratch buffers and an answer that began "I
+          don't see a file named menu.js" — true, and the exact opposite of
+          what this section says. The film comes back when it is filmed
+          against a real folder; see build/cloudeide/record-panel.mjs.
         -->
-        <div class="window" style="--ar-narrow: 720 / 742; --ar-wide: 1440 / 824">
+        <div class="window" style="--ar-narrow: 780 / 975; --ar-wide: 1360 / 545">
           <div class="window-bar">
             <span class="window-dots" aria-hidden="true">
               <span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span>
             </span>
             <span class="window-title">Editor</span>
           </div>
-          <video muted loop playsinline preload="none" poster="assets/panel-ask-narrow.jpg"
-                 aria-label="A question typed into the CloudeIDE panel, and the answer arriving">
-            <source src="assets/panel-ask.webm" type="video/webm" media="(min-width: 760px)" />
-            <source src="assets/panel-ask.mp4" type="video/mp4" media="(min-width: 760px)" />
-            <source src="assets/panel-ask-narrow.mp4" type="video/mp4" />
-          </video>
+          <picture>
+            <source srcset="assets/panel-detail-wide.jpg" media="(min-width: 760px)" />
+            <img src="assets/panel-detail.jpg" loading="lazy" decoding="async" width="780" height="975"
+                 alt="menu.js open in CloudeIDE, with a question about it answered in the panel beside the code" />
+          </picture>
         </div>
       </div>
 

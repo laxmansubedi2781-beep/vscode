@@ -111,6 +111,17 @@ a {
   padding: 0 24px;
 }
 
+/* Wider than the rest of the page, on purpose.
+ *
+ * Everything else here is text and reads better at 1120. These rows are a
+ * screenshot of an IDE beside a paragraph, and the screenshot is the part
+ * that has to be legible — 1120 minus a copy column left it at phone size on
+ * a laptop.
+ */
+#demo .wrap {
+  max-width: 1360px;
+}
+
 section {
   position: relative;
 }
@@ -591,39 +602,40 @@ section {
    title bar says which surface you are looking at. The hero film is untouched
    and still runs full-bleed.
 */
+/* No card.
+ *
+ * These were panels: 44px of padding and a raised background, on a page that
+ * is already dark. The border drew a box around a screenshot that is itself a
+ * box, and the padding spent 88px of the widest row on nothing. Two boxes
+ * deep, the film inside them was smaller than a phone screen on a 1440
+ * display — which is the thing these sections exist to show.
+ *
+ * The copy column is now fixed rather than proportional. It caps at 46ch
+ * anyway, so a fraction of the row was only ever deciding how much empty
+ * space sat beside it; everything left over goes to the picture.
+ */
 .showcase {
   display: grid;
-  /* The film column is much wider, and deliberately so. At 1.15fr with 64px
-     of padding the film came out 473px across inside a 1072px card — a whole
-     IDE, editor and panel, rendered smaller than a phone screen. Measured, it
-     was the reason these sections read as thin: the copy caps out at 46ch and
-     then stops, while the film is the thing that has to be legible.
-  */
-  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.6fr);
+  grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
   align-items: center;
-  gap: 40px;
-  padding: 44px;
-  border-radius: 14px;
-  background: var(--panel);
+  gap: 64px;
 }
 
+/* Air, now that there is no card edge to separate them. */
 .showcase + .showcase {
-  margin-top: 32px;
+  margin-top: 104px;
 }
 
 /* Alternate the sides. `order` rather than a swapped source order, so the
-   copy still comes first for a screen reader and for the single column.
-   The track sizes have to swap with it: `order` moves the items but not the
-   columns, so without this the reversed row hands the film the narrow track
-   and the copy the wide one — the opposite of the intent, and visibly a
-   different film size on alternate rows. */
-/* The mirror of `.showcase`, and it has to be kept in step with it: `order`
-   moves the items but not the tracks, so a reversed row that kept the
-   original ratios hands the film the narrow track. Left unchanged after the
-   film column was widened, that is exactly what happened — 629px of film on
-   one row and 505px on the next, in the same page. */
+   copy still comes first for a screen reader and in the single column.
+
+   The tracks have to swap with it: `order` moves the items but not the
+   columns, so a reversed row that kept the original ratios hands the film the
+   narrow track. Left unchanged after the film column was widened, that is
+   exactly what happened — 629px of film on one row and 505px on the next, in
+   the same page. */
 .showcase--reverse {
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.8fr);
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
 }
 
 .showcase--reverse .showcase-copy {
@@ -781,9 +793,10 @@ section {
   .showcase {
     grid-template-columns: minmax(0, 1fr);
     gap: 28px;
-    /* Every pixel of padding is a pixel off the film, and on a phone the film
-       has none to spare: at 32px it was 276px across. */
-    padding: 20px;
+  }
+
+  .showcase + .showcase {
+    margin-top: 64px;
   }
 
   .showcase--reverse .showcase-copy {

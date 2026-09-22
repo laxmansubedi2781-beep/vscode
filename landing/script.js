@@ -100,6 +100,29 @@ const stillFilms = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 if (films.length) {
   /*
+   * The wide poster, where the wide film plays.
+   *
+   * `poster` takes one value, but the two cuts of a film are not the same
+   * picture: the wide one is the whole workbench and the narrow one is the
+   * panel alone, cropped from the right of it. A poster from the wrong cut is
+   * not a smaller version of the film, it is a different shot stretched into
+   * a box it was never framed for. Same 760px line the <source> elements use,
+   * and kept in step afterwards, because that line is crossed by turning a
+   * phone sideways as well as by loading the page.
+   */
+  const wideFilms = window.matchMedia("(min-width: 760px)");
+  const applyPosters = () => {
+    films.forEach((film) => {
+      const wide = film.dataset.posterWide;
+      if (!wide) return;
+      film.dataset.posterNarrow = film.dataset.posterNarrow || film.getAttribute("poster");
+      film.setAttribute("poster", wideFilms.matches ? wide : film.dataset.posterNarrow);
+    });
+  };
+  applyPosters();
+  wideFilms.addEventListener("change", applyPosters);
+
+  /*
    * Starting a film is not one call, because there are three separate reasons
    * a browser refuses one.
    *
