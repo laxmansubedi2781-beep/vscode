@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>CloudeIDE — AI-Powered Cloud IDE & Developer Workspace</title>
-<meta name="description" content="CloudeIDE is an AI-native desktop code editor. An agent that reads your real files, and one button that puts the result on a live URL — hosting, domains and deploys built in." />
+<title>CloudeIDE — The AI Coding Agent, in Your Editor</title>
+<meta name="description" content="CloudeIDE is your AI coding agent. It reads the real files on your machine, writes and edits them across the project, and shows you every change as a diff before anything is saved. Built on VS Code." />
 <link rel="canonical" href="https://cloudeide.com/" />
 <meta name="theme-color" content="#0d0c0b" />
 
@@ -89,7 +89,6 @@
     <nav class="nav-links" aria-label="Primary">
       <a href="#demo">Demo</a>
       <a href="#why">How it works</a>
-      <a href="#cli">CLI &amp; agents</a>
     </nav>
 
     <!--
@@ -115,7 +114,6 @@
     <a href="https://api.cloudeide.com/app/signin">Sign in</a>
     <a href="#demo">Demo</a>
     <a href="#why">How it works</a>
-    <a href="#cli">CLI &amp; agents</a>
     <a href="#desktop">Download</a>
   </div>
 </header>
@@ -125,18 +123,30 @@
   <!-- ------------------------------------------------------------- hero -- -->
   <section class="hero" id="top">
     <div class="wrap">
-      <div class="eyebrow"><span class="dot"></span> AI-native desktop editor</div>
+      <!--
+        "Built on VS Code" is the first thing on the page, above the name.
 
-      <h1>Write it and ship it,<br />in the same window.</h1>
-      <p class="sub">An AI agent that reads your real code, and a button that puts it on a URL.</p>
+        It is the fastest way to answer the question a developer asks before
+        any other: what am I being asked to switch to. Everything they know
+        already works — their extensions, their keybindings, their terminal —
+        and saying so costs one line. It is also verifiable, which is the
+        other half of why it is worth saying: the fork is public.
+      -->
+      <div class="eyebrow"><span class="dot"></span> Built on VS Code</div>
 
       <!--
-        The claim changed, so the headline did. It used to be "in a browser
-        tab, nothing to install", which was the browser build's pitch — and
-        that build is gone. What is left is the thing no other editor of this
-        kind does: the window that writes the code also publishes it. So say
-        that, and ask for the download in the same breath.
+        The headline names the thing, because that is what a headline is for.
+
+        It used to be "Write it and ship it, in the same window" — a sentence
+        about deploying, on a page for a code editor. Shipping is real and it
+        is further down. What somebody is looking for at the top is whether
+        this writes code with them, and the answer is the first six words.
       -->
+      <h1>CloudeIDE is your<br />AI coding agent.</h1>
+      <p class="sub">
+        It reads the real files on your machine, writes the change across as many
+        as it takes, and shows you a diff before anything is saved.
+      </p>
       <div class="hero-actions">
         <a class="btn btn-primary" href="#desktop">Download for desktop</a>
         <a class="btn btn-secondary" href="#demo">See it work <span class="showcase-arrow" aria-hidden="true">&rarr;</span></a>
@@ -219,11 +229,17 @@
 
       <div class="showcase reveal">
         <div class="showcase-copy">
-          <div class="section-label">Editor</div>
-          <h2>Ask, where you are working</h2>
+          <div class="section-label">The agent</div>
+          <h2>It works on your code,<br />not a copy of it</h2>
           <p>
-            Your file is open, and the agent is beside it. Describe the change in
-            plain words and read the answer as it arrives.
+            Ask in plain words. The agent reads the files on your disk, searches
+            the project for what it needs, and edits as many files as the change
+            takes — creating new ones where it has to.
+          </p>
+          <p>
+            Nothing is written until you have seen it. Every change arrives as a
+            diff with an Apply button, and the answer you get says what it did
+            rather than what it intends to do.
           </p>
           <a class="showcase-link" href="#desktop">Download CloudeIDE <span class="showcase-arrow" aria-hidden="true">&rarr;</span></a>
         </div>
@@ -260,11 +276,11 @@
 
       <div class="showcase showcase--reverse reveal">
         <div class="showcase-copy">
-          <div class="section-label">Deploy</div>
+          <div class="section-label">And then</div>
           <h2>One button, one live URL</h2>
           <p>
-            The folder you are working in goes up as it stands, and the address
-            comes back in the same panel.
+            When the change is right, the same window publishes it. No pipeline
+            to set up, no host to choose.
           </p>
           <p class="showcase-note">Static frontends — React, Vue, Svelte, Astro, Next static export.</p>
           <a class="showcase-link" href="#desktop">Download CloudeIDE <span class="showcase-arrow" aria-hidden="true">&rarr;</span></a>
@@ -294,8 +310,8 @@
       <div class="panel reveal">
       <div class="section-head reveal">
         <div class="section-label">Why CloudeIDE</div>
-        <h2>The setup tax, gone</h2>
-        <p>Everything before the first line of code, and after the last one.</p>
+        <h2>Everything you already know,<br />and an agent that can act</h2>
+        <p>It is VS Code. Your extensions, your keybindings, your terminal, your git.</p>
       </div>
 
       <!--
@@ -308,18 +324,18 @@
       <div class="steps reveal" aria-label="How it works">
         <div class="step">
           <span class="step-n">1</span>
-          <h3>Open it</h3>
-          <p>Install it and open a folder. No account.</p>
+          <h3>Open your project</h3>
+          <p>Install it and open the folder you already work in. Nothing to move.</p>
         </div>
         <div class="step">
           <span class="step-n">2</span>
-          <h3>Ask</h3>
-          <p>The agent reads the same files you do.</p>
+          <h3>Ask for the change</h3>
+          <p>The agent reads the same files you do, and edits across as many as it needs.</p>
         </div>
         <div class="step">
           <span class="step-n">3</span>
-          <h3>Ship</h3>
-          <p>One button, and the address comes back in the panel.</p>
+          <h3>Read the diff</h3>
+          <p>Nothing is saved until you press Apply. Then ship it, from the same window.</p>
         </div>
       </div>
       </div>
@@ -339,9 +355,16 @@
     <div class="wrap">
       <div class="panel reveal">
       <div class="section-head reveal">
-        <div class="section-label">Terminal &amp; AI agents</div>
-        <h2>Deploy from your terminal.<br />Or let your agent do it.</h2>
-        <p>The same account from your own shell.</p>
+        <!--
+          Last, and short.
+
+          This is a real part of the product and it is nobody's reason to try
+          it. Somebody who wants a CLI will find it; somebody deciding whether
+          to download an editor does not need three paragraphs about one first.
+        -->
+        <div class="section-label">Also</div>
+        <h2>There is a CLI, and an MCP server</h2>
+        <p>The same account from your own shell, or from another agent.</p>
       </div>
 
       <div class="cli-block reveal">
@@ -455,8 +478,6 @@
                href="https://github.com/laxmansubedi7/cloudevs/releases/latest/download/CloudeIDE-linux-x64.deb">Download for Linux</a>
             <a class="btn btn-secondary" data-os="windows" data-os-short="Windows"
                href="https://github.com/laxmansubedi7/cloudevs/releases/latest/download/CloudeIDE-win32-x64.zip">Download for Windows</a>
-            <a class="btn btn-secondary" data-os="mac" data-os-short="Mac"
-               href="https://github.com/laxmansubedi7/cloudevs/releases/latest/download/CloudeIDE-darwin-arm64.zip">Download for Mac</a>
           </div>
 
           <p class="showcase-note" data-note="linux">
@@ -468,19 +489,14 @@
             64-bit Windows 10 or newer. Unzip it and run CloudeIDE.exe.
           </p>
           <!--
-            Apple Silicon only, and it says so rather than guessing. A browser
-            on an Apple Silicon Mac still reports "MacIntel", so there is no
-            honest way to tell the two apart from here — and an Intel Mac
-            downloading an arm64 build gets a failure it cannot read.
+            No Mac button yet, and it is out rather than pointing at nothing.
 
-            The right-click is not a nicety either. The build carries an
-            ad-hoc signature, which is what lets it run at all, but it is not
-            notarized — so the first double-click is refused, once.
+            The markup for it is written and the build that fills it is not
+            green: the desktop workflow has been failing since the .deb change,
+            and a download button whose file 404s is worse than a page that
+            does not offer one. It comes back in one commit — an <a> with
+            data-os="mac" and a note beside it — the day that build passes.
           -->
-          <p class="showcase-note" data-note="mac">
-            Apple Silicon (M1 and newer). Move it to Applications, then
-            right-click and choose Open the first time.
-          </p>
         </div>
 
         <div class="window" style="--ar-narrow: 800 / 1000; --ar-wide: 1440 / 760">
