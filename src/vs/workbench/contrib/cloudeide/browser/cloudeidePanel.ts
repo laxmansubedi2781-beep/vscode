@@ -20,12 +20,11 @@ import { URI } from '../../../../base/common/uri.js';
 import { ViewPane } from '../../../browser/parts/views/viewPane.js';
 import { IViewletViewOptions } from '../../../browser/parts/views/viewsViewlet.js';
 import { IViewDescriptorService } from '../../../common/views.js';
-import { ITextFileService } from '../../../services/textfile/common/textfiles.js';
 import { IFileService } from '../../../../platform/files/common/files.js';
 import { IEditorService } from '../../../services/editor/common/editorService.js';
 import { IModelService } from '../../../../editor/common/services/model.js';
 import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
-import { CloudeideClient, type ChatMessage, type DeployStatus, type FileChange } from './cloudeideClient.js';
+import { CloudeideClient, type ChatMessage, type FileChange } from './cloudeideClient.js';
 import { VSBuffer } from '../../../../base/common/buffer.js';
 import { linesDiffComputers } from '../../../../editor/common/diff/linesDiffComputers.js';
 
@@ -55,7 +54,6 @@ export class CloudeidePanel extends ViewPane {
 	private transcript!: HTMLElement;
 	private input!: HTMLTextAreaElement;
 	private sendButton!: HTMLButtonElement;
-	private deployButton!: HTMLButtonElement;
 	private statusLine!: HTMLElement;
 
 	private readonly messages: ChatMessage[] = [];
@@ -73,7 +71,6 @@ export class CloudeidePanel extends ViewPane {
 		@IThemeService themeService: IThemeService,
 		@IHoverService hoverService: IHoverService,
 		@ISecretStorageService secretStorageService: ISecretStorageService,
-		@ITextFileService private readonly textFileService: ITextFileService,
 		@IFileService private readonly fileService: IFileService,
 		@IEditorService private readonly editorService: IEditorService,
 		@IModelService private readonly modelService: IModelService,
@@ -201,14 +198,10 @@ export class CloudeidePanel extends ViewPane {
 
 		const row = DOM.append(composer, $('.cloudeide-composer-row'));
 
-		this.deployButton = DOM.append(row, $('button.cloudeide-button-quiet')) as HTMLButtonElement;
-		this.deployButton.textContent = localize('cloudeide.deploy', "Deploy");
-		this.deployButton.title = localize('cloudeide.deployTitle', "Build the open folder and put it on a live URL");
-
-		// An arrow, not the word "Send". Deploy beside it is the button that
-		// carries a consequence and deserves the words; sending a message is
-		// the ordinary act, and every chat the person already uses marks it
-		// with an upward arrow.
+		// An arrow, not the word "Send". Sending a message is the ordinary act
+		// here, and every chat the person already uses marks it with an
+		// upward arrow. Deploy used to sit beside it and now lives in the
+		// Cloud pane below, where the thing it produces is also shown.
 		this.sendButton = DOM.append(row, $('button.cloudeide-send')) as HTMLButtonElement;
 		DOM.append(this.sendButton, $(`span${ThemeIcon.asCSSSelector(Codicon.arrowUp)}`));
 		const sendLabel = localize('cloudeide.send', "Send");
@@ -221,7 +214,6 @@ export class CloudeidePanel extends ViewPane {
 		this.updateSendEnablement();
 		this._register(DOM.addDisposableListener(this.input, 'input', () => this.updateSendEnablement()));
 		this._register(DOM.addDisposableListener(this.sendButton, 'click', () => void this.send()));
-		this._register(DOM.addDisposableListener(this.deployButton, 'click', () => void this.deploy()));
 		this._register(DOM.addDisposableListener(this.input, 'keydown', (e: KeyboardEvent) => {
 			// Enter sends; Shift+Enter is a newline. The panel is for one-line
 			// asks far more often than for paragraphs.
@@ -290,7 +282,6 @@ export class CloudeidePanel extends ViewPane {
 
 	private setBusy(busy: boolean): void {
 		this.busy = busy;
-		this.deployButton.disabled = busy;
 		this.input.disabled = busy;
 		this.updateSendEnablement();
 	}
@@ -622,156 +613,6 @@ export class CloudeidePanel extends ViewPane {
 			written++;
 		}
 		return written;
-	}
-
-	private async deploy(): Promise<void> {
-		if (this.busy) {
-			return;
-		}
-
-		// Unsaved buffers first. Deploying the version on disk while the editor
-		// shows a newer one is the single most confusing thing this button
-		// could do.
-		await this.textFileService.save.call(this.textFileService, undefined as never).catch(() => undefined);
-
-		this.setBusy(true);
-		this.setStatus(localize('cloudeide.collecting', "Reading the folder…"), 'muted');
-
-		try {
-			const files = await this.collectWorkspaceFiles();
-			if (files.length === 0) {
-				this.setStatus(localize('cloudeide.nothingToDeploy',
-					"Nothing to deploy — open a folder with files in it first."), 'error');
-				return;
-			}
-
-			this.setStatus(localize('cloudeide.deployingN',
-				"Building {0} file{1}…", files.length, files.length === 1 ? '' : 's'), 'muted');
-			const started = await this.client.deploy(files);
-			const finished = await this.pollDeployment(started.deploymentId);
-
-			if (finished.liveUrl) {
-				this.setStatus(finished.liveUrl.replace(/^https?:\/\//, ''), 'ok', finished.liveUrl);
-			} else if (finished.errorSummary) {
-				this.setStatus(finished.errorSummary, 'error');
-			} else {
-				this.setStatus(localize('cloudeide.deployFinished', "Deployment {0}.", finished.status), 'muted');
-			}
-		} catch (err) {
-			this.setStatus(err instanceof Error ? err.message : String(err), 'error');
-		} finally {
-			this.setBusy(false);
-		}
-	}
-
-	/**
-	 * Everything in the open folder that belongs in a deploy.
-	 *
-	 * The skip list is not a nicety. `node_modules` alone is tens of thousands
-	 * of files — past the server's 6,000-file ceiling before any of the
-	 * project's own code is reached — and `.env` is a credential that would be
-	 * uploaded and then served from the site's own address.
-	 *
-	 * Binary files are skipped rather than mangled: this reads text, and a PNG
-	 * read as UTF-8 arrives corrupted. Images belong in a deploy, so this is a
-	 * real limitation and the caller is told the count rather than left to
-	 * wonder why a logo is missing.
-	 */
-	private async collectWorkspaceFiles(): Promise<{ path: string; content: string }[]> {
-		const folders = this.contextService.getWorkspace().folders;
-		if (folders.length === 0) {
-			return [];
-		}
-		const root = folders[0].uri;
-
-		const SKIP_DIRS = new Set([
-			'node_modules', '.git', '.svn', '.hg', 'dist', 'build', 'out',
-			'.next', '.nuxt', '.cache', '.turbo', 'coverage', '__pycache__',
-			'.venv', 'venv', 'target', 'vendor',
-		]);
-		// Secrets, and the lockfiles a build regenerates anyway.
-		const SKIP_FILES = new Set(['.env', '.env.local', '.env.production', '.DS_Store']);
-
-		const MAX_FILES = 6000;         // the server's own ceiling
-		const MAX_BYTES = 4 * 1024 * 1024;
-
-		const out: { path: string; content: string }[] = [];
-
-		const walk = async (dir: URI, prefix: string): Promise<void> => {
-			if (out.length >= MAX_FILES) {
-				return;
-			}
-			let stat;
-			try {
-				stat = await this.fileService.resolve(dir);
-			} catch {
-				return;
-			}
-			for (const child of stat.children ?? []) {
-				if (out.length >= MAX_FILES) {
-					return;
-				}
-				const name = child.name;
-				if (child.isDirectory) {
-					if (!SKIP_DIRS.has(name) && !name.startsWith('.')) {
-						await walk(child.resource, `${prefix}${name}/`);
-					}
-					continue;
-				}
-				if (SKIP_FILES.has(name)) {
-					continue;
-				}
-				try {
-					const content = await this.fileService.readFile(child.resource);
-					if (content.value.byteLength > MAX_BYTES) {
-						continue;
-					}
-					const text = content.value.toString();
-					// A NUL byte means this was not text. Sending it would
-					// upload something the file never contained.
-					if (text.includes('\u0000')) {
-						continue;
-					}
-					out.push({ path: `${prefix}${name}`, content: text });
-				} catch {
-					// Unreadable file — skipped rather than failing the deploy.
-				}
-			}
-		};
-
-		await walk(root, '');
-		return out;
-	}
-
-	/**
-	 * Waits for the build to settle.
-	 *
-	 * Polls rather than streams because the deploy endpoints are plain REST and
-	 * a socket for one button is not worth the reconnection logic. Gives up
-	 * after ten minutes with the last status it saw, instead of spinning
-	 * forever on a build that will never report.
-	 */
-	/*
-	 * The statuses the server actually writes. An earlier version waited for
-	 * "ready" or "live", which it never writes, and spelled cancelled with two
-	 * letters l — so a finished deployment kept being reported as building
-	 * until the poll timed out.
-	 */
-	private static readonly IN_PROGRESS = ['queued', 'building', 'deploying'];
-
-	private async pollDeployment(deploymentId: string): Promise<DeployStatus> {
-		const deadline = Date.now() + 10 * 60 * 1000;
-		let last: DeployStatus = { id: deploymentId, status: 'queued' };
-
-		while (Date.now() < deadline) {
-			last = await this.client.deploymentStatus(deploymentId);
-			if (!CloudeidePanel.IN_PROGRESS.includes(last.status)) {
-				return last;
-			}
-			this.setStatus(localize('cloudeide.deployStatus', "Building… ({0})", last.status), 'muted');
-			await new Promise(resolve => setTimeout(resolve, 3000));
-		}
-		return last;
 	}
 
 	protected override layoutBody(height: number, width: number): void {

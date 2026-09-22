@@ -18,6 +18,7 @@ import {
 	ViewContainerLocation,
 } from '../../../common/views.js';
 import { CloudeidePanel } from './cloudeidePanel.js';
+import { CloudeideCloudPanel } from './cloudeideCloudPanel.js';
 import { CloudeideLanguageModelContribution } from './cloudeideLanguageModel.js';
 import { CloudeideChatAgentContribution } from './cloudeideChatAgent.js';
 import { Action2, registerAction2 } from '../../../../platform/actions/common/actions.js';
@@ -72,7 +73,32 @@ const viewDescriptor: IViewDescriptor = {
 	},
 };
 
-Registry.as<IViewsRegistry>(ViewContainerExtensions.ViewsRegistry).registerViews([viewDescriptor], container);
+/*
+ * The second pane, under the chat.
+ *
+ * `mergeViewWithContainerWhenSingleView` on the container above means one view
+ * renders without a header; two render as stacked panes with their own, which
+ * is what this wants — the chat is what somebody looks at all day and Cloud is
+ * what they open when they are ready to ship, so it starts collapsed and the
+ * workbench remembers whatever they do to it after that.
+ */
+const cloudViewDescriptor: IViewDescriptor = {
+	id: CloudeideCloudPanel.ID,
+	name: localize2('cloudeide.cloud', "Cloud"),
+	containerIcon: cloudeideIcon,
+	ctorDescriptor: new SyncDescriptor(CloudeideCloudPanel),
+	canToggleVisibility: true,
+	canMoveView: true,
+	collapsed: true,
+	order: 2,
+	openCommandActionDescriptor: {
+		id: 'workbench.action.cloudeide.cloud.focus',
+		title: localize2('cloudeide.cloud.focus', "Focus CloudeIDE Cloud"),
+	},
+};
+
+Registry.as<IViewsRegistry>(ViewContainerExtensions.ViewsRegistry)
+	.registerViews([viewDescriptor, cloudViewDescriptor], container);
 
 Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Configuration).registerConfiguration({
 	id: 'cloudeide',

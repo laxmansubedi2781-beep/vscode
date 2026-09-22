@@ -641,3 +641,152 @@
 	color: var(--vscode-foreground);
 	text-decoration: underline;
 }
+
+/* ── Cloud pane ──────────────────────────────────────────────────────────
+ *
+ * The second view in the container. Buttons here are the workbench's own
+ * `Button` widget rather than bare elements, so they already carry the
+ * theme's button colours — this file only places them.
+ */
+.cloudeide-cloud {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 10px 14px 14px;
+	overflow-y: auto;
+	font-size: 13px;
+}
+
+.cloudeide-cloud-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.cloudeide-cloud-label {
+	flex: 1 1 auto;
+	font-size: 12px;
+	color: var(--vscode-descriptionForeground);
+}
+
+/* The primary action, and the only full-width thing on the pane. */
+.cloudeide-cloud .cloudeide-cloud-deploy {
+	width: 100%;
+	padding: 6px 12px;
+	margin-top: 2px;
+}
+
+.cloudeide-cloud-deploy-status {
+	margin: 0;
+	font-size: 12px;
+	line-height: 1.5;
+	overflow-wrap: anywhere;
+}
+
+/* ── section headings ────────────────────────────────────────────────── */
+
+.cloudeide-cloud-head {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin-top: 8px;
+}
+
+.cloudeide-cloud-title {
+	margin: 0;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--vscode-descriptionForeground);
+}
+
+.cloudeide-cloud-spacer {
+	flex: 1 1 auto;
+}
+
+/* Small, quiet, and the same size whether it holds a word or an icon. */
+.cloudeide-cloud .cloudeide-cloud-head-button {
+	flex: 0 0 auto;
+	width: auto;
+	padding: 2px 7px;
+	font-size: 11.5px;
+	line-height: 18px;
+}
+
+/* ── lists ───────────────────────────────────────────────────────────── */
+
+.cloudeide-cloud-list {
+	display: flex;
+	flex-direction: column;
+}
+
+.cloudeide-cloud-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 5px 0;
+	border-bottom: 1px solid var(--vscode-panel-border, var(--vscode-editorWidget-border));
+}
+
+.cloudeide-cloud-item:last-child {
+	border-bottom: none;
+}
+
+.cloudeide-cloud-item-icon {
+	flex: 0 0 auto;
+	font-size: 14px;
+}
+
+.cloudeide-cloud-item-text {
+	flex: 1 1 auto;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+}
+
+.cloudeide-cloud-item-name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--vscode-foreground);
+}
+
+.cloudeide-cloud-item-note {
+	font-size: 11.5px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--vscode-descriptionForeground);
+}
+
+.cloudeide-cloud-placeholder {
+	padding: 6px 0;
+	font-size: 12px;
+	color: var(--vscode-descriptionForeground);
+}
+
+/* ── tones, shared by the icons and the status line ──────────────────── */
+
+.cloudeide-cloud-status-ok {
+	color: var(--vscode-testing-iconPassed, var(--vscode-charts-green, var(--vscode-foreground)));
+}
+
+.cloudeide-cloud-status-error {
+	color: var(--vscode-errorForeground);
+}
+
+.cloudeide-cloud-status-muted {
+	color: var(--vscode-descriptionForeground);
+}
+
+.cloudeide-cloud .cloudeide-cloud-link {
+	color: var(--vscode-textLink-foreground);
+	cursor: pointer;
+	text-decoration: underline;
+	text-underline-offset: 3px;
+}
+
+.cloudeide-cloud .cloudeide-cloud-link:hover {
+	color: var(--vscode-textLink-activeForeground);
+}

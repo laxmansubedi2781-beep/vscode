@@ -62,6 +62,43 @@ export interface FileChange {
 /** The environments `/deploy/run` accepts. Anything else is a 400. */
 export type DeployEnvironment = 'development' | 'preview' | 'production';
 
+/** One custom domain on a project, as `GET /deploy/domains` reports it. */
+export interface DeployDomain {
+	readonly id: string;
+	readonly hostname: string;
+	readonly environment: string;
+	/** verified | pending | error */
+	readonly status: string;
+	/** active | provisioning | … */
+	readonly ssl: string;
+	readonly primary: boolean;
+	/** The address the platform gives every project. It cannot be removed. */
+	readonly isDefault?: boolean;
+}
+
+/** The DNS record a pending domain is waiting for somebody to create. */
+export interface ValidationRecord {
+	readonly name: string;
+	readonly type: string;
+	readonly value: string;
+}
+
+export interface DomainCheck {
+	readonly status: string;
+	readonly validationRecord: ValidationRecord | null;
+}
+
+/** One past deployment, trimmed to what a panel row shows. */
+export interface DeploymentSummary {
+	readonly id: string;
+	readonly environment: string;
+	readonly status: string;
+	readonly createdAt: string;
+	readonly liveUrl?: string;
+	readonly errorSummary?: string;
+	readonly durationSeconds?: number;
+}
+
 export interface DeployStarted {
 	/** A string, not a number: the server's `deploymentId`. */
 	readonly deploymentId: string;
@@ -430,8 +467,62 @@ export class CloudeideClient {
 	}
 
 	async deploymentStatus(deploymentId: string): Promise<DeployStatus> {
+		return this.request<DeployStatus>(`/deploy/deployments/${encodeURIComponent(deploymentId)}${this.projectQuery()}`);
+	}
+
+	/**
+	 * `?projectId=…`, or nothing.
+	 *
+	 * Every read below is scoped to a project, and the server resolves the
+	 * account's own when none is named — so passing it is only necessary for
+	 * an account with more than one, and passing an empty one would be worse
+	 * than passing none.
+	 */
+	private projectQuery(extra?: Record<string, string>): string {
+		const params = new URLSearchParams(extra);
 		const projectId = this.projectId;
-		const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : '';
-		return this.request<DeployStatus>(`/deploy/deployments/${encodeURIComponent(deploymentId)}${query}`);
+		if (projectId) {
+			params.set('projectId', projectId);
+		}
+		const query = params.toString();
+		return query ? `?${query}` : '';
+	}
+
+	async listDeployments(limit = 10): Promise<DeploymentSummary[]> {
+		const body = await this.request<{ deployments?: DeploymentSummary[] }>(
+			`/deploy/deployments${this.projectQuery({ limit: String(limit) })}`,
+		);
+		return body.deployments ?? [];
+	}
+
+	async listDomains(): Promise<DeployDomain[]> {
+		const body = await this.request<{ domains?: DeployDomain[] }>(`/deploy/domains${this.projectQuery()}`);
+		return body.domains ?? [];
+	}
+
+	async addDomain(hostname: string, environment: DeployEnvironment): Promise<DeployDomain> {
+		return this.request<DeployDomain>(`/deploy/domains${this.projectQuery()}`, {
+			method: 'POST',
+			body: JSON.stringify({ hostname, environment }),
+		});
+	}
+
+	/**
+	 * Asks the server to look at the certificate now.
+	 *
+	 * A background pass already moves these along every few minutes; this is
+	 * the impatient path, for somebody who has just created the DNS record and
+	 * is watching.
+	 */
+	async verifyDomain(id: string): Promise<DomainCheck> {
+		return this.request<DomainCheck>(`/deploy/domains/${encodeURIComponent(id)}/verify${this.projectQuery()}`);
+	}
+
+	async setPrimaryDomain(id: string): Promise<void> {
+		await this.request(`/deploy/domains/${encodeURIComponent(id)}/primary${this.projectQuery()}`, { method: 'POST' });
+	}
+
+	async removeDomain(id: string): Promise<void> {
+		await this.request(`/deploy/domains/${encodeURIComponent(id)}${this.projectQuery()}`, { method: 'DELETE' });
 	}
 }
