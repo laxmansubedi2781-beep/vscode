@@ -1,26 +1,35 @@
 // Films the product doing what the landing page says it does.
 //
-// Not a mock and not a mockup: this drives the real web build against the
-// real server with a real token, and films whatever happens. If an answer
-// never arrives, the job fails rather than shipping a film of an error —
-// which is the whole reason for filming instead of drawing.
+// Not a mock and not a mockup: this starts the application people actually
+// download, opens a real folder in it, signs into the real server with a real
+// token, and films whatever happens. If an answer never arrives, the job fails
+// rather than shipping a film of an error — which is the whole reason for
+// filming instead of drawing.
 //
-// One recording, three clips. Playwright writes one video per context, and a
-// context costs a full workbench load, so the session is filmed once and the
-// caller cuts it at the marks printed here. Each clip is meant to be eight to
-// twelve seconds: the page wants three short loops, not a screencast.
+// It used to drive the web build over HTTP, and the footage was the reason to
+// stop. The web build opens no folder: there was no tree, the files were three
+// untitled buffers, and the answer to "what is total in menu.js" began "I
+// don't see a file named menu.js". Accurate, and the opposite of the claim the
+// film was there to support. The desktop build opens a folder, so the agent
+// reads a project and the frame has a project in it.
 //
-// The token reaches the page through a password field, so it renders as dots,
-// and no mark begins before the connection is made.
+// One recording, four clips. Playwright writes one video per application, and
+// starting the application costs a workbench load, so the session is filmed
+// once and the caller cuts it at the marks printed here. Each clip is meant to
+// be eight to twelve seconds: the page wants short loops, not a screencast.
 
-import { chromium } from 'playwright';
+import { _electron as electron } from 'playwright-core';
 import { mkdir } from 'node:fs/promises';
 
-const URL_BASE = process.env.EDITOR_URL ?? 'http://127.0.0.1:8099/index.html';
+const APP = process.env.CLOUDEIDE_BIN;
+const WORKSPACE = process.env.WORKSPACE_DIR ?? '/tmp/ws';
 const TOKEN = process.env.CLOUDEIDE_API_TOKEN;
 const OUT = process.env.OUT_DIR ?? 'recordings';
-const CHROME = process.env.CHROME_PATH;
 
+if (!APP) {
+	console.error('CLOUDEIDE_BIN is not set: it is the path to the cloudeide executable');
+	process.exit(1);
+}
 if (!TOKEN) {
 	console.error('CLOUDEIDE_API_TOKEN is not set');
 	process.exit(1);
@@ -28,15 +37,47 @@ if (!TOKEN) {
 
 await mkdir(OUT, { recursive: true });
 
-const browser = await chromium.launch({
-	...(CHROME ? { executablePath: CHROME } : {}),
-	args: ['--no-sandbox', '--disable-dev-shm-usage'],
+const SIZE = { width: 1440, height: 900 };
+
+// A first run of its own, every time. A user data directory carried over from
+// another run remembers a window size, an open editor and a dismissed
+// walkthrough, and a film that depends on leftovers is a film that changes
+// when the leftovers do.
+const app = await electron.launch({
+	executablePath: APP,
+	args: [
+		WORKSPACE,
+		'--no-sandbox',
+		'--disable-gpu',
+		'--disable-dev-shm-usage',
+		// The folder is one this job wrote thirty seconds ago. Left on, the
+		// trust dialog covers the middle of the first frame and blocks every
+		// keystroke behind it.
+		'--disable-workspace-trust',
+		'--skip-welcome',
+		'--skip-release-notes',
+		'--disable-telemetry',
+		'--disable-updates',
+		'--user-data-dir', '/tmp/cloudeide-film-data',
+		'--extensions-dir', '/tmp/cloudeide-film-ext',
+	],
+	recordVideo: { dir: OUT, size: SIZE },
+	timeout: 180_000,
 });
 
-const context = await browser.newContext({
-	viewport: { width: 1440, height: 900 },
-	recordVideo: { dir: OUT, size: { width: 1440, height: 900 } },
-});
+const page = await app.firstWindow({ timeout: 180_000 });
+const problems = [];
+page.on('pageerror', e => problems.push(String(e).slice(0, 200)));
+
+// The window decides the frame. Electron opens at whatever size it last used
+// or a default, and the page the video records is the window's content — so
+// the film is 1440x900 only if the window is.
+await app.evaluate(async ({ BrowserWindow }, size) => {
+	const win = BrowserWindow.getAllWindows()[0];
+	if (!win) { return; }
+	win.setMenuBarVisibility(false);
+	win.setBounds({ x: 0, y: 0, ...size });
+}, SIZE).catch(err => console.log(`could not set the window size: ${String(err).slice(0, 120)}`));
 
 const started = Date.now();
 const at = () => (Date.now() - started) / 1000;
@@ -45,11 +86,6 @@ const marks = [];
 const mark = (name, from, to) =>
 	marks.push({ name, from: Math.max(0, from - 0.5).toFixed(2), to: to.toFixed(2) });
 
-const page = await context.newPage();
-const problems = [];
-page.on('pageerror', e => problems.push(String(e).slice(0, 200)));
-
-await page.goto(URL_BASE, { waitUntil: 'load', timeout: 120_000 });
 await page.waitForSelector('.monaco-workbench', { timeout: 180_000 });
 await page.waitForSelector('.cloudeide-panel', { timeout: 120_000 });
 
@@ -76,47 +112,40 @@ const dialogText = await ok.innerText();
 await page.locator('.monaco-dialog-box .monaco-button').first().click();
 if (!/Signed in/i.test(dialogText)) {
 	console.error(`sign-in failed: ${dialogText.replace(/\s+/g, ' ').slice(0, 200)}`);
+	await app.close();
 	process.exit(2);
 }
 await page.waitForSelector('textarea.cloudeide-textarea', { timeout: 60_000 });
 console.log(`connected at ${at().toFixed(1)}s`);
 
-// ---- clear the stage -----------------------------------------------------
-// The walkthrough opens on a new profile and fills two thirds of the frame
-// with a theme picker whose thumbnails do not load — four broken-image icons
-// in the middle of the shot. Nothing about it is the product.
-await page.keyboard.press('Control+KeyK');
-await page.waitForTimeout(400);
-await page.keyboard.press('Control+KeyW');
-await page.waitForTimeout(1200);
-
-// ---- files to work in ----------------------------------------------------
-// Flat statements, no braces: the editor's auto-indent has mangled typed
-// samples before, and it only does that when a line opens a block.
-const files = [
-	['menu.js', 'const price = 120;\nconst tax = 0.13;\nconst total = price * (1 + tax);\n'],
-	['cart.js', 'const items = 3;\nconst shipping = 40;\n'],
-	['app.js', 'const currency = "NPR";\nconst open = true;\n'],
-];
+// ---- the project ---------------------------------------------------------
+// The tree, and files opened out of it by name. Quick Open rather than clicks
+// on tree rows: the row for a file inside a collapsed folder does not exist to
+// be clicked, and expanding the folder first is three more things that can go
+// wrong in a headless session.
+const openFile = async (name) => {
+	await page.keyboard.press('Control+KeyP');
+	await page.waitForSelector('.quick-input-widget input', { timeout: 20_000 });
+	await page.keyboard.type(name, { delay: 45 });
+	await page.waitForTimeout(600);
+	await page.keyboard.press('Enter');
+	await page.waitForTimeout(900);
+};
 
 const clipFilesFrom = at();
-for (const [, body] of files) {
-	await page.keyboard.press('Control+KeyN');
-	await page.waitForTimeout(700);
-	await page.keyboard.type(body, { delay: 40 });
-	await page.waitForTimeout(500);
-}
-// Move across the tabs, which is the shot: several files open at once.
-for (let i = 0; i < 3; i++) {
-	await page.keyboard.press('Control+PageUp');
-	await page.waitForTimeout(900);
+// The explorer, so the film opens on the project rather than on an editor.
+await page.keyboard.press('Control+Shift+KeyE');
+await page.waitForTimeout(900);
+for (const name of ['index.html', 'README.md', 'menu.js']) {
+	await openFile(name);
 }
 mark('editor-files', clipFilesFrom, at());
 
 // ---- ask -----------------------------------------------------------------
+// About the file that is open, by its real path, because now there is one.
 const clipAskFrom = at();
 await page.locator('textarea.cloudeide-textarea').click();
-await page.keyboard.type('What is total in menu.js, and what would you add?', { delay: 42 });
+await page.keyboard.type('Show the price next to each item on the menu.', { delay: 42 });
 await page.waitForTimeout(500);
 await page.locator('button.cloudeide-send').click();
 
@@ -124,7 +153,7 @@ await page.locator('button.cloudeide-send').click();
 // than any single event. Poll the last turn until it settles.
 let answer = '';
 let settled = 0;
-const deadline = Date.now() + 120_000;
+const deadline = Date.now() + 180_000;
 while (Date.now() < deadline) {
 	await page.waitForTimeout(800);
 	const bodies = await page.locator('.cloudeide-turn-body').allTextContents();
@@ -157,7 +186,9 @@ mark('editor-wide', clipWideFrom, at());
 // ---- ship it -------------------------------------------------------------
 // The clip the landing page has never had: the Cloud pane, Deploy pressed,
 // and the address that comes back. This is the part no other editor of this
-// kind can film, and filming it is the only way to know it works.
+// kind can film, and filming it is the only way to know it works. It needs a
+// folder, which is the other half of why this moved off the web build —
+// Deploy sends the folder you are working in, and there was none to send.
 const clipShipFrom = at();
 let liveUrl = '';
 try {
@@ -197,22 +228,40 @@ try {
 	mark('cloud-ship', Math.max(clipShipFrom, at() - 12), at());
 	console.log(`live url: ${liveUrl || '(none)'}`);
 } catch (err) {
-	// A deploy that cannot run must not cost the two clips that already did.
+	// A deploy that cannot run must not cost the three clips that already did.
 	console.log(`deploy clip skipped: ${String(err).slice(0, 160)}`);
 }
+
+/*
+ * Where to cut the bottom off, measured rather than assumed.
+ *
+ * The panel signs off with "Connected as <the account's email address>", and
+ * that is not something to put on a public page. The cut used to be a number
+ * written down when the film was 1440x900 of web build; a desktop window is
+ * laid out differently, and a number that is wrong by twenty pixels either
+ * publishes the address or eats the composer. So the page is asked where the
+ * line actually is, and the caller crops above it. Even, because the encoders
+ * want even dimensions.
+ */
+const cropHeight = await page.evaluate(() => {
+	const el = document.querySelector('.cloudeide-status');
+	if (!el) { return 0; }
+	const top = Math.floor(el.getBoundingClientRect().top);
+	return top > 200 ? top - (top % 2) : 0;
+}).catch(() => 0);
 
 const failed = await page.locator('.cloudeide-turn-failed').count();
 console.log(`answer length: ${answer.length} characters`);
 console.log(`failed turns: ${failed}`);
 console.log(`page errors: ${JSON.stringify(problems.slice(0, 3))}`);
 console.log(`LIVE_URL=${liveUrl}`);
+console.log(`CROP_HEIGHT=${cropHeight}`);
 for (const m of marks) {
 	console.log(`MARK ${m.name} ${m.from} ${m.to}`);
 }
 
 const video = page.video();
-await context.close();
-await browser.close();
+await app.close();
 console.log('VIDEO=' + (video ? await video.path() : ''));
 
 if (failed > 0 || answer.length < 40) {

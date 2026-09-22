@@ -2,17 +2,32 @@
 #
 # The landing page's best asset would be footage of the product doing what the
 # page says it does, and the only way to get that is to run the product. So
-# this builds the web editor, serves it, drives it with Playwright using the
-# account token, and records whatever actually happens — including nothing, if
-# the answer never arrives.
+# this takes the application people download, opens a real project in it,
+# drives it with Playwright using the account token, and records whatever
+# actually happens — including nothing, if the answer never arrives.
 #
-# The films come back on the build-evidence branch rather than as artifacts:
-# the artifact store is served from a host that cannot be reached from where
-# these get reviewed, and git can.
+# It used to build the web bundle and drive that over HTTP, and the footage is
+# why it no longer does. The web build opens no folder: the tree was empty, the
+# files were untitled buffers, and the reply to a question about menu.js began
+# "I don't see a file named menu.js". Deploy had nothing to send either, so the
+# clip that matters most could never run. The desktop build opens a folder, and
+# it is also the thing people install — so the film is now of the shipped
+# artifact rather than of a build made to be filmed.
+#
+# It downloads that artifact instead of building it, which turns an hour into a
+# couple of minutes and means a change to the script can actually be tried.
+#
+# The films come back on the build-films branch rather than as artifacts: the
+# artifact store is served from a host that cannot be reached from where these
+# get reviewed, and git can.
 name: Record the panel
 
 on:
   workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Desktop build to film (blank: the latest release)'
+        required: false
   push:
     branches: [cloudeide-branding]
     paths:
@@ -29,7 +44,7 @@ concurrency:
 jobs:
   record:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v4
@@ -38,48 +53,113 @@ jobs:
         with:
           node-version-file: .nvmrc
 
-      - name: Make room on the disk
-        run: |
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/boost
-          df -h /
+      # Xvfb because Electron needs a screen, ffmpeg because the clips are cut
+      # from one recording. The Electron libraries themselves are already on
+      # the runner image — the desktop workflow's smoke test starts the same
+      # binary with nothing but xvfb installed.
+      - name: Install what filming needs
+        run: sudo apt-get update -y && sudo apt-get install -y xvfb ffmpeg
 
-      - name: Install build dependencies
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y build-essential pkg-config \
-            libx11-dev libx11-xcb-dev libxkbfile-dev libnotify-bin libkrb5-dev ffmpeg
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build the web bundle
-        run: |
-          npm run gulp compile-build-without-mangling
-          npm run gulp vscode-web-min-ci
+      # The application, not a build of it. Either the artifact from a specific
+      # desktop run, or whatever is currently published — which is what someone
+      # reading the landing page would get.
+      - name: Get the application
+        id: app
         env:
-          NODE_OPTIONS: --max-old-space-size=12288
-          GITHUB_TOKEN: ${{ github.token }}
-
-      - name: Serve it
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          node build/cloudeide/make-static.mjs ../vscode-web /tmp/site "$PWD"
-          (cd /tmp/site && python3 -m http.server 8099 >/tmp/serve.log 2>&1 &)
-          # Wait for the server to answer rather than for a number of seconds.
-          timeout 30 bash -c 'until curl -sf -o /dev/null http://127.0.0.1:8099/index.html; do sleep 1; done'
-          echo "serving"
+          mkdir -p /tmp/app
+          run="${{ inputs.run_id }}"
+          if [ -n "$run" ]; then
+            gh run download "$run" --name cloudeide-linux-x64 --dir /tmp/app
+          else
+            gh release download --pattern 'CloudeIDE-linux-x64.tar.gz' --dir /tmp/app
+          fi
+          tar="$(find /tmp/app -name '*.tar.gz' | head -1)"
+          test -n "$tar" || { echo "::error::no application tarball was found"; exit 1; }
+          tar -xzf "$tar" -C /tmp/app
+          bin="$(find /tmp/app -maxdepth 3 -name cloudeide -type f | head -1)"
+          test -x "$bin" || { echo "::error::the tarball holds no cloudeide executable"; exit 1; }
+          echo "bin=${bin}" >> "$GITHUB_OUTPUT"
+          ls -lh "$bin"
 
-      - name: Install the browser Playwright wants
-        run: npx playwright install --with-deps chromium
+      # A project, because a film of an empty editor is what this workflow was
+      # rewritten to stop producing. Small enough to read on a page at a
+      # glance, real enough to deploy: index.html is what the Deploy clip puts
+      # on a URL.
+      #
+      # `.env` and `node_modules` are here on purpose. Neither is uploaded —
+      # cloudeideWorkspace.ts skips both — and a tree without them does not
+      # look like anyone's actual project.
+      - name: Write the project
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/ws && mkdir -p /tmp/ws/src /tmp/ws/node_modules/.keep-dir
+          cat > /tmp/ws/src/menu.js <<'JS'
+          export const menu = [
+            { name: 'Espresso',    price: 120 },
+            { name: 'Masala Chai', price: 60 },
+            { name: 'Cold Brew',   price: 150 },
+          ];
+
+          export function total(items) {
+            return items.reduce((sum, i) => sum + i.price, 0);
+          }
+
+          export function format(item) {
+            return `${item.name}`;
+          }
+          JS
+          cat > /tmp/ws/index.html <<'HTML'
+          <!doctype html>
+          <html lang="en">
+            <head>
+              <meta charset="utf-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1" />
+              <title>Cafe Nirvana</title>
+            </head>
+            <body>
+              <h1>Cafe Nirvana</h1>
+              <ul id="menu"></ul>
+              <script type="module" src="./src/menu.js"></script>
+            </body>
+          </html>
+          HTML
+          cat > /tmp/ws/README.md <<'MD'
+          # Cafe Nirvana
+
+          The menu for a small coffee shop, and the page it is served on.
+          MD
+          printf 'ANALYTICS_KEY=not-a-real-key\n' > /tmp/ws/.env
+          printf '{}\n' > /tmp/ws/node_modules/.keep-dir/package.json
+          find /tmp/ws -type f | sort
+
+      # playwright-core alone: it is what the script imports, it is already a
+      # dependency of this repository, and it downloads no browsers — the
+      # browser here is the application itself. Installing it on its own is a
+      # few seconds against several minutes of `npm ci`, and the script is run
+      # from beside it so Node resolves the import.
+      - name: Install Playwright
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').dependencies['playwright-core']")"
+          mkdir -p /tmp/film
+          (cd /tmp/film && npm init -y >/dev/null && npm install --no-audit --no-fund "playwright-core@${version}")
+          cp build/cloudeide/record-panel.mjs /tmp/film/
 
       - name: Film it
         id: film
+        timeout-minutes: 25
         env:
           CLOUDEIDE_API_TOKEN: ${{ secrets.CLOUDEIDE_API_TOKEN }}
+          CLOUDEIDE_BIN: ${{ steps.app.outputs.bin }}
+          WORKSPACE_DIR: /tmp/ws
           OUT_DIR: /tmp/recordings
         run: |
           set -uo pipefail
-          node build/cloudeide/record-panel.mjs | tee /tmp/film.log
+          xvfb-run -a --server-args='-screen 0 1600x1000x24' \
+            node /tmp/film/record-panel.mjs | tee /tmp/film.log
           status=${PIPESTATUS[0]}
           ls -l /tmp/recordings || true
           exit "$status"
@@ -96,25 +176,31 @@ jobs:
           echo "source is $(ffprobe -v error -show_entries format=duration -of csv=p=0 "$raw")s"
           mkdir -p /tmp/cut
 
+          # Where to cut the bottom off, as the script measured it rather than
+          # as someone once wrote it down. The panel signs off with "Connected
+          # as <the account's email address>", which is not something to put on
+          # a public page, and the workbench status bar under it is noise. A
+          # fixed number was right for one window layout and silently wrong for
+          # the next; 824 is only the fallback for a run that could not measure.
+          crop="$(grep -m1 '^CROP_HEIGHT=' /tmp/film.log | cut -d= -f2)"
+          case "$crop" in ''|*[!0-9]*) crop=824 ;; esac
+          [ "$crop" -ge 400 ] || crop=824
+          echo "cropping to 1440x${crop}"
+
           # One recording, cut at the marks the script printed. Each clip is
           # capped at twelve seconds: these are loops on a page, not a
-          # screencast, and a long one is worse than no one at all.
+          # screencast, and a long one is worse than none at all.
           grep '^MARK ' /tmp/film.log | while read -r _ name from to; do
             len="$(python3 -c "print(min(12.0, max(1.0, $to - $from)))")"
             echo "--- ${name}: ${from}s for ${len}s ---"
 
             # Two encodes, same cut: the page serves webm where it can and mp4
-            # everywhere else, as it already does for the title sequence.
-            # The bottom strip goes. The panel signs off with "Connected as
-            # <the account's email address>", and that is not something to put
-            # on a public page; the workbench status bar underneath it is
-            # noise anyway. Cutting at 824 keeps the composer, and the Cloud
-            # pane below it where Deploy and the address now live.
+            # everywhere else.
             ffmpeg -nostdin -v error -ss "$from" -t "$len" -i "$raw" \
-              -vf "crop=1440:824:0:0" \
+              -vf "crop=1440:${crop}:0:0" \
               -c:v libvpx-vp9 -b:v 0 -crf 34 -an "/tmp/cut/${name}.webm"
             ffmpeg -nostdin -v error -ss "$from" -t "$len" -i "$raw" \
-              -vf "crop=1440:824:0:0" \
+              -vf "crop=1440:${crop}:0:0" \
               -c:v libx264 -crf 25 -pix_fmt yuv420p -movflags +faststart -an "/tmp/cut/${name}.mp4"
 
             # A narrow cut for phones, taken from the RIGHT of the frame.
@@ -125,19 +211,25 @@ jobs:
             # arrives. It is the half worth keeping when there is only room
             # for half.
             ffmpeg -nostdin -v error -ss "$from" -t "$len" -i "$raw" \
-              -vf "crop=800:824:640:0,scale=720:-2" \
+              -vf "crop=800:${crop}:640:0,scale=720:-2" \
               -c:v libx264 -crf 26 -pix_fmt yuv420p -movflags +faststart -an "/tmp/cut/${name}-narrow.mp4"
 
-            # A still for the poster, a second in so it is never a blank frame.
+            # A still for each cut, so the page has a poster that is the same
+            # shot as the film that follows it — one per width, because the two
+            # cuts are not the same picture.
             #
-            # Except the deploy clip, whose whole point is its last frame: a
-            # second into that one is a progress line, and the address it
-            # turns into is the thing worth putting on a page.
+            # A second in, except for the deploy clip, whose whole point is its
+            # last frame: a second into that one is a progress line, and the
+            # address it turns into is the thing worth putting on a page.
             if [ "$name" = "cloud-ship" ]; then
-              ffmpeg -nostdin -v error -sseof -1 -i "/tmp/cut/${name}.mp4" -frames:v 1 -q:v 3 "/tmp/cut/${name}.jpg"
+              seek="-sseof -1"
             else
-              ffmpeg -nostdin -v error -ss 1 -i "/tmp/cut/${name}.mp4" -frames:v 1 -q:v 3 "/tmp/cut/${name}.jpg"
+              seek="-ss 1"
             fi
+            # shellcheck disable=SC2086
+            ffmpeg -nostdin -v error $seek -i "/tmp/cut/${name}.mp4" -frames:v 1 -q:v 3 "/tmp/cut/${name}.jpg"
+            # shellcheck disable=SC2086
+            ffmpeg -nostdin -v error $seek -i "/tmp/cut/${name}-narrow.mp4" -frames:v 1 -q:v 3 "/tmp/cut/${name}-narrow.jpg"
           done
           ls -lh /tmp/cut
 
