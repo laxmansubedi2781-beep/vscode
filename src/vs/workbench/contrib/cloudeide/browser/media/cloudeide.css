@@ -204,6 +204,15 @@
 	color: var(--vscode-errorForeground);
 }
 
+/* The connect view's one button. Full width, because it is the only thing
+   on that screen a person can do. */
+.cloudeide-connect-button {
+	width: 100%;
+	margin-top: 14px;
+	padding: 8px 14px;
+	font-size: 13px;
+}
+
 /* ── run steps ───────────────────────────────────────────────────────────── */
 
 /* One line per tool the run reached for. Quiet on purpose: this is a receipt

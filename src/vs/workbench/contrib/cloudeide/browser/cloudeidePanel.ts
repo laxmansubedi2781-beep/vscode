@@ -13,6 +13,7 @@ import { IContextMenuService } from '../../../../platform/contextview/browser/co
 import { IHoverService } from '../../../../platform/hover/browser/hover.js';
 import { IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
 import { IKeybindingService } from '../../../../platform/keybinding/common/keybinding.js';
+import { ICommandService } from '../../../../platform/commands/common/commands.js';
 import { IOpenerService } from '../../../../platform/opener/common/opener.js';
 import { ISecretStorageService } from '../../../../platform/secrets/common/secrets.js';
 import { IThemeService } from '../../../../platform/theme/common/themeService.js';
@@ -29,6 +30,16 @@ import { VSBuffer } from '../../../../base/common/buffer.js';
 import { linesDiffComputers } from '../../../../editor/common/diff/linesDiffComputers.js';
 
 const $ = DOM.$;
+
+/*
+ * The sign-in contribution's command, by id rather than by import.
+ *
+ * That contribution is registered only in the desktop build — the flow it runs
+ * ends at a cloudeide:// URL, which a web page cannot receive — and this panel
+ * compiles for both. An id costs nothing when the command is absent; an import
+ * would drag an electron-only surface into the web bundle.
+ */
+const CLOUDEIDE_SIGN_IN_COMMAND = 'cloudeide.signIn';
 
 /**
  * The CloudeIDE panel.
@@ -75,6 +86,7 @@ export class CloudeidePanel extends ViewPane {
 		@IEditorService private readonly editorService: IEditorService,
 		@IModelService private readonly modelService: IModelService,
 		@IWorkspaceContextService private readonly contextService: IWorkspaceContextService,
+		@ICommandService private readonly commandService: ICommandService,
 	) {
 		super(options, keybindingService, contextMenuService, configurationService, contextKeyService,
 			viewDescriptorService, instantiationService, openerService, themeService, hoverService);
@@ -126,57 +138,39 @@ export class CloudeidePanel extends ViewPane {
 		blurb.textContent = localize('cloudeide.blurb',
 			"Describe a change in plain words. CloudeIDE writes it, builds it, and puts it on a live URL.");
 
-		const field = DOM.append(box, $('.cloudeide-field'));
-		const token = DOM.append(field, $('input.cloudeide-input')) as HTMLInputElement;
-		token.type = 'password';
-		token.placeholder = 'cide_live_…';
-		token.setAttribute('aria-label', localize('cloudeide.tokenLabel', "CloudeIDE API token"));
-
-		const connect = DOM.append(field, $('button.cloudeide-button-primary')) as HTMLButtonElement;
-		connect.textContent = localize('cloudeide.connect', "Connect");
+		/*
+		 * One button, and it opens the same door a first launch shows.
+		 *
+		 * This used to be a field asking for an API token — the flow the door
+		 * replaced. Somebody who chose "Continue without signing in" and then
+		 * typed a question landed here and was asked for a credential that the
+		 * product had already stopped issuing by hand, which is why the panel
+		 * kept answering "Not connected to CloudeIDE" with no way forward.
+		 */
+		const signIn = DOM.append(box, $('button.cloudeide-button-primary.cloudeide-connect-button')) as HTMLButtonElement;
+		signIn.textContent = localize('cloudeide.signInHere', "Sign in");
 
 		const error = DOM.append(box, $('p.cloudeide-error'));
 		error.style.display = 'none';
 
 		const hint = DOM.append(box, $('p.cloudeide-hint'));
-		hint.textContent = localize('cloudeide.tokenHint', "Create a token under Settings → API tokens at ");
-		const link = DOM.append(hint, $('a.cloudeide-link')) as HTMLAnchorElement;
-		link.textContent = this.client.serverUrl.replace(/^https?:\/\//, '');
-		this._register(DOM.addDisposableListener(link, 'click', () => {
-			this.openerService.open(URI.parse(`${this.client.serverUrl}/app/settings`));
-		}));
+		hint.textContent = localize('cloudeide.signInHint',
+			"Google, GitHub or email. It opens in your browser and comes back here.");
 
-		const submit = async () => {
-			const value = token.value.trim();
-			if (!value) {
-				return;
-			}
-			connect.disabled = true;
-			connect.textContent = localize('cloudeide.connecting', "Connecting…");
+		this._register(DOM.addDisposableListener(signIn, 'click', async () => {
+			signIn.disabled = true;
 			error.style.display = 'none';
-
 			try {
-				await this.client.setToken(value);
-				// Verified before the panel switches. Storing a token that does
-				// not work would leave the person in the chat view watching
-				// every message fail with no way back to this field.
-				const me = await this.client.whoami();
-				token.value = '';
-				this.showMain(me.email);
+				await this.commandService.executeCommand(CLOUDEIDE_SIGN_IN_COMMAND);
+				// Asked rather than trusted: the door reports that it closed,
+				// and the token is the only thing that settles whether anyone
+				// signed in.
+				await this.refreshConnectionState();
 			} catch (err) {
-				await this.client.clearToken();
 				error.textContent = err instanceof Error ? err.message : String(err);
 				error.style.display = '';
 			} finally {
-				connect.disabled = false;
-				connect.textContent = localize('cloudeide.connect', "Connect");
-			}
-		};
-
-		this._register(DOM.addDisposableListener(connect, 'click', () => void submit()));
-		this._register(DOM.addDisposableListener(token, 'keydown', (e: KeyboardEvent) => {
-			if (e.key === 'Enter') {
-				void submit();
+				signIn.disabled = false;
 			}
 		}));
 	}

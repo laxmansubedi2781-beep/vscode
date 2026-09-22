@@ -6,6 +6,8 @@ import * as DOM from '../../../../base/browser/dom.js';
 import { Codicon } from '../../../../base/common/codicons.js';
 import { ThemeIcon } from '../../../../base/common/themables.js';
 import { Disposable, DisposableStore } from '../../../../base/common/lifecycle.js';
+import { DeferredPromise } from '../../../../base/common/async.js';
+import { CommandsRegistry } from '../../../../platform/commands/common/commands.js';
 import { URI } from '../../../../base/common/uri.js';
 import { localize } from '../../../../nls.js';
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
@@ -101,6 +103,9 @@ export class CloudeideSignInContribution extends Disposable implements IWorkbenc
 
 	static readonly ID = 'workbench.contrib.cloudeideSignIn';
 
+	/** Opens the door. Resolves true once a token is stored. */
+	static readonly SIGN_IN_COMMAND = 'cloudeide.signIn';
+
 	private overlay: HTMLElement | undefined;
 	private readonly overlayStore = this._register(new DisposableStore());
 	private readonly client: CloudeideClient;
@@ -116,6 +121,16 @@ export class CloudeideSignInContribution extends Disposable implements IWorkbenc
 
 	/** SHA-256 of {@link verifier}, computed up front — see `prepareChallenge`. */
 	private challenge: string | undefined;
+
+	/**
+	 * Resolved when the door closes, either way.
+	 *
+	 * The panel opens this screen through a command and needs to know whether
+	 * somebody actually signed in, so it can swap its own connect view for the
+	 * chat. Without this the command returns the moment the screen is drawn
+	 * and the panel would be asking a question nobody has answered yet.
+	 */
+	private outcome: DeferredPromise<boolean> | undefined;
 
 	/* Held rather than looked up. The screen is small and built in one place;
 	   re-finding its parts by selector later is how a rename becomes a silent
@@ -152,7 +167,24 @@ export class CloudeideSignInContribution extends Disposable implements IWorkbenc
 			},
 		}));
 
+		/*
+		 * The one way in, for everything that is not the first launch. The
+		 * panel's own "not connected" state calls this rather than carrying a
+		 * second copy of the flow, which is how it ended up asking for an API
+		 * token long after the door had stopped mentioning them.
+		 */
+		this._register(CommandsRegistry.registerCommand(CloudeideSignInContribution.SIGN_IN_COMMAND, () => this.signIn()));
+
 		void this.showIfSignedOut();
+	}
+
+	/** Shows the door and resolves once it closes: true if a token arrived. */
+	private signIn(): Promise<boolean> {
+		if (!this.outcome) {
+			this.outcome = new DeferredPromise<boolean>();
+		}
+		this.show();
+		return this.outcome.p;
 	}
 
 	private async showIfSignedOut(): Promise<void> {
@@ -189,6 +221,7 @@ export class CloudeideSignInContribution extends Disposable implements IWorkbenc
 
 		try {
 			await this.client.exchangeEditorCode(code, verifier);
+			this.settle(true);
 			this.dismiss();
 		} catch (err) {
 			this.fail(err instanceof Error ? err.message : String(err));
@@ -304,7 +337,16 @@ export class CloudeideSignInContribution extends Disposable implements IWorkbenc
 			"Finish signing in in your browser. This window will pick it up.");
 	}
 
+	/** Answers whoever asked for the door, once. */
+	private settle(signedIn: boolean): void {
+		this.outcome?.complete(signedIn);
+		this.outcome = undefined;
+	}
+
 	private dismiss(): void {
+		// A door closed without signing in is an answer too — the caller is
+		// waiting on it, and "Continue without signing in" is a real choice.
+		this.settle(false);
 		this.overlayStore.clear();
 		this.overlay?.remove();
 		this.overlay = undefined;
