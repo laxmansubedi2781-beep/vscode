@@ -4,14 +4,14 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>CloudeIDE — AI-Powered Cloud IDE & Developer Workspace</title>
-<meta name="description" content="CloudeIDE is an AI-powered cloud IDE and developer workspace. Write, run, and deploy code from your browser — AI coding, one-click hosting, and project management, all in one platform." />
+<meta name="description" content="CloudeIDE is an AI-native desktop code editor. An agent that reads your real files, and one button that puts the result on a live URL — hosting, domains and deploys built in." />
 <link rel="canonical" href="https://cloudeide.com/" />
 <meta name="theme-color" content="#0d0c0b" />
 
 <!-- Open Graph / social preview -->
 <meta property="og:site_name" content="CloudeIDE" />
 <meta property="og:title" content="CloudeIDE — AI-Powered Cloud IDE & Developer Workspace" />
-<meta property="og:description" content="Code, run, and deploy from your browser. CloudeIDE brings AI coding, one-click deployment, hosting, and project management together in one developer workspace." />
+<meta property="og:description" content="Write it and ship it in the same window. CloudeIDE is a desktop editor with an AI agent that reads your real code and a button that publishes it." />
 <meta property="og:image" content="https://cloudeide.com/assets/dashboard-preview.png" />
 <meta property="og:url" content="https://cloudeide.com/" />
 <meta property="og:type" content="website" />
@@ -20,7 +20,7 @@
 <!-- Twitter / X Card -->
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="CloudeIDE — AI-Powered Cloud IDE & Developer Workspace" />
-<meta name="twitter:description" content="Code, run, and deploy from your browser. AI coding, one-click deployment, hosting, and project management in one platform." />
+<meta name="twitter:description" content="Write it and ship it in the same window. A desktop editor with an AI agent and one-button deploys." />
 <meta name="twitter:image" content="https://cloudeide.com/assets/dashboard-preview.png" />
 
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
@@ -43,7 +43,7 @@
   "@type": "SoftwareApplication",
   "name": "CloudeIDE",
   "url": "https://cloudeide.com/",
-  "description": "CloudeIDE is an AI-powered cloud IDE and developer workspace. Write, run, and deploy code from your browser with AI coding, one-click hosting, and project management built in.",
+  "description": "CloudeIDE is an AI-native desktop code editor. An agent that reads your real files, and one button that puts the result on a live URL, with hosting, domains and deploys built in.",
   "applicationCategory": "DeveloperApplication",
   "operatingSystem": "Web",
   "image": "https://cloudeide.com/assets/dashboard-preview.png",
@@ -93,14 +93,17 @@
     </nav>
 
     <!--
-      No Sign In. There is nothing to sign in to from here any more: the
-      account lived on the old host, and this page is now served from the
-      static site. Get Started opens the editor instead, which needs no
-      account and is the thing the page has just spent a screen describing.
+      One button, and it is Download.
+      
+      There were two, and the other one opened a browser build of the editor.
+      That build is gone: it could not open a folder on your machine, could
+      not run a terminal, and could not receive the sign-in it offered, so
+      everything the page promises below was true of one of them and not the
+      other. A page with two front doors where one leads somewhere smaller is
+      a page that has to explain itself.
     -->
     <div class="nav-actions">
-      <a class="btn btn-ghost" href="#desktop">Download</a>
-      <a class="btn btn-primary" href="editor/"><span class="btn-mark" aria-hidden="true"><img src="assets/logo.svg" alt="" width="14" height="14" /></span>Get Started</a>
+      <a class="btn btn-primary" href="#desktop"><span class="btn-mark" aria-hidden="true"><img src="assets/logo.svg" alt="" width="14" height="14" /></span>Download</a>
       <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
@@ -112,7 +115,6 @@
     <a href="#why">How it works</a>
     <a href="#cli">CLI &amp; agents</a>
     <a href="#desktop">Download</a>
-    <a href="editor/">Get Started</a>
   </div>
 </header>
 
@@ -121,19 +123,21 @@
   <!-- ------------------------------------------------------------- hero -- -->
   <section class="hero" id="top">
     <div class="wrap">
-      <div class="eyebrow"><span class="dot"></span> AI-native, browser-based</div>
+      <div class="eyebrow"><span class="dot"></span> AI-native desktop editor</div>
 
-      <h1>Your whole dev environment,<br />in a browser tab.</h1>
-      <p class="sub">An AI agent that reads your real code. Nothing to install.</p>
+      <h1>Write it and ship it,<br />in the same window.</h1>
+      <p class="sub">An AI agent that reads your real code, and a button that puts it on a URL.</p>
 
       <!--
-        The hero asked for nothing. Someone convinced by the first screen had
-        to scroll past four sections to find a way in, which is the one thing
-        a first screen has to get right.
+        The claim changed, so the headline did. It used to be "in a browser
+        tab, nothing to install", which was the browser build's pitch — and
+        that build is gone. What is left is the thing no other editor of this
+        kind does: the window that writes the code also publishes it. So say
+        that, and ask for the download in the same breath.
       -->
       <div class="hero-actions">
-        <a class="btn btn-primary" href="editor/">Open the editor <span class="showcase-arrow" aria-hidden="true">&rarr;</span></a>
-        <a class="btn btn-secondary" href="#desktop">Download for desktop</a>
+        <a class="btn btn-primary" href="#desktop">Download for desktop</a>
+        <a class="btn btn-secondary" href="#demo">See it work <span class="showcase-arrow" aria-hidden="true">&rarr;</span></a>
       </div>
 
     </div>
@@ -219,7 +223,7 @@
             Your file is open, and the agent is beside it. Describe the change in
             plain words and read the answer as it arrives.
           </p>
-          <a class="showcase-link" href="editor/">Open the editor <span class="showcase-arrow" aria-hidden="true">&rarr;</span></a>
+          <a class="showcase-link" href="#desktop">Download CloudeIDE <span class="showcase-arrow" aria-hidden="true">&rarr;</span></a>
         </div>
 
         <!--
@@ -255,7 +259,7 @@
             comes back in the same panel.
           </p>
           <p class="showcase-note">Static frontends — React, Vue, Svelte, Astro, Next static export.</p>
-          <a class="showcase-link" href="editor/">Get Started <span class="showcase-arrow" aria-hidden="true">&rarr;</span></a>
+          <a class="showcase-link" href="#desktop">Download CloudeIDE <span class="showcase-arrow" aria-hidden="true">&rarr;</span></a>
         </div>
 
         <div class="window" style="--ar-narrow: 1080 / 1350">
@@ -297,7 +301,7 @@
         <div class="step">
           <span class="step-n">1</span>
           <h3>Open it</h3>
-          <p>A browser tab, or the desktop build. No account.</p>
+          <p>Install it and open a folder. No account.</p>
         </div>
         <div class="step">
           <span class="step-n">2</span>
@@ -318,11 +322,10 @@
   <!--
     The terminal section, placed after "how it works" on purpose.
 
-    Someone who has read this far has already decided the browser IDE is
+    Someone who has read this far has already decided the editor is
     interesting. This is the second thing to know, not the first: the account
     they just read about also works from their own shell and from the editor
-    they already use. Leading with it would bury the product behind an install
-    step the browser does not need.
+    they already use. Leading with it would answer a question nobody has yet.
   -->
   <section class="section" id="cli">
     <div class="wrap">
@@ -388,36 +391,45 @@
   <!--
     The desktop build, and deliberately last.
 
-    The hero offers the browser first and that stays true — it is still the
-    way in that costs nothing. This is for someone who has already decided
-    they want it on their own machine, so it sits after they have seen what
-    the thing does rather than competing with the first screen.
+    This is the only way in now, so it no longer hedges. It used to read "or
+    keep it on your machine", offered after the browser build had already
+    been offered twice; the browser build is gone and this is the product.
 
-    It is a showcase like the two above it rather than a panel with two
-    buttons in it, because there is now a photograph worth showing: the
-    application running, taken on a Linux machine by the build that produced
-    the very file these links download.
+    It is a showcase like the two above it rather than a panel with buttons
+    in it, because there is a photograph worth showing: the application
+    running, taken on a Linux machine by the build that produced the very
+    file these links download.
 
-    Two links, no version numbers: /releases/latest/download/<name> always
-    resolves to the newest release, so the page never goes stale and never
-    needs editing when a build ships.
+    Linux gets the .deb first and the tarball as a footnote, and that order is
+    not tidiness. A URL scheme on Linux is claimed by an installed .desktop
+    file, which a tarball does not install — so signing in through the browser
+    completes on the .deb and dead-ends on the tarball.
+
+    No version numbers: /releases/latest/download/<name> always resolves to
+    the newest release, so the page never goes stale and never needs editing
+    when a build ships.
   -->
   <section class="section" id="desktop">
     <div class="wrap">
       <div class="showcase reveal">
         <div class="showcase-copy">
           <div class="section-label">Desktop app</div>
-          <h2>Or keep it on your machine</h2>
+          <h2>Install it</h2>
           <p>
-            The same editor and the same panel, installed. Your files stay
-            where they are.
+            Your files stay where they are, the terminal is a real terminal,
+            and the agent reads the project you actually have open.
           </p>
 
           <div class="download-row">
-            <a class="btn btn-primary" href="https://github.com/laxmansubedi7/cloudevs/releases/latest/download/CloudeIDE-linux-x64.tar.gz">Download for Linux</a>
+            <a class="btn btn-primary" href="https://github.com/laxmansubedi7/cloudevs/releases/latest/download/CloudeIDE-linux-x64.deb">Download for Linux</a>
             <a class="btn btn-secondary" href="https://github.com/laxmansubedi7/cloudevs/releases/latest/download/CloudeIDE-win32-x64.zip">Download for Windows</a>
           </div>
-          <p class="showcase-note">64-bit. macOS is not built yet.</p>
+          <p class="showcase-note">
+            64-bit. Ubuntu 20.04, Debian 11 or newer.
+            <a class="showcase-link" href="https://github.com/laxmansubedi7/cloudevs/releases/latest/download/CloudeIDE-linux-x64.tar.gz">Linux tarball</a>
+            if you would rather not install — browser sign-in needs the .deb.
+            macOS is not built yet.
+          </p>
         </div>
 
         <div class="window" style="--ar-narrow: 1080 / 844">

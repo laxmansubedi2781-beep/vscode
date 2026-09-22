@@ -1,5 +1,10 @@
-# Publishes the CloudeIDE site: the landing page at the root, and the browser
-# build of the editor under /editor/.
+# Publishes the CloudeIDE site: the landing page, and nothing else.
+#
+# It used to publish a browser build of the editor under /editor/ as well.
+# That build is gone — it could not open a folder on the machine in front of
+# you, could not run a terminal, and could not receive the sign-in it offered,
+# so it was a second, smaller product wearing the same name. One product, one
+# download.
 #
 # Everything happens on a GitHub runner, so nobody needs a machine with the
 # sources on it to get a working link.
@@ -20,8 +25,6 @@ on:
     branches: [cloudeide-branding]
     paths:
       - '.github/workflows/cloudeide-preview.yml'
-      - 'build/cloudeide/**'
-      - 'src/vs/workbench/contrib/cloudeide/**'
       - 'landing/**'
 
 permissions:
@@ -36,7 +39,7 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 10
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
@@ -44,53 +47,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-
-      # The runner ships with toolchains this build never touches, and the
-      # build needs the room they occupy.
-      - name: Make room on the disk
-        run: |
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/boost
-          df -h /
-
-      # The same packages upstream's own PR workflow installs: npm ci builds
-      # native modules (kerberos, native-keymap) that need these headers, and
-      # without them the install fails before any of the build runs.
-      - name: Install build dependencies
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y build-essential pkg-config \
-            libx11-dev libx11-xcb-dev libxkbfile-dev libnotify-bin libkrb5-dev
-
-      - name: Install dependencies
-        run: npm ci
-
-      # The full build runs a check that fails on upstream source this fork has
-      # not touched, so this takes the path CI itself uses: compile without
-      # mangling, then bundle.
-      - name: Build the web bundle
-        run: |
-          npm run gulp compile-build-without-mangling
-          npm run gulp vscode-web-min-ci
-        env:
-          # The limit that actually governs this build is the one in
-          # package.json's `gulp` script, because a flag on the command line
-          # beats NODE_OPTIONS. Setting it here alone did nothing — a run that
-          # died at 8043 MB with this set to 12288 is what proved it. It stays
-          # for the node processes the build spawns without that flag.
-          NODE_OPTIONS: --max-old-space-size=12288
-
+      # No node, no npm ci, no sysroots, no disk clearing. All of that was
+      # here to compile a web bundle; what is left copies HTML.
       - name: Assemble the static site
         run: |
           set -euo pipefail
 
-          # The landing page is the front door, so it takes the root; the
-          # editor sits one level down where a link can point at it.
+          # Copying a folder, which is the whole job now. There used to be a
+          # twenty-minute web bundle above this — two gulp tasks that
+          # repeatedly ran the runner out of heap — and it existed to produce
+          # /editor/. Nothing points at /editor/ any more.
           mkdir -p site
           cp -r landing/. site/
-          node build/cloudeide/make-static.mjs ../vscode-web site/editor "$PWD"
 
           # The /app/ rewrite is gone with the links it fixed: the page no
           # longer points at an application that this domain does not serve.
