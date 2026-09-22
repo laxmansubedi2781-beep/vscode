@@ -103,6 +103,7 @@
       a page that has to explain itself.
     -->
     <div class="nav-actions">
+      <a class="btn btn-ghost" href="https://api.cloudeide.com/app/signin">Sign in</a>
       <a class="btn btn-primary" href="#desktop"><span class="btn-mark" aria-hidden="true"><img src="assets/logo.svg" alt="" width="14" height="14" /></span>Download</a>
       <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
@@ -111,6 +112,7 @@
   </div>
 
   <div class="mobile-menu" id="mobileMenu" hidden>
+    <a href="https://api.cloudeide.com/app/signin">Sign in</a>
     <a href="#demo">Demo</a>
     <a href="#why">How it works</a>
     <a href="#cli">CLI &amp; agents</a>
@@ -143,14 +145,49 @@
     </div>
 
     <!--
+      The product, at the top, doing something.
+      
+      A title sequence was here: the logo assembling itself over a few
+      seconds. It said nothing a visitor did not already know from the word
+      above it, and it occupied the one place on the page where somebody
+      decides whether to keep reading. Every editor this competes with puts a
+      real screenshot here instead, and they are right to — the question at
+      this point is "what is it", and a picture of the thing answers it
+      faster than any sentence.
+
+      So this is the editor with a project open: a file tree with real files,
+      real code in the middle, and in the panel a real exchange — a change
+      asked for in a sentence, reported as done, and underneath it the
+      address the result was published to. The headline says write it and
+      ship it; the picture ends on the shipped thing.
+
+      The phone gets a crop of the panel rather than the whole window. The
+      code is unreadable at 390px either way, and the address is the part
+      that has to survive.
+
+      Full-bleed and outside `.wrap` because it is the widest thing on the
+      page and a margin would shrink the one part worth looking at.
+    -->
+    <div class="hero-shot reveal">
+      <picture>
+        <source srcset="assets/shot-deploy-wide.jpg" media="(min-width: 760px)" />
+        <img src="assets/shot-deploy-narrow.jpg" width="1920" height="1080" fetchpriority="high" decoding="async"
+             alt="CloudeIDE with a project open: a request to show prices next to each menu item, the change reported back, and under it the address the result was published to." />
+      </picture>
+    </div>
+
+    <!--
       Integrations, not customers. "Trusted by" over a row of logos would
       claim these companies use CloudeIDE, which is not true. Each is a client
       the CLI writes a config for, and the heading says exactly that.
 
-      Above the film on purpose: below it this sat 1102px down a 860px phone
-      screen, so it was never in the first scroll. And no `reveal` — measured
-      at opacity 0 with the fade still to come, which is what read as blurred
-      text rather than absent text.
+      Below the screenshot, which is the one thing that has to be in the
+      first scroll. It was above, from when the thing underneath was a title
+      sequence worth less than this row; a picture of the product is not, and
+      four words of tooling should not push it under the fold.
+
+      No `reveal` — measured at opacity 0 with the fade still to come, which
+      is what read as blurred text rather than absent text.
     -->
     <div class="wrap" id="integrations">
       <p class="integrations-label">Works with the tools you already use</p>
@@ -160,41 +197,6 @@
         <li class="integration">Codex</li>
         <li class="integration">MCP</li>
       </ul>
-    </div>
-
-    <!--
-      Full-bleed, and deliberately outside `.wrap`.
-
-      The film is composed with its own dark surround already in it — the page
-      does not need to frame something that arrives framed. So the old stage,
-      device chrome and letterboxed 16:9 box are gone: each of them drew a
-      border around a picture that already had one, and the `object-fit:
-      contain` inside a fixed 16:9 box is where the black bars came from.
-
-      Sizing is intrinsic: width 100%, height auto. The element is therefore
-      exactly the film's own aspect ratio, so there is nothing to letterbox
-      and nothing to crop.
-    -->
-    <!--
-      `preload="none"` with a poster, deliberately. With "metadata" the browser
-      decodes frame one and paints that instead of the poster — and both films
-      open by fading up from nothing, so frame one is a black rectangle. The
-      poster is a real still of the film, and it holds until playback starts.
-    -->
-    <div class="filmstrip filmstrip--promo reveal" style="--ar-narrow: 1080 / 1920">
-      <!--
-        The dark cut. The sequence was drawn on cream, which on a near-black
-        page read as a lit panel sitting on top of the site rather than part
-        of it. Inverted and pulled back to the page's own warmth: the
-        background now lands where the page's does, and the branches and the
-        closing line come through light instead of dark.
-      -->
-      <video muted loop playsinline preload="none" poster="assets/poster-promo-dark.jpg" aria-label="CloudeIDE title sequence, ending on: try CloudeIDE now">
-        <source src="assets/cloudeide-promo-wide-dark.webm" type="video/webm" media="(min-width: 760px)" />
-        <source src="assets/cloudeide-promo-wide-dark.mp4" type="video/mp4" media="(min-width: 760px)" />
-        <source src="assets/cloudeide-promo-dark.webm" type="video/webm" />
-        <source src="assets/cloudeide-promo-dark.mp4" type="video/mp4" />
-      </video>
     </div>
 
   </section>

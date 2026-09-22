@@ -321,8 +321,16 @@ section {
  * every section below are already left-aligned inside `.wrap`, so the first
  * screen was the only part of the page that did not line up with the rest.
  */
+/* Tighter than it was at 96/72.
+ *
+ * The screenshot below is the point of this screen, and with the old padding
+ * it began 940px down a 900px viewport — so the first thing anybody saw was
+ * a headline and a lot of black. Cursor, Linear and every other page of this
+ * shape put the product inside the first screen, and the reason is the same
+ * for all of them: the question at the top is "what is it".
+ */
 .hero {
-  padding: 96px 0 72px;
+  padding: 64px 0 0;
 }
 
 .eyebrow {
@@ -382,6 +390,69 @@ section {
    there is nothing to letterbox and nothing cropped off. No `object-fit`
    anywhere — it cannot do anything useful when the box already fits.
 */
+/* ── the hero's screenshot ───────────────────────────────────────────────
+ *
+ * Full-bleed, like the film it replaced, and for the same reason: it is the
+ * widest thing on the page and the part worth looking at.
+ *
+ * A soft edge at the bottom rather than a hard one. The screenshot is a
+ * rectangle of a dark UI on a dark page, and a straight cut across it reads
+ * as a seam — the page looks like two pages stacked. The fade lets it end
+ * without announcing where.
+ */
+.hero-shot {
+  position: relative;
+  width: 100%;
+  margin-top: 40px;
+}
+
+.hero-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* Reserved before the file arrives, so nothing below it jumps. */
+  aspect-ratio: 1920 / 1080;
+  object-fit: cover;
+  object-position: top center;
+  /* Cropped rather than shrunk on a phone: a 1920-wide screenshot scaled to
+     360 is unreadable, and the left two thirds — the tree and the code — are
+     the part that carries the meaning. */
+  max-height: min(72vh, 620px);
+}
+
+.hero-shot::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 96px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0), var(--bg));
+}
+
+@media (max-width: 760px) {
+  .hero-shot {
+    margin-top: 32px;
+  }
+
+  /* Cropped, not shrunk.
+   *
+   * The whole 1920-wide frame scaled into 390px is 1600 lines of code at two
+   * pixels each — a grey texture that happens to be a screenshot. A phone
+   * cannot show the whole window, so it shows part of one: the taller box
+   * plus `cover` scales the image up and clips it, and the part kept is the
+   * left third, where the file tree and the code are. The panel falls off
+   * the right, which is the right thing to lose — the reader already has the
+   * sentence above saying what the panel does.
+   */
+  .hero-shot img {
+    /* The narrow source is already the crop — the panel, cut from the same
+       screenshot — so this only has to not distort it. */
+    aspect-ratio: 477 / 990;
+    max-height: none;
+    object-fit: contain;
+  }
+}
+
 .filmstrip {
   position: relative;
   width: 100%;
@@ -442,8 +513,9 @@ section {
 
 /* ---------------------------------------------------------- integrations -- */
 
+/* It follows the screenshot now, which already ends in a fade. */
 #integrations {
-  margin-top: 44px;
+  margin-top: 40px;
 }
 
 /* Left, with the rest of the hero it sits in. */

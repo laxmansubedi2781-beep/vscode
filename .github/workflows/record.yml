@@ -108,8 +108,8 @@ jobs:
             # The bottom strip goes. The panel signs off with "Connected as
             # <the account's email address>", and that is not something to put
             # on a public page; the workbench status bar underneath it is
-            # noise anyway. Cutting at 824 keeps the composer and its Deploy
-            # button, which are part of the shot.
+            # noise anyway. Cutting at 824 keeps the composer, and the Cloud
+            # pane below it where Deploy and the address now live.
             ffmpeg -nostdin -v error -ss "$from" -t "$len" -i "$raw" \
               -vf "crop=1440:824:0:0" \
               -c:v libvpx-vp9 -b:v 0 -crf 34 -an "/tmp/cut/${name}.webm"
@@ -129,7 +129,15 @@ jobs:
               -c:v libx264 -crf 26 -pix_fmt yuv420p -movflags +faststart -an "/tmp/cut/${name}-narrow.mp4"
 
             # A still for the poster, a second in so it is never a blank frame.
-            ffmpeg -nostdin -v error -ss 1 -i "/tmp/cut/${name}.mp4" -frames:v 1 -q:v 3 "/tmp/cut/${name}.jpg"
+            #
+            # Except the deploy clip, whose whole point is its last frame: a
+            # second into that one is a progress line, and the address it
+            # turns into is the thing worth putting on a page.
+            if [ "$name" = "cloud-ship" ]; then
+              ffmpeg -nostdin -v error -sseof -1 -i "/tmp/cut/${name}.mp4" -frames:v 1 -q:v 3 "/tmp/cut/${name}.jpg"
+            else
+              ffmpeg -nostdin -v error -ss 1 -i "/tmp/cut/${name}.mp4" -frames:v 1 -q:v 3 "/tmp/cut/${name}.jpg"
+            fi
           done
           ls -lh /tmp/cut
 

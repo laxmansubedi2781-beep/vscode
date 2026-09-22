@@ -54,10 +54,30 @@ await page.waitForSelector('.monaco-workbench', { timeout: 180_000 });
 await page.waitForSelector('.cloudeide-panel', { timeout: 120_000 });
 
 // ---- connect -------------------------------------------------------------
-const tokenField = page.locator('input.cloudeide-input');
-await tokenField.waitFor({ timeout: 30_000 });
-await tokenField.fill(TOKEN);
-await page.locator('.cloudeide-connect button.cloudeide-button-primary').click();
+// Through the command palette, because the panel no longer has a token box.
+// Signing in is a browser hand-off now, which is right for a person and
+// impossible here — so this uses the command that exists for exactly the
+// callers that have no browser to be handed to.
+await page.keyboard.press('Control+Shift+KeyP');
+await page.waitForSelector('.quick-input-widget input', { timeout: 30_000 });
+await page.keyboard.type('CloudeIDE: Sign In with an API Token', { delay: 12 });
+await page.waitForTimeout(700);
+await page.keyboard.press('Enter');
+
+await page.waitForTimeout(700);
+await page.keyboard.type(TOKEN, { delay: 4 });
+await page.keyboard.press('Enter');
+
+// The command reports with a dialog either way; dismissing it is also how
+// this finds out whether it worked.
+const ok = page.locator('.monaco-dialog-box');
+await ok.waitFor({ timeout: 60_000 });
+const dialogText = await ok.innerText();
+await page.locator('.monaco-dialog-box .monaco-button').first().click();
+if (!/Signed in/i.test(dialogText)) {
+	console.error(`sign-in failed: ${dialogText.replace(/\s+/g, ' ').slice(0, 200)}`);
+	process.exit(2);
+}
 await page.waitForSelector('textarea.cloudeide-textarea', { timeout: 60_000 });
 console.log(`connected at ${at().toFixed(1)}s`);
 
@@ -134,10 +154,58 @@ await page.keyboard.press('Control+PageDown');
 await page.waitForTimeout(2200);
 mark('editor-wide', clipWideFrom, at());
 
+// ---- ship it -------------------------------------------------------------
+// The clip the landing page has never had: the Cloud pane, Deploy pressed,
+// and the address that comes back. This is the part no other editor of this
+// kind can film, and filming it is the only way to know it works.
+const clipShipFrom = at();
+let liveUrl = '';
+try {
+	// The Cloud pane sits under the chat, collapsed. Its header is the handle.
+	await page.locator('.pane-header', { hasText: 'Cloud' }).first().click({ timeout: 20_000 });
+	await page.waitForSelector('.cloudeide-cloud-deploy', { timeout: 30_000 });
+	await page.waitForTimeout(1200);
+	await page.locator('.cloudeide-cloud-deploy').click();
+
+	// A build takes minutes. Poll the status line until it stops saying
+	// "Building" — an address is a link, which is how a finished one reads.
+	const shipDeadline = Date.now() + 10 * 60_000;
+	while (Date.now() < shipDeadline) {
+		await page.waitForTimeout(3000);
+		const link = page.locator('.cloudeide-cloud-deploy-status a.cloudeide-cloud-link');
+		if (await link.count() > 0) {
+			liveUrl = (await link.first().innerText()).trim();
+			break;
+		}
+		const status = await page.locator('.cloudeide-cloud-deploy-status').innerText().catch(() => '');
+		if (status && !/Building|Reading|…/i.test(status)) {
+			console.log(`deploy stopped: ${status.slice(0, 160)}`);
+			break;
+		}
+	}
+	await page.waitForTimeout(2000);
+	/*
+	 * The last twelve seconds, not the first.
+	 *
+	 * A build takes minutes and almost all of them are a spinner. The part
+	 * worth looping is the end — the status line turning into an address —
+	 * so the mark is measured back from now rather than forward from the
+	 * click. `clipShipFrom` still bounds it, so a deploy that finished in
+	 * four seconds gives a four-second clip rather than eight seconds of
+	 * whatever came before it.
+	 */
+	mark('cloud-ship', Math.max(clipShipFrom, at() - 12), at());
+	console.log(`live url: ${liveUrl || '(none)'}`);
+} catch (err) {
+	// A deploy that cannot run must not cost the two clips that already did.
+	console.log(`deploy clip skipped: ${String(err).slice(0, 160)}`);
+}
+
 const failed = await page.locator('.cloudeide-turn-failed').count();
 console.log(`answer length: ${answer.length} characters`);
 console.log(`failed turns: ${failed}`);
 console.log(`page errors: ${JSON.stringify(problems.slice(0, 3))}`);
+console.log(`LIVE_URL=${liveUrl}`);
 for (const m of marks) {
 	console.log(`MARK ${m.name} ${m.from} ${m.to}`);
 }

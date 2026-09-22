@@ -4,6 +4,7 @@
 
 import './media/cloudeide.css';
 import { localize, localize2 } from '../../../../nls.js';
+import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
 import { Extensions as ConfigurationExtensions, IConfigurationRegistry } from '../../../../platform/configuration/common/configurationRegistry.js';
 import { SyncDescriptor } from '../../../../platform/instantiation/common/descriptors.js';
 import { Registry } from '../../../../platform/registry/common/platform.js';
@@ -17,6 +18,7 @@ import {
 	ViewContainerLocation,
 } from '../../../common/views.js';
 import { CloudeidePanel } from './cloudeidePanel.js';
+import { CloudeideClient } from './cloudeideClient.js';
 import { CloudeideCloudPanel } from './cloudeideCloudPanel.js';
 import { CloudeideAccountPanel } from './cloudeideAccountPanel.js';
 import { CloudeideLanguageModelContribution } from './cloudeideLanguageModel.js';
@@ -27,7 +29,7 @@ import { IQuickInputService } from '../../../../platform/quickinput/common/quick
 import { ISecretStorageService } from '../../../../platform/secrets/common/secrets.js';
 import { IDialogService } from '../../../../platform/dialogs/common/dialogs.js';
 import { ICommandService } from '../../../../platform/commands/common/commands.js';
-import { AgentHostAnthropicKeySecret } from '../../../../platform/agentHost/common/agentService.js';
+import { AgentHostAnthropicKeySecret, CloudeideTokenSecret } from '../../../../platform/agentHost/common/agentService.js';
 import { registerWorkbenchContribution2, WorkbenchPhase } from '../../../common/contributions.js';
 
 const CONTAINER_ID = 'workbench.view.cloudeideContainer';
@@ -210,6 +212,69 @@ registerWorkbenchContribution2(
  * fixed when it spawns. Asking is better than doing it underneath someone
  * with unsaved work.
  */
+/*
+ * Signing in with a token, for the two callers that cannot use a browser.
+ *
+ * The door hands somebody to cloudeide.com and takes the answer back through
+ * a `cloudeide://` URL, which is the right flow for a person and impossible
+ * for two others: a CI run filming the product, and anyone on a machine with
+ * no browser to hand — a server, a container, a remote session.
+ *
+ * Not a back door. It stores the same secret the door stores, checks it
+ * against the server before saying it worked, and is reachable only from the
+ * command palette, where somebody has to go looking for it.
+ */
+registerAction2(class extends Action2 {
+	constructor() {
+		super({
+			id: 'cloudeide.signInWithToken',
+			title: localize2('cloudeide.signInWithToken', "CloudeIDE: Sign In with an API Token"),
+			f1: true,
+		});
+	}
+
+	async run(accessor: ServicesAccessor): Promise<void> {
+		const quickInput = accessor.get(IQuickInputService);
+		const secrets = accessor.get(ISecretStorageService);
+		const dialogs = accessor.get(IDialogService);
+		const configuration = accessor.get(IConfigurationService);
+
+		const token = await quickInput.input({
+			password: true,
+			ignoreFocusLost: true,
+			placeHolder: 'cide_…',
+			prompt: localize('cloudeide.signInWithToken.prompt', "Paste a CloudeIDE API token from Settings → API tokens."),
+		});
+		if (token === undefined) {
+			return;
+		}
+
+		const trimmed = token.trim();
+		if (!trimmed) {
+			await secrets.delete(CloudeideTokenSecret);
+			return;
+		}
+
+		// Proved before it is kept. A token that is only stored fails later,
+		// mid-question, where it reads as the product being broken.
+		const client = new CloudeideClient(secrets, configuration);
+		await client.setToken(trimmed);
+		try {
+			const me = await client.whoami();
+			await dialogs.info(
+				localize('cloudeide.signInWithToken.ok', "Signed in as {0}", me.email),
+				localize('cloudeide.signInWithToken.okDetail', "Open the CloudeIDE panel to ask something."),
+			);
+		} catch (err) {
+			await client.clearToken();
+			await dialogs.error(
+				localize('cloudeide.signInWithToken.failed', "That token did not work"),
+				err instanceof Error ? err.message : String(err),
+			);
+		}
+	}
+});
+
 registerAction2(class extends Action2 {
 	constructor() {
 		super({
