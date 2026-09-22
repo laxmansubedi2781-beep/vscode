@@ -86,3 +86,62 @@ jobs:
                   return type(v).__name__
               print('body shape:', json.dumps(shape(data)))
           PY
+
+      # The dashboard moved inside the API host, and "it built" is not "it is
+      # served". Two calls say whether it is: a route inside the app has to
+      # come back as the page, and a file that does not exist has to come back
+      # as a miss. The second one is the real test — a fallback written too
+      # broadly answers every request with index.html, including the script
+      # tags the page itself asks for, and the dashboard then loads as a blank
+      # screen with no error anywhere.
+      - name: Is the dashboard served
+        run: |
+          set -uo pipefail
+          page="$(curl -s -o /tmp/page -w '%{http_code}' --max-time 30 \
+            https://api.cloudeide.com/app/settings)"
+          type="$(file -b --mime-type /tmp/page)"
+          echo "GET /app/settings -> HTTP ${page}, $(wc -c < /tmp/page) bytes, ${type}"
+
+          missing="$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 \
+            https://api.cloudeide.com/app/no-such-file.js)"
+          echo "GET /app/no-such-file.js -> HTTP ${missing}"
+
+          case "$page" in
+            200) echo "the dashboard answers";;
+            404) echo "::error::the dashboard is not being served (404) — STATIC_ROOT or the build output";;
+            000) echo "::error::could not reach api.cloudeide.com at all";;
+            *)   echo "::error::unexpected status ${page} from /app/settings";;
+          esac
+          if [ "$missing" = "200" ]; then
+            echo "::error::a missing file under /app came back as the page — the fallback is too broad"
+          fi
+
+      # The agent endpoint, asked without credentials. This is the one call on
+      # the server that spends money, so the thing worth checking on a schedule
+      # is that a stranger cannot reach it. A signed-in caller is checked with
+      # the model list instead, which bills nothing.
+      - name: Does the agent endpoint refuse a stranger
+        env:
+          TOKEN: ${{ secrets.CLOUDEIDE_API_TOKEN }}
+        run: |
+          set -uo pipefail
+          anon="$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 \
+            -X POST https://api.cloudeide.com/api/anthropic/v1/messages \
+            -H 'content-type: application/json' \
+            -d '{"model":"claude-sonnet-5","max_tokens":1,"messages":[{"role":"user","content":"hi"}]}')"
+          echo "POST /api/anthropic/v1/messages with no token -> HTTP ${anon}"
+          case "$anon" in
+            401|403) echo "refused, as it must be";;
+            000)     echo "::error::could not reach api.cloudeide.com at all";;
+            *)       echo "::error::the agent endpoint answered ${anon} to a caller with no token";;
+          esac
+
+          models="$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 \
+            -H "Authorization: Bearer ${TOKEN}" \
+            https://api.cloudeide.com/api/anthropic/v1/models)"
+          echo "GET /api/anthropic/v1/models with the token -> HTTP ${models}"
+          case "$models" in
+            200) echo "the agent endpoint answers a signed-in caller";;
+            401|403) echo "::error::the agent endpoint refused the account's own token (${models})";;
+            *)   echo "::warning::unexpected status ${models} from the model list";;
+          esac
