@@ -555,6 +555,23 @@ export class CloudeideClient {
 		await this.request(`/deploy/domains/${encodeURIComponent(id)}${this.projectQuery()}`, { method: 'DELETE' });
 	}
 
+	/**
+	 * Puts the open folder where the agent's tools can read it.
+	 *
+	 * `/ai/agent`'s list_files, read_file and search_workspace answer from
+	 * `workspaces.state`, not from this machine — the server has no way to
+	 * reach a folder on somebody's laptop. Without this the agent's own tools
+	 * find an empty project and it can only work from the handful of files a
+	 * message carries, which is the difference between answering about one
+	 * file and understanding a codebase.
+	 */
+	async saveWorkspace(state: Record<string, unknown>): Promise<void> {
+		await this.request('/workspace', {
+			method: 'PUT',
+			body: JSON.stringify({ state }),
+		});
+	}
+
 	async profile(): Promise<UserProfile> {
 		const body = await this.request<{ user?: { name?: string; email?: string } }>('/user/profile');
 		return { name: body.user?.name ?? '', email: body.user?.email ?? '' };

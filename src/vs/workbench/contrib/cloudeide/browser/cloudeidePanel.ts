@@ -26,6 +26,7 @@ import { IEditorService } from '../../../services/editor/common/editorService.js
 import { IModelService } from '../../../../editor/common/services/model.js';
 import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
 import { CloudeideClient, type ChatMessage, type FileChange } from './cloudeideClient.js';
+import { collectWorkspaceFiles, toWorkspaceState } from './cloudeideWorkspace.js';
 import { VSBuffer } from '../../../../base/common/buffer.js';
 import { linesDiffComputers } from '../../../../editor/common/diff/linesDiffComputers.js';
 
@@ -69,6 +70,9 @@ export class CloudeidePanel extends ViewPane {
 
 	private readonly messages: ChatMessage[] = [];
 	private busy = false;
+
+	/** The last state uploaded, so an unchanged project is not sent twice. */
+	private syncedState: string | undefined;
 
 	constructor(
 		options: IViewletViewOptions,
@@ -401,6 +405,12 @@ export class CloudeidePanel extends ViewPane {
 		// is worse than none.
 		const context = await this.gatherContext();
 
+		// And the project itself, so the agent's own tools have something to
+		// read. Failure here is not fatal — the run still gets the open files
+		// in `context` — so it reports and carries on rather than refusing to
+		// answer a question it could have answered less well.
+		await this.syncWorkspace();
+
 		let started = false;
 		let reply = '';
 		let runId: string | undefined;
@@ -476,6 +486,43 @@ export class CloudeidePanel extends ViewPane {
 		// Mentioned only so the unused-variable rule does not hide a real bug
 		// later: the run id travels on the proposal, which carries its own.
 		void runId;
+	}
+
+	/**
+	 * Uploads the open folder, unless it is the same one already up there.
+	 *
+	 * The hash is over paths and contents, so an answer that changes nothing
+	 * costs one walk of the folder and no request — and a question asked
+	 * three times in a row does not upload a project three times. It is kept
+	 * in memory on purpose: a stale hash surviving a restart would skip the
+	 * one upload that a fresh session definitely needs.
+	 */
+	private async syncWorkspace(): Promise<void> {
+		if (this.contextService.getWorkspace().folders.length === 0) {
+			return;
+		}
+
+		try {
+			const files = await collectWorkspaceFiles(this.fileService, this.contextService);
+			if (files.length === 0) {
+				return;
+			}
+
+			const state = toWorkspaceState(files);
+			const serialized = JSON.stringify(state);
+			if (serialized === this.syncedState) {
+				return;
+			}
+
+			this.appendStep(localize('cloudeide.syncing', "Reading the project"),
+				localize('cloudeide.syncingFiles', "{0} files", files.length));
+			await this.client.saveWorkspace(state);
+			this.syncedState = serialized;
+		} catch (err) {
+			this.appendStep(localize('cloudeide.syncFailed',
+				"Could not send the project — answering from the open files only"),
+				err instanceof Error ? err.message : String(err));
+		}
 	}
 
 	/** One line per tool the run used, as it uses it. */
