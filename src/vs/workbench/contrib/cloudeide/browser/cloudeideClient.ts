@@ -407,6 +407,23 @@ export class CloudeideClient {
 	 * them as a `proposal`; applying them is the editor's job, and telling the
 	 * server what was decided is {@link decideProposal}.
 	 */
+	/**
+	 * One turn of the local agent, streamed.
+	 *
+	 * The body is Anthropic's `/v1/messages` shape and goes to our own server,
+	 * which forwards it and charges the account for what came back. Ten
+	 * minutes rather than two: a turn here is one step of a loop that may run
+	 * several, and a model thinking through a large file is not a hung request.
+	 *
+	 * The caller reads the stream. This only gets it one.
+	 */
+	async anthropicMessages(body: unknown): Promise<Response> {
+		return this.send('/anthropic/v1/messages', {
+			method: 'POST',
+			body: JSON.stringify(body),
+		}, 600_000);
+	}
+
 	async agent(
 		messages: readonly ChatMessage[],
 		onEvent: (event: AgentEvent) => void,
