@@ -143,7 +143,12 @@ jobs:
           sudo apt-get install -y xvfb imagemagick x11-utils xdotool
           cd ../VSCode-linux-x64
 
-          mkdir -p /tmp/ws && printf 'const price = 120;\n' > /tmp/ws/menu.js
+          # A project, not a one-line file. This photograph is on the landing
+          # page, and the page's claim is that the agent reads the project you
+          # have open — which a screenshot of an empty tree cannot support.
+          # Same script the recording uses, so the still and the film are of
+          # the same folder.
+          "$GITHUB_WORKSPACE/build/cloudeide/sample-project.sh" /tmp/ws
 
           # The screen comes first, and the app waits for it to answer rather
           # than for a fixed number of seconds.
@@ -154,8 +159,13 @@ jobs:
 
           # --no-sandbox because the chrome sandbox wants privileges a runner
           # does not grant; the rest keeps a headless machine from stalling.
-          ./cloudeide /tmp/ws \
+          # A first run opens the walkthrough over two thirds of the window,
+          # and what it offers there is Copilot — which is not this product
+          # and has no business in a picture of it. The file is named so the
+          # editor has something in it besides a background.
+          ./cloudeide /tmp/ws /tmp/ws/src/menu.js \
             --no-sandbox --disable-gpu --disable-dev-shm-usage \
+            --skip-welcome --skip-release-notes --disable-workspace-trust \
             --user-data-dir /tmp/cloudeide-data --extensions-dir /tmp/cloudeide-ext \
             > /tmp/app.log 2>&1 &
           app=$!
@@ -332,6 +342,12 @@ jobs:
       # same drawing calls a screenshot key would use. None of this is allowed
       # to fail the job — the package is the deliverable, the picture is
       # evidence about it.
+      # The project both platforms are photographed with, written by the one
+      # script. Git Bash is on this runner and maps /c/ws to C:\ws.
+      - name: Write the project
+        shell: bash
+        run: bash build/cloudeide/sample-project.sh /c/ws
+
       - name: Start it and take a picture
         id: smoke
         timeout-minutes: 15
@@ -340,12 +356,14 @@ jobs:
           $ErrorActionPreference = 'Continue'
           $built = Join-Path (Split-Path $PWD -Parent) 'VSCode-win32-x64'
           $exe = Join-Path $built 'CloudeIDE.exe'
-          New-Item -ItemType Directory -Force -Path C:\ws | Out-Null
-          Set-Content -Path C:\ws\menu.js -Value 'const price = 120;'
 
+          # Same flags as Linux, and for the same reason: a first run puts the
+          # walkthrough over two thirds of the window and offers Copilot in it.
           $app = Start-Process -FilePath $exe -PassThru -ArgumentList @(
             'C:\ws',
+            'C:\ws\src\menu.js',
             '--disable-gpu',
+            '--skip-welcome', '--skip-release-notes', '--disable-workspace-trust',
             '--user-data-dir', 'C:\cloudeide-data',
             '--extensions-dir', 'C:\cloudeide-ext'
           )

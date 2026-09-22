@@ -85,55 +85,11 @@ jobs:
           ls -lh "$bin"
 
       # A project, because a film of an empty editor is what this workflow was
-      # rewritten to stop producing. Small enough to read on a page at a
-      # glance, real enough to deploy: index.html is what the Deploy clip puts
-      # on a URL.
-      #
-      # `.env` and `node_modules` are here on purpose. Neither is uploaded —
-      # cloudeideWorkspace.ts skips both — and a tree without them does not
-      # look like anyone's actual project.
+      # rewritten to stop producing. The same one the smoke test opens, from
+      # the same script: the photograph and the film sit on the same page, and
+      # a tree that changes between them reads as two different products.
       - name: Write the project
-        run: |
-          set -euo pipefail
-          rm -rf /tmp/ws && mkdir -p /tmp/ws/src /tmp/ws/node_modules/.keep-dir
-          cat > /tmp/ws/src/menu.js <<'JS'
-          export const menu = [
-            { name: 'Espresso',    price: 120 },
-            { name: 'Masala Chai', price: 60 },
-            { name: 'Cold Brew',   price: 150 },
-          ];
-
-          export function total(items) {
-            return items.reduce((sum, i) => sum + i.price, 0);
-          }
-
-          export function format(item) {
-            return `${item.name}`;
-          }
-          JS
-          cat > /tmp/ws/index.html <<'HTML'
-          <!doctype html>
-          <html lang="en">
-            <head>
-              <meta charset="utf-8" />
-              <meta name="viewport" content="width=device-width, initial-scale=1" />
-              <title>Cafe Nirvana</title>
-            </head>
-            <body>
-              <h1>Cafe Nirvana</h1>
-              <ul id="menu"></ul>
-              <script type="module" src="./src/menu.js"></script>
-            </body>
-          </html>
-          HTML
-          cat > /tmp/ws/README.md <<'MD'
-          # Cafe Nirvana
-
-          The menu for a small coffee shop, and the page it is served on.
-          MD
-          printf 'ANALYTICS_KEY=not-a-real-key\n' > /tmp/ws/.env
-          printf '{}\n' > /tmp/ws/node_modules/.keep-dir/package.json
-          find /tmp/ws -type f | sort
+        run: build/cloudeide/sample-project.sh /tmp/ws
 
       # playwright-core alone: it is what the script imports, it is already a
       # dependency of this repository, and it downloads no browsers — the
