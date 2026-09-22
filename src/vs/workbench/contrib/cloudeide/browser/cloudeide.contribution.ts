@@ -19,6 +19,7 @@ import {
 } from '../../../common/views.js';
 import { CloudeidePanel } from './cloudeidePanel.js';
 import { CloudeideCloudPanel } from './cloudeideCloudPanel.js';
+import { CloudeideAccountPanel } from './cloudeideAccountPanel.js';
 import { CloudeideLanguageModelContribution } from './cloudeideLanguageModel.js';
 import { CloudeideChatAgentContribution } from './cloudeideChatAgent.js';
 import { Action2, registerAction2 } from '../../../../platform/actions/common/actions.js';
@@ -97,8 +98,31 @@ const cloudViewDescriptor: IViewDescriptor = {
 	},
 };
 
+/*
+ * The third pane, and the one opened least.
+ *
+ * Who the account is, what the plan allows and what is left of it — all of
+ * which was a page on the web, so "how many credits do I have" meant opening
+ * a different application. Collapsed like Cloud: it answers a question rather
+ * than being worked in.
+ */
+const accountViewDescriptor: IViewDescriptor = {
+	id: CloudeideAccountPanel.ID,
+	name: localize2('cloudeide.account', "Account"),
+	containerIcon: cloudeideIcon,
+	ctorDescriptor: new SyncDescriptor(CloudeideAccountPanel),
+	canToggleVisibility: true,
+	canMoveView: true,
+	collapsed: true,
+	order: 3,
+	openCommandActionDescriptor: {
+		id: 'workbench.action.cloudeide.account.focus',
+		title: localize2('cloudeide.account.focus', "Focus CloudeIDE Account"),
+	},
+};
+
 Registry.as<IViewsRegistry>(ViewContainerExtensions.ViewsRegistry)
-	.registerViews([viewDescriptor, cloudViewDescriptor], container);
+	.registerViews([viewDescriptor, cloudViewDescriptor, accountViewDescriptor], container);
 
 Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Configuration).registerConfiguration({
 	id: 'cloudeide',

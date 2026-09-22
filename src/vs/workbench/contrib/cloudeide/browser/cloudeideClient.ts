@@ -62,6 +62,35 @@ export interface FileChange {
 /** The environments `/deploy/run` accepts. Anything else is a 400. */
 export type DeployEnvironment = 'development' | 'preview' | 'production';
 
+/** What `GET /billing/plan` says about the account, trimmed to what a pane shows. */
+export interface BillingPlan {
+	readonly plan: string;
+	readonly planName: string;
+	readonly amount: number;
+	readonly status: string;
+	readonly includedCredits: number;
+	readonly includedCreditsUsed: number;
+	readonly includedCreditsRemaining: number;
+	readonly creditsBalance: number;
+	readonly expiryDate: string | null;
+}
+
+/** One API token, as the dashboard lists it. Never the token itself. */
+export interface ApiToken {
+	readonly id: string;
+	readonly name: string;
+	readonly prefix: string;
+	readonly scopes: string[];
+	readonly state: string;
+	readonly createdAt: string;
+	readonly lastUsedAt: string | null;
+}
+
+export interface UserProfile {
+	readonly name: string;
+	readonly email: string;
+}
+
 /** One custom domain on a project, as `GET /deploy/domains` reports it. */
 export interface DeployDomain {
 	readonly id: string;
@@ -524,5 +553,32 @@ export class CloudeideClient {
 
 	async removeDomain(id: string): Promise<void> {
 		await this.request(`/deploy/domains/${encodeURIComponent(id)}${this.projectQuery()}`, { method: 'DELETE' });
+	}
+
+	async profile(): Promise<UserProfile> {
+		const body = await this.request<{ user?: { name?: string; email?: string } }>('/user/profile');
+		return { name: body.user?.name ?? '', email: body.user?.email ?? '' };
+	}
+
+	async billingPlan(): Promise<BillingPlan> {
+		return this.request<BillingPlan>('/billing/plan');
+	}
+
+	async listTokens(): Promise<ApiToken[]> {
+		const body = await this.request<{ tokens?: ApiToken[] }>('/tokens');
+		return body.tokens ?? [];
+	}
+
+	/**
+	 * Revokes one token. There is deliberately no create here.
+	 *
+	 * The server refuses to mint a token for a caller holding a token — a
+	 * credential that can make more credentials cannot be contained by
+	 * revoking it — and this editor authenticates with exactly that. So the
+	 * pane can list and revoke, and creating stays where a browser session
+	 * is.
+	 */
+	async revokeToken(id: string): Promise<void> {
+		await this.request(`/tokens/${encodeURIComponent(id)}`, { method: 'DELETE' });
 	}
 }

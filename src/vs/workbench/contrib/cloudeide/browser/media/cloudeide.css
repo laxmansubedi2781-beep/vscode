@@ -799,3 +799,65 @@
 .cloudeide-cloud .cloudeide-cloud-link:hover {
 	color: var(--vscode-textLink-activeForeground);
 }
+
+/* ── Account pane ────────────────────────────────────────────────────────
+ *
+ * Shares the Cloud pane's layout classes on purpose: they are two views in
+ * one container and a person reads them as one surface, so a second set of
+ * spacing rules would show as a seam.
+ */
+.cloudeide-account-identity,
+.cloudeide-account-plan {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.cloudeide-account-plan {
+	flex-direction: column;
+	align-items: stretch;
+	gap: 6px;
+}
+
+.cloudeide-account-who {
+	flex: 1 1 auto;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+}
+
+.cloudeide-account-plan-name {
+	font-weight: 600;
+	color: var(--vscode-foreground);
+}
+
+.cloudeide-account-meter {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+/* A bar rather than a number alone: "3.40 of 19.99" is a fact, and how close
+   that is to nothing is the thing somebody actually wants to know. */
+.cloudeide-account-track {
+	height: 4px;
+	border-radius: 2px;
+	overflow: hidden;
+	background: var(--vscode-progressBar-background, var(--vscode-panel-border));
+	opacity: 0.35;
+}
+
+.cloudeide-account-fill {
+	height: 100%;
+	background: var(--vscode-charts-green, var(--vscode-progressBar-background));
+	opacity: 1;
+}
+
+.cloudeide-account-fill-low {
+	background: var(--vscode-errorForeground);
+}
+
+.cloudeide-account .cloudeide-account-manage {
+	align-self: flex-start;
+	margin-top: 2px;
+}
