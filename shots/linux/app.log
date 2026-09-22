@@ -1,0 +1,20 @@
+[12537:0922/072600.517483:ERROR:dbus/bus.cc:406] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[12537:0922/072600.537692:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: 
+[12537:0922/072600.537804:ERROR:dbus/bus.cc:406] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[12537:0922/072600.540512:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: 
+[90m[main 2026-09-22T07:26:00.786Z][0m StorageMainService: creating application shared storage
+[12537:0922/072600.839608:ERROR:dbus/bus.cc:406] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[90m[main 2026-09-22T07:26:01.022Z][0m [shared storage] Creating shared storage database at '/home/runner/.cloudeide-shared/sharedStorage/state.vscdb' (wasCreated: true)
+[90m[main 2026-09-22T07:26:01.023Z][0m [shared storage] Initializing fallback application storage (path: /tmp/cloudeide-data/User/globalStorage/state.vscdb)
+[90m[main 2026-09-22T07:26:01.028Z][0m [shared storage] Fallback application storage initialized with 3 items
+[90m[main 2026-09-22T07:26:01.029Z][0m update#setState disabled
+[90m[main 2026-09-22T07:26:01.029Z][0m update#ctor - updates are disabled as there is no update URL
+[12537:0922/072601.041294:ERROR:dbus/bus.cc:406] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[90m[main 2026-09-22T07:26:02.137Z][0m AgentHostProcessManager: agent host started
+[91m[main 2026-09-22T07:26:02.479Z][0m [AgentHost:stderr] (node:12724) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `exe --trace-deprecation ...` to show where the warning was created)
+
+Unknown channel: agentHostClientByokLm
+Unknown channel: agentHostClientProxy
+Unknown channel: agentHostClientProxy
+[90m[main 2026-09-22T07:27:08.497Z][0m Extension host with pid 12780 exited with code: 0, signal: unknown.
