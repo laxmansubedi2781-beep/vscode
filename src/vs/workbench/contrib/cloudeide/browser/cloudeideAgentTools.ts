@@ -27,6 +27,7 @@ import { VSBuffer } from '../../../../base/common/buffer.js';
 import { CancellationToken } from '../../../../base/common/cancellation.js';
 import { URI } from '../../../../base/common/uri.js';
 import { IFileService } from '../../../../platform/files/common/files.js';
+import { IMarkerService, MarkerSeverity } from '../../../../platform/markers/common/markers.js';
 import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
 import { QueryBuilder } from '../../../services/search/common/queryBuilder.js';
 import { ISearchService } from '../../../services/search/common/search.js';
@@ -68,6 +69,8 @@ const MAX_FILE_BYTES = 256 * 1024;
 const MAX_LISTED = 400;
 /** How many matches `search_files` will report. */
 const MAX_MATCHES = 80;
+/** How many errors or warnings `get_diagnostics` will report. */
+const MAX_MARKERS = 60;
 
 const SKIP_DIRS = new Set([
 	'node_modules', '.git', '.svn', '.hg', 'dist', 'build', 'out',
@@ -136,6 +139,28 @@ export const AGENT_TOOLS: readonly AgentToolSchema[] = [
 		},
 	},
 	{
+		name: 'get_diagnostics',
+		description:
+			'Read the errors and warnings the editor itself is reporting — type errors, lint, ' +
+			'anything a language server found. Use this to see what is already broken before you ' +
+			'change something, and after a change is applied to see whether you fixed it or broke ' +
+			'something else. It reports what is on disk: an edit you have staged but the person ' +
+			'has not applied yet is not in here.',
+		input_schema: {
+			type: 'object',
+			properties: {
+				path: {
+					type: 'string',
+					description: 'Only this file, relative to the project root. Omit for the whole project.',
+				},
+				includeWarnings: {
+					type: 'boolean',
+					description: 'Include warnings as well as errors. Default false — errors only.',
+				},
+			},
+		},
+	},
+	{
 		name: 'write_file',
 		description:
 			'Write a whole file, creating it if it does not exist. Use edit_file for a change to an ' +
@@ -162,6 +187,7 @@ export class CloudeideAgentTools {
 		private readonly contextService: IWorkspaceContextService,
 		private readonly searchService: ISearchService,
 		private readonly queryBuilder: QueryBuilder,
+		private readonly markerService: IMarkerService,
 	) { }
 
 	edits(): readonly StagedEdit[] {
@@ -178,6 +204,7 @@ export class CloudeideAgentTools {
 				case 'list_files': return await this.listFiles(input, token);
 				case 'read_file': return await this.readFile(input);
 				case 'search_files': return await this.searchFiles(input, token);
+				case 'get_diagnostics': return this.diagnostics(input);
 				case 'edit_file': return await this.editFile(input);
 				case 'write_file': return await this.writeFile(input);
 				default: return { content: `There is no tool called ${name}.`, isError: true };
@@ -325,6 +352,58 @@ export class CloudeideAgentTools {
 			return { content: `Nothing in the project matches ${query}.` };
 		}
 		const capped = result.limitHit ? `\n\n(${lines.length} shown; there are more.)` : '';
+		return { content: lines.join('\n') + capped };
+	}
+
+	/**
+	 * What the editor is complaining about.
+	 *
+	 * This is the one thing the agent can do here that it could not do from a
+	 * terminal: every language server the person has installed is already
+	 * running, has already parsed the project, and has already decided what is
+	 * wrong with it. Asking costs one call and no compilation.
+	 *
+	 * It reports what is on disk. A staged edit has not been written, so it is
+	 * not reflected — the tool's own description says so, because an agent
+	 * that thinks it has verified a change it has not applied is worse than
+	 * one that never checked.
+	 */
+	private diagnostics(input: Record<string, unknown>): AgentToolResult {
+		const root = this.root();
+		const rootPath = root.path.endsWith('/') ? root.path : `${root.path}/`;
+		const wanted = typeof input.path === 'string' && input.path.trim()
+			? this.resolvePath(input.path).uri
+			: undefined;
+
+		const severities = input.includeWarnings === true
+			? MarkerSeverity.Error | MarkerSeverity.Warning
+			: MarkerSeverity.Error;
+
+		const markers = this.markerService.read({
+			...(wanted ? { resource: wanted } : {}),
+			severities,
+			take: MAX_MARKERS + 1,
+		}).filter(m => m.resource.path.startsWith(rootPath));
+
+		if (markers.length === 0) {
+			const scope = wanted ? this.resolvePath(input.path).relative : 'the project';
+			return {
+				content: input.includeWarnings === true
+					? `No errors or warnings in ${scope}.`
+					: `No errors in ${scope}.`,
+			};
+		}
+
+		const lines = markers.slice(0, MAX_MARKERS).map(m => {
+			const path = m.resource.path.slice(rootPath.length);
+			const kind = m.severity === MarkerSeverity.Error ? 'error' : 'warning';
+			const source = m.source ? ` [${m.source}]` : '';
+			return `${path}:${m.startLineNumber}:${m.startColumn} ${kind}${source}: ${m.message}`;
+		});
+
+		const capped = markers.length > MAX_MARKERS
+			? `\n\n(${MAX_MARKERS} shown; there are more.)`
+			: '';
 		return { content: lines.join('\n') + capped };
 	}
 

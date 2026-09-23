@@ -32,6 +32,7 @@ import { linesDiffComputers } from '../../../../editor/common/diff/linesDiffComp
 import { CancellationTokenSource } from '../../../../base/common/cancellation.js';
 import { toDisposable } from '../../../../base/common/lifecycle.js';
 import { ISearchService } from '../../../services/search/common/search.js';
+import { IMarkerService } from '../../../../platform/markers/common/markers.js';
 import { QueryBuilder } from '../../../services/search/common/queryBuilder.js';
 import { AGENT_TOOLS, CloudeideAgentTools, type StagedEdit } from './cloudeideAgentTools.js';
 import { runAgentLoop } from './cloudeideAgentLoop.js';
@@ -72,6 +73,7 @@ function describeTool(name: string, input: Record<string, unknown>): string {
 		case 'read_file': return localize('cloudeide.tool.read', "Reading");
 		case 'search_files': return localize('cloudeide.tool.search', "Searching for {0}", query);
 		case 'edit_file': return localize('cloudeide.tool.edit', "Editing");
+		case 'get_diagnostics': return localize('cloudeide.tool.diagnostics', "Checking for errors");
 		case 'write_file': return localize('cloudeide.tool.write', "Writing");
 		default: return name;
 	}
@@ -151,6 +153,7 @@ export class CloudeidePanel extends ViewPane {
 		@IWorkspaceContextService private readonly contextService: IWorkspaceContextService,
 		@ICommandService private readonly commandService: ICommandService,
 		@ISearchService private readonly searchService: ISearchService,
+		@IMarkerService private readonly markerService: IMarkerService,
 	) {
 		super(options, keybindingService, contextMenuService, configurationService, contextKeyService,
 			viewDescriptorService, instantiationService, openerService, themeService, hoverService);
@@ -598,6 +601,7 @@ export class CloudeidePanel extends ViewPane {
 			this.contextService,
 			this.searchService,
 			this.instantiationService.createInstance(QueryBuilder),
+			this.markerService,
 		);
 
 		const folder = this.contextService.getWorkspace().folders[0];
