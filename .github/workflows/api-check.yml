@@ -145,3 +145,35 @@ jobs:
             401|403) echo "::error::the agent endpoint refused the account's own token (${models})";;
             *)   echo "::warning::unexpected status ${models} from the model list";;
           esac
+
+      # Where the dashboard thinks the API is.
+      #
+      # `VITE_API_BASE_URL` is a build-time variable: whatever is set when the
+      # dashboard is built gets baked into the bundle. A local build on this
+      # machine once carried `http://localhost:5055`, and a dashboard built
+      # that way asks the *visitor's own computer* for the API — which answers
+      # nothing, and the page says "Could not reach the server. Check your
+      # connection and try again." Sign-in fails with no clue anywhere as to
+      # why, because nothing wrong ever reaches the server.
+      #
+      # It cannot be diagnosed from outside except by looking, so this looks:
+      # it fetches the built bundle and fails if a localhost address is in it.
+      - name: Is the dashboard pointed at the right server
+        run: |
+          set -uo pipefail
+          page="$(curl -s --max-time 30 https://api.cloudeide.com/app/signin)"
+          bundle="$(printf '%s' "$page" | grep -oE '/app/assets/index-[A-Za-z0-9_-]+\.js' | head -1)"
+          if [ -z "$bundle" ]; then
+            echo "::warning::could not find the dashboard's script in /app/signin — skipping"
+            exit 0
+          fi
+          echo "bundle is ${bundle}"
+          js="$(curl -s --max-time 60 "https://api.cloudeide.com${bundle}")"
+          echo "fetched $(printf '%s' "$js" | wc -c) bytes"
+
+          if printf '%s' "$js" | grep -qE 'https?://(localhost|127\.0\.0\.1)'; then
+            found="$(printf '%s' "$js" | grep -oE 'https?://(localhost|127\.0\.0\.1)(:[0-9]+)?' | sort -u | head -3 | tr '\n' ' ')"
+            echo "::error::the dashboard is built pointing at ${found}— it asks the visitor's own machine for the API, so sign-in can never work. Unset VITE_API_BASE_URL where the dashboard is built and redeploy."
+            exit 1
+          fi
+          echo "no localhost address baked into the dashboard"
