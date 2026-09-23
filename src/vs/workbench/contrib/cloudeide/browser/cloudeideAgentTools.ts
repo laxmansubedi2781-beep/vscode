@@ -33,6 +33,10 @@ import { QueryBuilder } from '../../../services/search/common/queryBuilder.js';
 import { ISearchService } from '../../../services/search/common/search.js';
 import { getWorkspaceSymbols } from '../../search/common/search.js';
 import { symbolKindNames } from '../../../../editor/common/languages.js';
+import { Position } from '../../../../editor/common/core/position.js';
+import { ILanguageFeaturesService } from '../../../../editor/common/services/languageFeatures.js';
+import { ITextModelService } from '../../../../editor/common/services/resolverService.js';
+import { getReferencesAtPosition } from '../../../../editor/contrib/gotoSymbol/browser/goToSymbol.js';
 
 /** A tool as the model is shown it. Anthropic's tool-use shape. */
 export interface AgentToolSchema {
@@ -75,6 +79,8 @@ const MAX_MATCHES = 80;
 const MAX_MARKERS = 60;
 /** How many declarations `find_symbol` will report. */
 const MAX_SYMBOLS = 40;
+/** How many uses `find_references` will report. */
+const MAX_REFERENCES = 60;
 
 const SKIP_DIRS = new Set([
 	'node_modules', '.git', '.svn', '.hg', 'dist', 'build', 'out',
@@ -158,6 +164,28 @@ export const AGENT_TOOLS: readonly AgentToolSchema[] = [
 		},
 	},
 	{
+		name: 'find_references',
+		description:
+			'Find everywhere a function, class or variable is actually used — every call site, ' +
+			'every import, every mention the language server considers the same thing. Use this ' +
+			'before you change a signature or rename something, to see what you are about to ' +
+			'break. This is not a text search: it will not match a different function that ' +
+			'happens to share the name, and it will follow a renamed import.',
+		input_schema: {
+			type: 'object',
+			properties: {
+				name: { type: 'string', description: 'The symbol name, exactly as it is declared.' },
+				path: {
+					type: 'string',
+					description:
+						'If more than one thing has this name, the file its declaration is in, ' +
+						'relative to the project root. Omit unless find_symbol showed you several.',
+				},
+			},
+			required: ['name'],
+		},
+	},
+	{
 		name: 'get_diagnostics',
 		description:
 			'Read the errors and warnings the editor itself is reporting — type errors, lint, ' +
@@ -207,6 +235,8 @@ export class CloudeideAgentTools {
 		private readonly searchService: ISearchService,
 		private readonly queryBuilder: QueryBuilder,
 		private readonly markerService: IMarkerService,
+		private readonly languageFeaturesService: ILanguageFeaturesService,
+		private readonly textModelService: ITextModelService,
 	) { }
 
 	edits(): readonly StagedEdit[] {
@@ -225,6 +255,7 @@ export class CloudeideAgentTools {
 				case 'search_files': return await this.searchFiles(input, token);
 				case 'get_diagnostics': return this.diagnostics(input);
 				case 'find_symbol': return await this.findSymbol(input, token);
+				case 'find_references': return await this.findReferences(input, token);
 				case 'edit_file': return await this.editFile(input);
 				case 'write_file': return await this.writeFile(input);
 				default: return { content: `There is no tool called ${name}.`, isError: true };
@@ -422,6 +453,122 @@ export class CloudeideAgentTools {
 
 		const capped = found.length > MAX_SYMBOLS ? `\n\n(${MAX_SYMBOLS} shown; there are more.)` : '';
 		return { content: lines.join('\n') + capped };
+	}
+
+	/**
+	 * Who uses this.
+	 *
+	 * The question a person asks before changing a signature, and the one
+	 * text search answers worst: grepping a name like `run` or `send` buries
+	 * the four call sites that matter under four hundred that do not, and
+	 * misses the one that imported it under another name.
+	 *
+	 * Reference providers answer it properly, but they want a position in a
+	 * text model, not a name. So this does the two steps a person does: find
+	 * the declaration by name, then ask at the spot where the name is written
+	 * in it. The column matters — asking at the start of the declaration line
+	 * lands on `export` or `function` and gets nothing back — so the name is
+	 * located within the line rather than assumed to be at its start.
+	 *
+	 * The model reference is released in a `finally`. Leaving one open holds
+	 * the file's text in memory for as long as the window lives.
+	 */
+	private async findReferences(input: Record<string, unknown>, token: CancellationToken): Promise<AgentToolResult> {
+		const name = typeof input.name === 'string' ? input.name.trim() : '';
+		if (!name) {
+			return { content: 'A name is required.', isError: true };
+		}
+		const root = this.root();
+		const rootPath = root.path.endsWith('/') ? root.path : `${root.path}/`;
+		const wantedPath = typeof input.path === 'string' && input.path.trim()
+			? this.resolvePath(input.path).uri.path
+			: undefined;
+
+		// An exact-name match, because `provideWorkspaceSymbols` matches
+		// loosely: searching for `run` offers `runAgentLoop` too, and asking
+		// for the references of the wrong symbol is worse than finding none.
+		const candidates = (await getWorkspaceSymbols(name, token))
+			.map(item => item.symbol)
+			.filter(symbol => symbol.name === name)
+			.filter(symbol => symbol.location.uri.path.startsWith(rootPath))
+			.filter(symbol => !wantedPath || symbol.location.uri.path === wantedPath);
+
+		if (candidates.length === 0) {
+			return {
+				content: `No declaration of ${name} found, so there is nothing to look up. ` +
+					`find_symbol will say whether it is declared in this project at all.`,
+			};
+		}
+
+		// Several declarations with the same name is a real situation — an
+		// interface and its implementation, a method on two classes. Say so
+		// and answer for the first rather than silently picking one, so the
+		// model can ask again with a path if that was the wrong one.
+		const target = candidates[0];
+		const others = candidates.length > 1
+			? `\n\n(${candidates.length} things are called ${name}; this is the one in ` +
+			`${target.location.uri.path.slice(rootPath.length)}. Pass \`path\` to ask about another.)`
+			: '';
+
+		const reference = await this.textModelService.createModelReference(target.location.uri);
+		try {
+			const model = reference.object.textEditorModel;
+			const declarationLine = target.location.range.startLineNumber;
+			const text = model.getLineContent(declarationLine);
+			const column = text.indexOf(name);
+			const position = new Position(declarationLine, column >= 0 ? column + 1 : target.location.range.startColumn);
+
+			const links = await getReferencesAtPosition(
+				this.languageFeaturesService.referenceProvider, model, position, false, false, token);
+
+			const uses = links
+				.filter(link => link.uri.path.startsWith(rootPath))
+				// The declaration itself comes back as a reference. It is not
+				// a use, and the model already knows where it is.
+				.filter(link => !(link.uri.path === target.location.uri.path
+					&& link.range.startLineNumber === declarationLine));
+
+			if (uses.length === 0) {
+				return {
+					content: `${name} is declared in ${target.location.uri.path.slice(rootPath.length)}:` +
+						`${declarationLine} and nothing in this project uses it.${others}`,
+				};
+			}
+
+			// Grouped by file, because that is how the answer gets used: a
+			// file with eleven call sites is one file to open, not eleven
+			// lines to read past.
+			const byFile = new Map<string, number[]>();
+			for (const link of uses) {
+				const path = link.uri.path.slice(rootPath.length);
+				const at = byFile.get(path);
+				if (at) {
+					at.push(link.range.startLineNumber);
+				} else {
+					byFile.set(path, [link.range.startLineNumber]);
+				}
+			}
+
+			let shown = 0;
+			const lines: string[] = [];
+			for (const [path, at] of byFile) {
+				if (shown >= MAX_REFERENCES) {
+					break;
+				}
+				const room = at.slice(0, MAX_REFERENCES - shown).sort((a, b) => a - b);
+				shown += room.length;
+				lines.push(`${path}: line${room.length === 1 ? '' : 's'} ${room.join(', ')}`);
+			}
+
+			const capped = shown < uses.length ? `\n\n(${shown} of ${uses.length} shown.)` : '';
+			return {
+				content: `${uses.length} use${uses.length === 1 ? '' : 's'} of ${name} in ` +
+					`${byFile.size} file${byFile.size === 1 ? '' : 's'}:\n` +
+					lines.join('\n') + capped + others,
+			};
+		} finally {
+			reference.dispose();
+		}
 	}
 
 	/**

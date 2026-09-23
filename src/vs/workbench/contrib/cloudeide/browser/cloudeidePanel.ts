@@ -33,6 +33,8 @@ import { CancellationTokenSource } from '../../../../base/common/cancellation.js
 import { toDisposable } from '../../../../base/common/lifecycle.js';
 import { ISearchService } from '../../../services/search/common/search.js';
 import { IMarkerService } from '../../../../platform/markers/common/markers.js';
+import { ILanguageFeaturesService } from '../../../../editor/common/services/languageFeatures.js';
+import { ITextModelService } from '../../../../editor/common/services/resolverService.js';
 import { QueryBuilder } from '../../../services/search/common/queryBuilder.js';
 import { AGENT_TOOLS, CloudeideAgentTools, type StagedEdit } from './cloudeideAgentTools.js';
 import { runAgentLoop } from './cloudeideAgentLoop.js';
@@ -75,6 +77,7 @@ function describeTool(name: string, input: Record<string, unknown>): string {
 		case 'search_files': return localize('cloudeide.tool.search', "Searching for {0}", query);
 		case 'edit_file': return localize('cloudeide.tool.edit', "Editing");
 		case 'find_symbol': return localize('cloudeide.tool.symbol', "Finding where {0} is declared", symbol);
+		case 'find_references': return localize('cloudeide.tool.references', "Finding what uses {0}", symbol);
 		case 'get_diagnostics': return localize('cloudeide.tool.diagnostics', "Checking for errors");
 		case 'write_file': return localize('cloudeide.tool.write', "Writing");
 		default: return name;
@@ -156,6 +159,8 @@ export class CloudeidePanel extends ViewPane {
 		@ICommandService private readonly commandService: ICommandService,
 		@ISearchService private readonly searchService: ISearchService,
 		@IMarkerService private readonly markerService: IMarkerService,
+		@ILanguageFeaturesService private readonly languageFeaturesService: ILanguageFeaturesService,
+		@ITextModelService private readonly textModelService: ITextModelService,
 	) {
 		super(options, keybindingService, contextMenuService, configurationService, contextKeyService,
 			viewDescriptorService, instantiationService, openerService, themeService, hoverService);
@@ -604,6 +609,8 @@ export class CloudeidePanel extends ViewPane {
 			this.searchService,
 			this.instantiationService.createInstance(QueryBuilder),
 			this.markerService,
+			this.languageFeaturesService,
+			this.textModelService,
 		);
 
 		const folder = this.contextService.getWorkspace().folders[0];
