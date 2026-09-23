@@ -68,11 +68,13 @@ const DEFAULT_AGENT_MODEL = 'claude-sonnet-5';
  */
 function describeTool(name: string, input: Record<string, unknown>): string {
 	const query = typeof input.query === 'string' ? input.query : '';
+	const symbol = typeof input.name === 'string' ? input.name : '';
 	switch (name) {
 		case 'list_files': return localize('cloudeide.tool.list', "Looking through the project");
 		case 'read_file': return localize('cloudeide.tool.read', "Reading");
 		case 'search_files': return localize('cloudeide.tool.search', "Searching for {0}", query);
 		case 'edit_file': return localize('cloudeide.tool.edit', "Editing");
+		case 'find_symbol': return localize('cloudeide.tool.symbol', "Finding where {0} is declared", symbol);
 		case 'get_diagnostics': return localize('cloudeide.tool.diagnostics', "Checking for errors");
 		case 'write_file': return localize('cloudeide.tool.write', "Writing");
 		default: return name;

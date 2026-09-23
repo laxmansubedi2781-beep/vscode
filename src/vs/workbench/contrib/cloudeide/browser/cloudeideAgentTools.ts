@@ -31,6 +31,8 @@ import { IMarkerService, MarkerSeverity } from '../../../../platform/markers/com
 import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
 import { QueryBuilder } from '../../../services/search/common/queryBuilder.js';
 import { ISearchService } from '../../../services/search/common/search.js';
+import { getWorkspaceSymbols } from '../../search/common/search.js';
+import { symbolKindNames } from '../../../../editor/common/languages.js';
 
 /** A tool as the model is shown it. Anthropic's tool-use shape. */
 export interface AgentToolSchema {
@@ -71,6 +73,8 @@ const MAX_LISTED = 400;
 const MAX_MATCHES = 80;
 /** How many errors or warnings `get_diagnostics` will report. */
 const MAX_MARKERS = 60;
+/** How many declarations `find_symbol` will report. */
+const MAX_SYMBOLS = 40;
 
 const SKIP_DIRS = new Set([
 	'node_modules', '.git', '.svn', '.hg', 'dist', 'build', 'out',
@@ -136,6 +140,21 @@ export const AGENT_TOOLS: readonly AgentToolSchema[] = [
 				replace: { type: 'string', description: 'What to put in its place.' },
 			},
 			required: ['path', 'find', 'replace'],
+		},
+	},
+	{
+		name: 'find_symbol',
+		description:
+			'Find where a function, class, type or variable is declared, by name, anywhere in the ' +
+			'project. This asks the language server rather than the text, so it finds the ' +
+			'declaration itself and not every line that mentions the word — use it instead of ' +
+			'search_files when you want the definition of something.',
+		input_schema: {
+			type: 'object',
+			properties: {
+				name: { type: 'string', description: 'The symbol name, or part of it.' },
+			},
+			required: ['name'],
 		},
 	},
 	{
@@ -205,6 +224,7 @@ export class CloudeideAgentTools {
 				case 'read_file': return await this.readFile(input);
 				case 'search_files': return await this.searchFiles(input, token);
 				case 'get_diagnostics': return this.diagnostics(input);
+				case 'find_symbol': return await this.findSymbol(input, token);
 				case 'edit_file': return await this.editFile(input);
 				case 'write_file': return await this.writeFile(input);
 				default: return { content: `There is no tool called ${name}.`, isError: true };
@@ -352,6 +372,55 @@ export class CloudeideAgentTools {
 			return { content: `Nothing in the project matches ${query}.` };
 		}
 		const capped = result.limitHit ? `\n\n(${lines.length} shown; there are more.)` : '';
+		return { content: lines.join('\n') + capped };
+	}
+
+	/**
+	 * Where something is declared, according to the language server.
+	 *
+	 * `search_files` finds every line that contains a word. This finds the
+	 * declaration — the function, the class, the type — because it asks the
+	 * thing that has already parsed the project rather than the text. For
+	 * "where does `total` come from", the difference is one answer against
+	 * forty.
+	 *
+	 * Providers come from whatever extensions are installed, so a project in a
+	 * language nobody has an extension for gets nothing back. That is worth
+	 * saying rather than hiding: the answer is "nothing found", and the agent
+	 * can fall back to searching.
+	 */
+	private async findSymbol(input: Record<string, unknown>, token: CancellationToken): Promise<AgentToolResult> {
+		const name = typeof input.name === 'string' ? input.name.trim() : '';
+		if (!name) {
+			return { content: 'A name is required.', isError: true };
+		}
+		const root = this.root();
+		const rootPath = root.path.endsWith('/') ? root.path : `${root.path}/`;
+
+		const found = (await getWorkspaceSymbols(name, token))
+			.filter(item => item.symbol.location.uri.path.startsWith(rootPath));
+
+		if (found.length === 0) {
+			return {
+				content: `No declaration of ${name} found. Either it is not declared in this project, ` +
+					`or no language extension for it is installed — search_files will still find the text.`,
+			};
+		}
+
+		const lines = found.slice(0, MAX_SYMBOLS).map(item => {
+			const { symbol } = item;
+			const path = symbol.location.uri.path.slice(rootPath.length);
+			const line = symbol.location.range.startLineNumber;
+			// SymbolKind is a const enum, so there is no reverse lookup from the
+			// number back to the name. The editor keeps its own map of kind to a
+			// word — the same words the outline view shows — so use that rather
+			// than writing a second list here that would drift from it.
+			const kind = symbolKindNames[symbol.kind] ?? 'symbol';
+			const container = symbol.containerName ? ` in ${symbol.containerName}` : '';
+			return `${path}:${line} ${kind} ${symbol.name}${container}`;
+		});
+
+		const capped = found.length > MAX_SYMBOLS ? `\n\n(${MAX_SYMBOLS} shown; there are more.)` : '';
 		return { content: lines.join('\n') + capped };
 	}
 
