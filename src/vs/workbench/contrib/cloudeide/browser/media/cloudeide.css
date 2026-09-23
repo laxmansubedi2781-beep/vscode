@@ -1239,3 +1239,34 @@
 		gap: 10px;
 	}
 }
+
+/*
+ * The line under the buttons: what the last deploy did, and a way into its
+ * log. One row, so the log is reachable at rest rather than appearing only
+ * once something has gone wrong.
+ */
+.cloudeide-cloud-status-line {
+	display: flex;
+	align-items: baseline;
+	gap: 14px;
+	min-height: 18px;
+	font-size: 12.5px;
+}
+
+.cloudeide-cloud-log-link {
+	margin-left: auto;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: var(--vscode-descriptionForeground);
+	font: inherit;
+	font-size: 12px;
+	text-decoration: underline;
+	text-underline-offset: 3px;
+	cursor: pointer;
+	flex-shrink: 0;
+}
+
+.cloudeide-cloud-log-link:hover {
+	color: var(--vscode-foreground);
+}

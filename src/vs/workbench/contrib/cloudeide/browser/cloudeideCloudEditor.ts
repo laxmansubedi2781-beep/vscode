@@ -32,6 +32,7 @@ import { IDialogService } from '../../../../platform/dialogs/common/dialogs.js';
 import { IEditorOptions } from '../../../../platform/editor/common/editor.js';
 import { IFileService } from '../../../../platform/files/common/files.js';
 import { IOpenerService } from '../../../../platform/opener/common/opener.js';
+import { IProgressService, ProgressLocation } from '../../../../platform/progress/common/progress.js';
 import { IQuickInputService } from '../../../../platform/quickinput/common/quickInput.js';
 import { ISecretStorageService } from '../../../../platform/secrets/common/secrets.js';
 import { IStorageService } from '../../../../platform/storage/common/storage.js';
@@ -42,6 +43,7 @@ import { IWorkspaceContextService } from '../../../../platform/workspace/common/
 import { EditorPane } from '../../../browser/parts/editor/editorPane.js';
 import { IEditorOpenContext } from '../../../common/editor.js';
 import { IEditorGroup } from '../../../services/editor/common/editorGroupsService.js';
+import { IOutputService } from '../../../services/output/common/output.js';
 import { ITextFileService } from '../../../services/textfile/common/textfiles.js';
 import { CloudeideClient, type DeployDomain, type DeployEnvironment, type DeploymentSummary, type DeployStatus } from './cloudeideClient.js';
 import { CloudeideCloudInput } from './cloudeideCloudInput.js';
@@ -60,7 +62,18 @@ const ENVIRONMENTS: readonly { id: DeployEnvironment; label: string; detail: str
 const IN_PROGRESS = ['queued', 'building', 'deploying'];
 
 /** How many past deployments the list shows. */
-const DEPLOYMENTS_SHOWN = 8;
+const DEPLOYMENTS_SHOWN = 5;
+
+/**
+ * Where a deploy writes what it is doing.
+ *
+ * An Output channel rather than a log pane built here: the workbench already
+ * has the viewer, the scrollback, the filter, the clear button and the "copy
+ * all" that anybody debugging a failed build is going to want, and it is
+ * where a person coming from any other tool looks first. Registered in the
+ * contribution file, beside everything else this product registers.
+ */
+export const CLOUDEIDE_DEPLOY_CHANNEL = 'cloudeide.deploy';
 
 export class CloudeideCloudEditor extends EditorPane {
 
@@ -93,6 +106,8 @@ export class CloudeideCloudEditor extends EditorPane {
 		@IDialogService private readonly dialogService: IDialogService,
 		@IOpenerService private readonly openerService: IOpenerService,
 		@IClipboardService private readonly clipboardService: IClipboardService,
+		@IProgressService private readonly progressService: IProgressService,
+		@IOutputService private readonly outputService: IOutputService,
 	) {
 		super(CloudeideCloudEditor.ID, group, telemetryService, themeService, storageService);
 		this.client = new CloudeideClient(secretStorageService, configurationService);
@@ -141,8 +156,20 @@ export class CloudeideCloudEditor extends EditorPane {
 			"Where Deploy publishes");
 		this._register(this.environmentButton.onDidClick(() => void this.pickEnvironment()));
 
-		this.deployStatus = DOM.append(header, $('.cloudeide-cloud-deploy-status'));
-		this.deployStatus.style.display = 'none';
+		const line = DOM.append(header, $('.cloudeide-cloud-status-line'));
+		this.deployStatus = DOM.append(line, $('span.cloudeide-cloud-deploy-status'));
+
+		/*
+		 * The log, always reachable, not only after something breaks.
+		 *
+		 * A link rather than a panel of its own: the whole point of writing to
+		 * an Output channel is that the workbench already has somewhere good
+		 * to read it, and a second reader built here would be a worse one.
+		 */
+		const log = DOM.append(line, $('button.cloudeide-cloud-log-link')) as HTMLButtonElement;
+		log.textContent = localize('cloudeide.cloud.showLog', "Deploy log");
+		this._register(DOM.addDisposableListener(log, 'click',
+			() => this.outputService.showChannel(CLOUDEIDE_DEPLOY_CHANNEL)));
 	}
 
 	private buildDeployments(page: HTMLElement): void {
@@ -248,38 +275,85 @@ export class CloudeideCloudEditor extends EditorPane {
 		await this.textFileService.save.call(this.textFileService, undefined as never).catch(() => undefined);
 
 		this.setDeploying(true);
-		this.setDeployStatus(localize('cloudeide.cloud.collecting', "Reading the folder…"), 'muted');
+		this.log(`--- deploy to ${this.environment()} ---`);
 
 		try {
-			const files = await collectWorkspaceFiles(this.fileService, this.contextService);
-			if (files.length === 0) {
-				this.setDeployStatus(localize('cloudeide.cloud.nothingToDeploy',
-					"Nothing to deploy — open a folder with files in it first."), 'error');
-				return;
-			}
+			/*
+			 * The whole run inside one progress notification.
+			 *
+			 * A deploy takes minutes, and for most of them the person has
+			 * moved on to another file — a status line on a tab nobody is
+			 * looking at tells nobody anything. The workbench's own progress
+			 * notification follows them around the window, and is what every
+			 * other long job here already uses.
+			 */
+			await this.progressService.withProgress({
+				location: ProgressLocation.Notification,
+				title: localize('cloudeide.cloud.deployProgress', "Deploying {0}", this.projectName()),
+			}, async progress => {
+				const step = (message: string) => {
+					progress.report({ message });
+					this.setDeployStatus(message, 'muted');
+					this.log(message);
+				};
 
-			this.setDeployStatus(localize('cloudeide.cloud.deployingN',
-				"Building {0} file{1}…", files.length, files.length === 1 ? '' : 's'), 'muted');
+				step(localize('cloudeide.cloud.collecting', "Reading the folder…"));
+				const files = await collectWorkspaceFiles(this.fileService, this.contextService);
+				if (files.length === 0) {
+					this.fail(localize('cloudeide.cloud.nothingToDeploy',
+						"Nothing to deploy — open a folder with files in it first."));
+					return;
+				}
 
-			const started = await this.client.deploy(files);
-			const finished = await this.pollDeployment(started.deploymentId);
+				step(localize('cloudeide.cloud.deployingN',
+					"Building {0} file{1}…", files.length, files.length === 1 ? '' : 's'));
 
-			if (finished.liveUrl) {
-				this.setDeployStatus(finished.liveUrl.replace(/^https?:\/\//, ''), 'ok', finished.liveUrl);
-			} else if (finished.errorSummary) {
-				this.setDeployStatus(finished.errorSummary, 'error');
-			} else {
-				this.setDeployStatus(localize('cloudeide.cloud.deployFinished',
-					"Deployment {0}.", finished.status), 'muted');
-			}
+				const started = await this.client.deploy(files);
+				this.log(`deployment ${started.deploymentId}`);
+				const finished = await this.pollDeployment(started.deploymentId, step);
+
+				if (finished.liveUrl) {
+					this.log(`live at ${finished.liveUrl}`);
+					this.setDeployStatus(finished.liveUrl.replace(/^https?:\/\//, ''), 'ok', finished.liveUrl);
+				} else if (finished.errorSummary) {
+					this.fail(finished.errorSummary);
+				} else {
+					this.setDeployStatus(localize('cloudeide.cloud.deployFinished',
+						"Deployment {0}.", finished.status), 'muted');
+					this.log(`finished: ${finished.status}`);
+				}
+			});
 		} catch (err) {
-			this.setDeployStatus(err instanceof Error ? err.message : String(err), 'error');
+			this.fail(err instanceof Error ? err.message : String(err));
 		} finally {
 			this.setDeploying(false);
 			// The row for this run is what somebody looks at next, and it did
 			// not exist when the list last drew.
 			await this.refreshDeployments();
 		}
+	}
+
+	/** Which environment Deploy publishes to, from settings. */
+	private environment(): DeployEnvironment {
+		const current = this.configurationService.getValue<string>('cloudeide.environment');
+		return (ENVIRONMENTS.find(e => e.id === current) ?? ENVIRONMENTS[2]).id;
+	}
+
+	/**
+	 * A failure, said twice on purpose.
+	 *
+	 * Once on the screen, where it is short, and once in the log, where the
+	 * whole thing is — because the sentence that fits under a button is never
+	 * the sentence that says which file broke the build.
+	 */
+	private fail(message: string): void {
+		this.setDeployStatus(message, 'error');
+		this.log(`failed: ${message}`);
+	}
+
+	private log(message: string): void {
+		const at = new Date().toISOString().slice(11, 19);
+		this.outputService.getChannel(CLOUDEIDE_DEPLOY_CHANNEL)?.append(`${at}  ${message}\n`);
 	}
 
 	/**
@@ -290,7 +364,7 @@ export class CloudeideCloudEditor extends EditorPane {
 	 * after ten minutes with the last status it saw, rather than spinning on a
 	 * build that will never report.
 	 */
-	private async pollDeployment(deploymentId: string): Promise<DeployStatus> {
+	private async pollDeployment(deploymentId: string, step: (message: string) => void): Promise<DeployStatus> {
 		const deadline = Date.now() + 10 * 60 * 1000;
 		let last: DeployStatus = { id: deploymentId, status: 'queued' };
 
@@ -299,8 +373,7 @@ export class CloudeideCloudEditor extends EditorPane {
 			if (!IN_PROGRESS.includes(last.status)) {
 				return last;
 			}
-			this.setDeployStatus(localize('cloudeide.cloud.deployStatus',
-				"Building… ({0})", last.status), 'muted');
+			step(localize('cloudeide.cloud.deployStatus', "Building… ({0})", last.status));
 			await new Promise(resolve => setTimeout(resolve, 3000));
 		}
 		return last;
@@ -321,7 +394,6 @@ export class CloudeideCloudEditor extends EditorPane {
 	 */
 	private setDeployStatus(text: string, tone: 'muted' | 'error' | 'ok', href?: string): void {
 		DOM.clearNode(this.deployStatus);
-		this.deployStatus.style.display = '';
 		this.deployStatus.className = `cloudeide-cloud-deploy-status cloudeide-cloud-${tone}`;
 
 		if (href) {
@@ -396,11 +468,10 @@ export class CloudeideCloudEditor extends EditorPane {
 		const env = DOM.append(row, $('span.cloudeide-cloud-env'));
 		env.textContent = deployment.environment;
 
-		const id = DOM.append(row, $('span.cloudeide-cloud-mono'));
-		// The deployment id, shortened. The full one is in the title for
-		// anybody who has to quote it in a support message.
-		id.textContent = deployment.id.slice(0, 7);
-		id.title = deployment.id;
+		// No deployment id on the row. It was there, shortened to seven
+		// characters, and it is not a thing anybody reads: what a row is for
+		// is "did this work, and when". The id is in the log, where the one
+		// person who needs it is already looking.
 
 		if (deployment.errorSummary) {
 			const why = DOM.append(row, $('span.cloudeide-cloud-error'));

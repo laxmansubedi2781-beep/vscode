@@ -51,16 +51,72 @@ import { IDefaultAccountService } from '../../../platform/defaultAccount/common/
 import { WORKBENCH_MENU_MOTION_CLASS, workbenchMenuCloseAnimation } from '../actions/menuMotion.js';
 import { createCodexAccountMenuActions, ICodexAccountService, shouldShowCodexAccount } from '../../services/agentHost/browser/codexAccountService.js';
 
+const CLOUD_ACTIVITY_ID = 'workbench.actions.cloudeideCloud';
+
+/*
+ * The command this icon runs, spelled out rather than imported.
+ *
+ * It is declared in `contrib/cloudeide`, and a part importing a contrib is
+ * the wrong direction — parts are what contribs build on. A command id is the
+ * supported way across that line, which is why every other part in here
+ * reaches its feature the same way.
+ */
+const CLOUD_OPEN_COMMAND = 'cloudeide.openCloud';
+
+/**
+ * The rail's Cloud icon.
+ *
+ * All it does is run the command, so there is exactly one thing in the
+ * product that decides what opening Cloud means, and the palette entry and
+ * this icon cannot drift apart.
+ */
+class CloudActivityAction extends CompositeBarAction {
+
+	constructor(private readonly commandService: ICommandService) {
+		super({
+			id: CLOUD_ACTIVITY_ID,
+			name: localize('cloudeideCloud', "Cloud"),
+			classNames: ThemeIcon.asClassNameArray(GlobalCompositeBar.CLOUD_ICON),
+		});
+	}
+
+	override async run(): Promise<void> {
+		await this.commandService.executeCommand(CLOUD_OPEN_COMMAND);
+	}
+}
+
 export class GlobalCompositeBar extends Disposable {
 
-	private static readonly ACCOUNTS_ACTION_INDEX = 0;
 	static readonly ACCOUNTS_ICON = registerIcon('accounts-view-bar-icon', Codicon.account, localize('accountsViewBarIcon', "Accounts icon in the view bar."));
+
+	/*
+	 * Cloud, at the top of this group.
+	 *
+	 * The rail's upper half is built from view containers, and a view
+	 * container opens a pane in the sidebar — there is no way to say "this
+	 * icon opens an editor" up there. This lower group is the part of the
+	 * rail that holds plain icons which run something, which is exactly what
+	 * Cloud is: press it, the Cloud tab opens beside the code.
+	 *
+	 * It is an addition. Accounts and the gear keep their behaviour, their
+	 * order relative to each other and their hide-Accounts setting; the index
+	 * arithmetic below is now computed rather than written down, because it
+	 * was two hardcoded 2s that assumed this bar could only ever hold two
+	 * things.
+	 */
+	static readonly CLOUD_ICON = registerIcon('cloudeide-view-bar-icon', Codicon.cloud, localize('cloudeideViewBarIcon', "CloudeIDE Cloud icon in the view bar."));
 
 	readonly element: HTMLElement;
 
 	private readonly globalActivityAction = this._register(new Action(GLOBAL_ACTIVITY_ID));
 	private readonly accountAction = this._register(new Action(ACCOUNTS_ACTIVITY_ID));
+	private readonly cloudAction: CompositeBarAction;
 	private readonly globalActivityActionBar: ActionBar;
+
+	/** Cloud sits first, so Accounts is second whenever it is shown. */
+	private get accountsActionIndex(): number {
+		return 1;
+	}
 
 	constructor(
 		private readonly contextMenuActionsProvider: () => IAction[],
@@ -70,6 +126,7 @@ export class GlobalCompositeBar extends Disposable {
 		@IInstantiationService private readonly instantiationService: IInstantiationService,
 		@IStorageService private readonly storageService: IStorageService,
 		@IExtensionService private readonly extensionService: IExtensionService,
+		@ICommandService commandService: ICommandService,
 	) {
 		super();
 
@@ -101,6 +158,14 @@ export class GlobalCompositeBar extends Disposable {
 						});
 				}
 
+				if (action.id === CLOUD_ACTIVITY_ID) {
+					return this.instantiationService.createInstance(CompositeBarActionViewItem,
+						this.cloudAction,
+						{ ...options, colors: this.colors, hoverOptions: this.activityHoverOptions },
+						// No badge on this one: nothing counts up here.
+						() => false);
+				}
+
 				throw new Error(`No view item for action '${action.id}'`);
 			},
 			orientation: ActionsOrientation.VERTICAL,
@@ -108,8 +173,11 @@ export class GlobalCompositeBar extends Disposable {
 			preventLoopNavigation: true
 		}));
 
+		this.cloudAction = this._register(new CloudActivityAction(commandService));
+		this.globalActivityActionBar.push(this.cloudAction);
+
 		if (this.accountsVisibilityPreference) {
-			this.globalActivityActionBar.push(this.accountAction, { index: GlobalCompositeBar.ACCOUNTS_ACTION_INDEX });
+			this.globalActivityActionBar.push(this.accountAction, { index: this.accountsActionIndex });
 		}
 
 		this.globalActivityActionBar.push(this.globalActivityAction);
@@ -138,15 +206,23 @@ export class GlobalCompositeBar extends Disposable {
 	}
 
 	private toggleAccountsActivity() {
-		if (this.globalActivityActionBar.length() === 2 && this.accountsVisibilityPreference) {
+		// Cloud and the gear are always here; Accounts is the only one that
+		// comes and goes. Counting what is actually in the bar says whether
+		// it is currently shown, without anybody having to keep a number in
+		// two places in step.
+		const shown = this.globalActivityActionBar.length() > this.alwaysShownCount;
+		if (shown === this.accountsVisibilityPreference) {
 			return;
 		}
-		if (this.globalActivityActionBar.length() === 2) {
-			this.globalActivityActionBar.pull(GlobalCompositeBar.ACCOUNTS_ACTION_INDEX);
+		if (shown) {
+			this.globalActivityActionBar.pull(this.accountsActionIndex);
 		} else {
-			this.globalActivityActionBar.push(this.accountAction, { index: GlobalCompositeBar.ACCOUNTS_ACTION_INDEX });
+			this.globalActivityActionBar.push(this.accountAction, { index: this.accountsActionIndex });
 		}
 	}
+
+	/** Cloud and the gear. */
+	private readonly alwaysShownCount = 2;
 
 	private get accountsVisibilityPreference(): boolean {
 		return isAccountsActionVisible(this.storageService);

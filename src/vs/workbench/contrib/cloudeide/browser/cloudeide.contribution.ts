@@ -35,7 +35,8 @@ import { EditorPaneDescriptor, IEditorPaneRegistry } from '../../../browser/edit
 import { EditorExtensions, IEditorFactoryRegistry, IEditorSerializer } from '../../../common/editor.js';
 import { EditorInput } from '../../../common/editor/editorInput.js';
 import { IEditorService } from '../../../services/editor/common/editorService.js';
-import { CloudeideCloudEditor } from './cloudeideCloudEditor.js';
+import { CLOUDEIDE_DEPLOY_CHANNEL, CloudeideCloudEditor } from './cloudeideCloudEditor.js';
+import { Extensions as OutputExtensions, IOutputChannelRegistry } from '../../../services/output/common/output.js';
 import { CloudeideCloudInput } from './cloudeideCloudInput.js';
 
 const CONTAINER_ID = 'workbench.view.cloudeideContainer';
@@ -164,6 +165,20 @@ const accountViewDescriptor: IViewDescriptor = {
 
 Registry.as<IViewsRegistry>(ViewContainerExtensions.ViewsRegistry)
 	.registerViews([viewDescriptor, cloudViewDescriptor, accountViewDescriptor], container);
+
+/*
+ * Where a deploy says what it is doing.
+ *
+ * Registered up front rather than on the first deploy, so the channel is in
+ * the Output dropdown before anything has gone wrong — somebody whose build
+ * just failed should find the log by looking, not by knowing it appears only
+ * after a failure.
+ */
+Registry.as<IOutputChannelRegistry>(OutputExtensions.OutputChannels).registerChannel({
+	id: CLOUDEIDE_DEPLOY_CHANNEL,
+	label: localize('cloudeide.cloud.deployChannel', "CloudeIDE Deploy"),
+	log: false,
+});
 
 /*
  * Cloud, in the editor area.
