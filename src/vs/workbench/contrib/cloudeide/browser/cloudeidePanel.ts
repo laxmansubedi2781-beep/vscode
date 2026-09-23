@@ -213,12 +213,10 @@ export class CloudeidePanel extends ViewPane {
 	private buildConnectView(): void {
 		const box = DOM.append(this.connectView, $('.cloudeide-connect-box'));
 
-		const heading = DOM.append(box, $('h2.cloudeide-heading'));
-		heading.textContent = localize('cloudeide.tagline', "Ask, and it ships.");
-
-		const blurb = DOM.append(box, $('p.cloudeide-blurb'));
-		blurb.textContent = localize('cloudeide.blurb',
-			"Describe a change in plain words. CloudeIDE writes it, builds it, and puts it on a live URL.");
+		// No heading, no tagline. Somebody looking at this has already chosen
+		// the product and installed it; a slogan here is an advertisement
+		// shown to a customer, and all it does is stand between them and the
+		// one button that matters.
 
 		/*
 		 * One button, and it opens the same door a first launch shows.
@@ -269,8 +267,8 @@ export class CloudeidePanel extends ViewPane {
 
 		this.input = DOM.append(composer, $('textarea.cloudeide-textarea')) as HTMLTextAreaElement;
 		this.input.rows = 2;
-		this.input.placeholder = localize('cloudeide.ask', "Ask CloudeIDE to change something…");
-		this.input.setAttribute('aria-label', localize('cloudeide.askLabel', "Message CloudeIDE"));
+		this.input.placeholder = localize('cloudeide.ask', "Ask for a change…");
+		this.input.setAttribute('aria-label', localize('cloudeide.askLabel', "Ask for a change"));
 
 		const row = DOM.append(composer, $('.cloudeide-composer-row'));
 
@@ -300,14 +298,15 @@ export class CloudeidePanel extends ViewPane {
 		}));
 	}
 
+	/**
+	 * An empty transcript is left empty.
+	 *
+	 * It held a tagline and a line of instructions. Neither was read twice:
+	 * the box underneath already says what to type, and the second line told
+	 * people to press a Deploy button that is no longer on this panel.
+	 */
 	private renderEmptyTranscript(): void {
 		DOM.clearNode(this.transcript);
-		const empty = DOM.append(this.transcript, $('.cloudeide-empty'));
-		const heading = DOM.append(empty, $('p.cloudeide-heading-sm'));
-		heading.textContent = localize('cloudeide.tagline', "Ask, and it ships.");
-		const blurb = DOM.append(empty, $('p.cloudeide-blurb'));
-		blurb.textContent = localize('cloudeide.emptyBlurb',
-			"Describe a change. Press Deploy when you want it live.");
 	}
 
 	private async refreshConnectionState(): Promise<void> {
@@ -375,7 +374,7 @@ export class CloudeidePanel extends ViewPane {
 		const who = DOM.append(turn, $('.cloudeide-turn-who'));
 		who.textContent = role === 'user'
 			? localize('cloudeide.you', "You")
-			: localize('cloudeide.assistant', "CloudeIDE");
+			: localize('cloudeide.assistant', "Agent");
 		const body = DOM.append(turn, $('.cloudeide-turn-body'));
 		body.textContent = text;
 		this.transcript.scrollTop = this.transcript.scrollHeight;

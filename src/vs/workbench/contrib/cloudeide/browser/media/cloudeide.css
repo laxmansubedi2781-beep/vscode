@@ -17,26 +17,8 @@
 
 /* ── shared type ─────────────────────────────────────────────────────────── */
 
-.cloudeide-heading {
-	margin: 0;
-	font-size: 16px;
-	font-weight: 600;
-	letter-spacing: -0.01em;
-	color: var(--vscode-foreground);
-}
-
-.cloudeide-heading-sm {
-	margin: 0;
-	font-size: 13px;
-	font-weight: 600;
-	color: var(--vscode-foreground);
-}
-
-.cloudeide-blurb {
-	margin: 6px 0 0;
-	line-height: 1.55;
-	color: var(--vscode-descriptionForeground);
-}
+/* The heading and blurb rules that were here went with the taglines they
+ * styled. Nothing in the panel sets a headline any more. */
 
 .cloudeide-hint {
 	margin: 12px 0 0;
@@ -168,10 +150,6 @@
 	min-height: 0;
 	overflow-y: auto;
 	padding: 12px 14px;
-}
-
-.cloudeide-empty {
-	padding: 28px 2px;
 }
 
 .cloudeide-turn {

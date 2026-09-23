@@ -65,7 +65,7 @@ const container = Registry.as<IViewContainersRegistry>(ViewContainerExtensions.V
 			// reason the one on the left says Explorer and not the name of
 			// the editor. It still answers to "CloudeIDE" everywhere a person
 			// searches for it: the command is Focus CloudeIDE, below.
-			title: localize2('cloudeide.container', "Agent"),
+			title: localize2('cloudeide.container', "Chat"),
 			icon: cloudeideIcon,
 			ctorDescriptor: new SyncDescriptor(ViewPaneContainer, [CONTAINER_ID, { mergeViewWithContainerWhenSingleView: true }]),
 			storageId: CONTAINER_ID,
@@ -77,7 +77,7 @@ const container = Registry.as<IViewContainersRegistry>(ViewContainerExtensions.V
 
 const viewDescriptor: IViewDescriptor = {
 	id: CloudeidePanel.ID,
-	name: localize2('cloudeide.view', "Agent"),
+	name: localize2('cloudeide.view', "Chat"),
 	containerIcon: cloudeideIcon,
 	ctorDescriptor: new SyncDescriptor(CloudeidePanel),
 	canToggleVisibility: false,
@@ -105,6 +105,8 @@ const cloudViewDescriptor: IViewDescriptor = {
 	canToggleVisibility: true,
 	canMoveView: true,
 	collapsed: true,
+	// Off the panel by default. See the note on the Account view below.
+	hideByDefault: true,
 	order: 2,
 	openCommandActionDescriptor: {
 		id: 'workbench.action.cloudeide.cloud.focus',
@@ -128,6 +130,22 @@ const accountViewDescriptor: IViewDescriptor = {
 	canToggleVisibility: true,
 	canMoveView: true,
 	collapsed: true,
+	/*
+	 * Off the panel by default, along with Cloud.
+	 *
+	 * A new person opening this saw three stacked pane headers before they
+	 * saw anything they could type into. The panel is for one thing, and the
+	 * other two are things you go and look at rather than things you work
+	 * beside.
+	 *
+	 * Hidden rather than unregistered, because this pane is the only way to
+	 * sign out, see what a plan costs, or revoke a token, and Cloud is the
+	 * only way to deploy. Taking those off the panel is a layout decision;
+	 * taking them out of the product is not, and is not what was asked for.
+	 * Both are one click away in the panel's ... menu, and the workbench
+	 * remembers it once somebody turns one back on.
+	 */
+	hideByDefault: true,
 	order: 3,
 	openCommandActionDescriptor: {
 		id: 'workbench.action.cloudeide.account.focus',
