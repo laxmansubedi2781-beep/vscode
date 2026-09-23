@@ -200,8 +200,10 @@ if (films.length) {
  * report "MacIntel" on an M-series Mac. The Mac note says which build it is
  * instead of this pretending to know.
  */
-{
-  const row = document.querySelector("[data-download]");
+// Every download row, not the first. There are two now — one in the section
+// that explains the install and one at the end of the page — and a visitor
+// who reached the second is the one most likely to use it.
+for (const row of document.querySelectorAll("[data-download]")) {
   const ua = navigator.userAgent;
   const platform = navigator.userAgentData?.platform ?? navigator.platform ?? "";
   const here = /mac/i.test(platform) || /Mac OS X/i.test(ua)
@@ -238,7 +240,9 @@ if (films.length) {
     // lands on rather than the one that happened to be authored first.
     row.prepend(mine);
 
-    document.querySelectorAll("[data-note]").forEach((note) => {
+    // Notes belong to the row they sit with; the closing row has none.
+    const section = row.closest("section") ?? document;
+    section.querySelectorAll("[data-note]").forEach((note) => {
       note.hidden = note.dataset.note !== here;
     });
   }
