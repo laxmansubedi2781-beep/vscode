@@ -136,15 +136,15 @@ Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Configuration).regis
 	properties: {
 		'cloudeide.serverUrl': {
 			type: 'string',
-			default: 'https://api.cloudeide.com',
+			default: 'https://cloudeide.com',
 			description: localize('cloudeide.serverUrl',
 				"The CloudeIDE server this editor talks to. Change it to point at a self-hosted install."),
 		},
 		'cloudeide.webUrl': {
 			type: 'string',
-			default: 'https://api.cloudeide.com',
+			default: 'https://cloudeide.com',
 			description: localize('cloudeide.webUrl',
-				"The CloudeIDE dashboard this editor opens to sign in. Not the marketing site: that one serves no dashboard. Change it alongside the server URL for a self-hosted install."),
+				"The CloudeIDE dashboard this editor opens to sign in. The same host as the server URL unless you have split them. Change both together for a self-hosted install."),
 		},
 		'cloudeide.model': {
 			type: 'string',

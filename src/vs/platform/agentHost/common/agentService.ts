@@ -521,7 +521,7 @@ export const CloudeideTokenSecret = 'cloudeide.apiToken';
 
 export const CloudeideServerUrlSetting = 'cloudeide.serverUrl';
 
-export const CloudeideDefaultServerUrl = 'https://api.cloudeide.com';
+export const CloudeideDefaultServerUrl = 'https://cloudeide.com';
 
 /** The Anthropic-shaped endpoint the harness is pointed at, under the server. */
 export const CloudeideAnthropicPath = '/api/anthropic';

@@ -165,11 +165,16 @@ export class CloudeideClient {
 	) { }
 
 	/**
-	 * api.cloudeide.com, not cloudeide.com.
+	 * cloudeide.com — the landing page, the dashboard and the API, one host.
 	 *
-	 * The apex now serves the marketing site as static files, which has no
-	 * /ai/chat and no /deploy/run — every call from this panel would have come
-	 * back as the landing page's 404. The application kept its own name.
+	 * It was api.cloudeide.com, because the apex was static hosting with no
+	 * /ai/chat and no /deploy/run behind it: every call from this panel would
+	 * have come back as the landing page's 404. The apex is served by the
+	 * application now, so the subdomain is no longer the answer to anything.
+	 *
+	 * api.cloudeide.com keeps working and should keep working: every copy of
+	 * this editor installed before today has it compiled in, and a default is
+	 * only read when nobody has set the value.
 	 */
 	get serverUrl(): string {
 		const configured = this.configurationService.getValue<string>('cloudeide.serverUrl');
@@ -177,12 +182,7 @@ export class CloudeideClient {
 	}
 
 	/**
-	 * Where the dashboard is, which is not where the marketing site is.
-	 *
-	 * The apex moved to static hosting and now serves the landing page and the
-	 * browser build of the editor, and nothing else — /app there is a 404. The
-	 * dashboard a person signs in to is served by the same host as the API, so
-	 * that is where sign-in has to send them.
+	 * Where the dashboard is, which is now where the landing page is too.
 	 *
 	 * Still its own setting rather than reusing `serverUrl`: these are one host
 	 * today and there is no reason they must stay one, and a self-hosted
