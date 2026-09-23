@@ -56,7 +56,16 @@ const container = Registry.as<IViewContainersRegistry>(ViewContainerExtensions.V
 	.registerViewContainer(
 		{
 			id: CONTAINER_ID,
-			title: localize2('cloudeide', "CloudeIDE"),
+			// "Agent", not the product name.
+			//
+			// This string is what the panel's header shows, and the brand was
+			// already on screen four times over — title bar, activity bar
+			// icon, the Welcome page, the composer's own placeholder. A panel
+			// header is a label for what the pane *is*, which is the same
+			// reason the one on the left says Explorer and not the name of
+			// the editor. It still answers to "CloudeIDE" everywhere a person
+			// searches for it: the command is Focus CloudeIDE, below.
+			title: localize2('cloudeide.container', "Agent"),
 			icon: cloudeideIcon,
 			ctorDescriptor: new SyncDescriptor(ViewPaneContainer, [CONTAINER_ID, { mergeViewWithContainerWhenSingleView: true }]),
 			storageId: CONTAINER_ID,
@@ -68,7 +77,7 @@ const container = Registry.as<IViewContainersRegistry>(ViewContainerExtensions.V
 
 const viewDescriptor: IViewDescriptor = {
 	id: CloudeidePanel.ID,
-	name: localize2('cloudeide', "CloudeIDE"),
+	name: localize2('cloudeide.view', "Agent"),
 	containerIcon: cloudeideIcon,
 	ctorDescriptor: new SyncDescriptor(CloudeidePanel),
 	canToggleVisibility: false,

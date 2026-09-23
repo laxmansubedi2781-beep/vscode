@@ -923,8 +923,13 @@ export class GettingStartedPage extends EditorPane {
 			onShowOnStartupChanged();
 		}));
 
+		// The product name used to sit above this in a 2.7em heading. It is
+		// gone deliberately: the name is already in the title bar, the
+		// activity bar icon and the panel beside this page, and repeating it
+		// a fourth time in the largest type on screen made the first thing a
+		// person sees an advertisement rather than a place to start. The
+		// tagline carries the header on its own.
 		const header = $('.header', {},
-			$('h1.product-name.caption', {}, this.productService.nameLong),
 			$('p.subtitle.description', {}, localize({ key: 'gettingStarted.tagline', comment: ['Shown as subtitle on the Welcome page.'] }, "Write it, ask about it, ship it."))
 		);
 
