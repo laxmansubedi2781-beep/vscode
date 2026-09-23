@@ -23,10 +23,19 @@ on:
 permissions:
   contents: write
 
+env:
+  # The host everything below asks. It was api.cloudeide.com, which is no
+  # longer connected to anything: cloudeide.com is the application now —
+  # landing page at /, dashboard at /app, API at /api, one host.
+  HOST: https://cloudeide.com
+
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # Ten rather than five: when the host is down every request burns its full
+    # timeout, and a five-minute cap killed the job before it could write down
+    # that the host was down — which is the one time the report matters most.
+    timeout-minutes: 10
 
     steps:
       - name: Is the secret set
@@ -45,11 +54,11 @@ jobs:
       - name: Does the host answer
         run: |
           set -uo pipefail
-          for host in cloudeide.com api.cloudeide.com; do
+          for host in cloudeide.com; do
             echo "--- ${host} ---"
             getent hosts "$host" || echo "(no address yet)"
             curl -s -o /dev/null -w 'HTTP %{http_code} in %{time_total}s, %{size_download} bytes\n' \
-              --max-time 20 "https://${host}/" || echo "(no answer)"
+              --max-time 10 "https://${host}/" || echo "(no answer)"
           done
 
       - name: Does the token work
@@ -59,16 +68,16 @@ jobs:
           set -uo pipefail
           # The panel's first call. 200 means connected; 401 means the token is
           # wrong; anything else means the host is not the application.
-          code="$(curl -s -o /tmp/body -w '%{http_code}' --max-time 30 \
+          code="$(curl -s -o /tmp/body -w '%{http_code}' --max-time 10 \
             -H "Authorization: Bearer ${TOKEN}" \
-            https://api.cloudeide.com/api/user/profile)"
+            ${HOST}/api/user/profile)"
           echo "GET /api/user/profile -> HTTP ${code}, $(wc -c < /tmp/body) bytes"
 
           case "$code" in
             200) echo "the token works";;
             401|403) echo "::error::the host answered, but refused the token (${code})";;
-            404) echo "::error::reached something at api.cloudeide.com, but it is not the application (404)";;
-            000) echo "::error::could not reach api.cloudeide.com at all — DNS or certificate not ready";;
+            404) echo "::error::reached something at the host, but it is not the application (404)";;
+            000) echo "::error::could not reach the host at all — DNS or certificate not ready";;
             *)   echo "::warning::unexpected status ${code}";;
           esac
 
@@ -100,19 +109,19 @@ jobs:
       - name: Is the dashboard served
         run: |
           set -uo pipefail
-          page="$(curl -s -o /tmp/page -w '%{http_code}' --max-time 30 \
-            https://api.cloudeide.com/app/settings)"
+          page="$(curl -s -o /tmp/page -w '%{http_code}' --max-time 10 \
+            ${HOST}/app/settings)"
           type="$(file -b --mime-type /tmp/page)"
           echo "GET /app/settings -> HTTP ${page}, $(wc -c < /tmp/page) bytes, ${type}"
 
-          missing="$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 \
-            https://api.cloudeide.com/app/no-such-file.js)"
+          missing="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 \
+            ${HOST}/app/no-such-file.js)"
           echo "GET /app/no-such-file.js -> HTTP ${missing}"
 
           case "$page" in
             200) echo "the dashboard answers";;
             404) echo "::error::the dashboard is not being served (404) — STATIC_ROOT or the build output";;
-            000) echo "::error::could not reach api.cloudeide.com at all";;
+            000) echo "::error::could not reach the host at all";;
             *)   echo "::error::unexpected status ${page} from /app/settings";;
           esac
           if [ "$missing" = "200" ]; then
@@ -128,20 +137,20 @@ jobs:
           TOKEN: ${{ secrets.CLOUDEIDE_API_TOKEN }}
         run: |
           set -uo pipefail
-          anon="$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 \
-            -X POST https://api.cloudeide.com/api/anthropic/v1/messages \
+          anon="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 \
+            -X POST ${HOST}/api/anthropic/v1/messages \
             -H 'content-type: application/json' \
             -d '{"model":"claude-sonnet-5","max_tokens":1,"messages":[{"role":"user","content":"hi"}]}')"
           echo "POST /api/anthropic/v1/messages with no token -> HTTP ${anon}"
           case "$anon" in
             401|403) echo "refused, as it must be";;
-            000)     echo "::error::could not reach api.cloudeide.com at all";;
+            000)     echo "::error::could not reach the host at all";;
             *)       echo "::error::the agent endpoint answered ${anon} to a caller with no token";;
           esac
 
-          models="$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 \
+          models="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 \
             -H "Authorization: Bearer ${TOKEN}" \
-            https://api.cloudeide.com/api/anthropic/v1/models)"
+            ${HOST}/api/anthropic/v1/models)"
           echo "GET /api/anthropic/v1/models with the token -> HTTP ${models}"
           case "$models" in
             200) echo "the agent endpoint answers a signed-in caller";;
@@ -164,14 +173,14 @@ jobs:
       - name: Is the dashboard pointed at the right server
         run: |
           set -uo pipefail
-          page="$(curl -s --max-time 30 https://api.cloudeide.com/app/signin)"
+          page="$(curl -s --max-time 10 ${HOST}/app/signin)"
           bundle="$(printf '%s' "$page" | grep -oE '/app/assets/index-[A-Za-z0-9_-]+\.js' | head -1)"
           if [ -z "$bundle" ]; then
             echo "::warning::could not find the dashboard's script in /app/signin — skipping"
             exit 0
           fi
           echo "bundle is ${bundle}"
-          js="$(curl -s --max-time 60 "https://api.cloudeide.com${bundle}")"
+          js="$(curl -s --max-time 10 "${HOST}${bundle}")"
           echo "fetched $(printf '%s' "$js" | wc -c) bytes"
 
           if printf '%s' "$js" | grep -qE 'https?://(localhost|127\.0\.0\.1)'; then
@@ -198,22 +207,22 @@ jobs:
             echo "Written by .github/workflows/api-check.yml. Rewritten every run."
             echo
             echo '```'
-            echo "host:            $(curl -s -o /dev/null -w '%{http_code}' --max-time 20 https://api.cloudeide.com/ || echo 000)"
-            echo "dashboard:       $(curl -s -o /dev/null -w '%{http_code}' --max-time 20 https://api.cloudeide.com/app/signin || echo 000)"
-            echo "missing file:    $(curl -s -o /dev/null -w '%{http_code}' --max-time 20 https://api.cloudeide.com/app/no-such-file.js || echo 000)"
-            echo "agent, no token: $(curl -s -o /dev/null -w '%{http_code}' --max-time 20 -X POST https://api.cloudeide.com/api/anthropic/v1/messages -H 'content-type: application/json' -d '{}' || echo 000)"
+            echo "host:            $(curl -s -o /dev/null -w '%{http_code}' --max-time 10 ${HOST}/ || echo 000)"
+            echo "dashboard:       $(curl -s -o /dev/null -w '%{http_code}' --max-time 10 ${HOST}/app/signin || echo 000)"
+            echo "missing file:    $(curl -s -o /dev/null -w '%{http_code}' --max-time 10 ${HOST}/app/no-such-file.js || echo 000)"
+            echo "agent, no token: $(curl -s -o /dev/null -w '%{http_code}' --max-time 10 -X POST ${HOST}/api/anthropic/v1/messages -H 'content-type: application/json' -d '{}' || echo 000)"
             echo '```'
             echo
             echo "## Where the dashboard thinks the API is"
             echo
-            page="$(curl -s --max-time 30 https://api.cloudeide.com/app/signin)"
+            page="$(curl -s --max-time 10 ${HOST}/app/signin)"
             bundle="$(printf '%s' "$page" | grep -oE '/app/assets/index-[A-Za-z0-9_-]+\.js' | head -1)"
             if [ -z "$bundle" ]; then
               echo "Could not find the dashboard's script in /app/signin."
             else
               echo "Script: \`${bundle}\`"
               echo
-              js="$(curl -s --max-time 60 "https://api.cloudeide.com${bundle}")"
+              js="$(curl -s --max-time 10 "${HOST}${bundle}")"
               echo "Size: $(printf '%s' "$js" | wc -c) bytes"
               echo
               hits="$(printf '%s' "$js" | grep -oE 'https?://[a-zA-Z0-9.:_-]{4,60}' | sort -u | head -20)"
