@@ -87,11 +87,16 @@ jobs:
             echo "stamped $asset as $stamp"
           done
 
-          # The custom domain. GitHub Pages reads this file out of the
-          # published artifact and serves the site from that name, which also
-          # moves it off the /cloudevs/ project path: a custom domain is
-          # served from its own root.
-          echo 'cloudeide.com' > site/CNAME
+          # No CNAME any more, on purpose.
+          #
+          # This wrote `cloudeide.com` into the artifact, which is how GitHub
+          # Pages claims a domain — and while Pages holds it, nothing else can
+          # answer for it. cloudeide.com is served by the application now:
+          # landing page at /, dashboard at /app, API at /api, one host.
+          #
+          # Pages stays as a preview of this branch at its project URL, which
+          # is what it is useful for. Putting the name back here would take
+          # the domain off the application again the next time it deploys.
 
           touch site/.nojekyll
           du -sh site
