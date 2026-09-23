@@ -904,3 +904,338 @@
 	align-self: flex-start;
 	margin-top: 2px;
 }
+
+/* ── Cloud, in the editor area ───────────────────────────────────────────── */
+
+/*
+ * Every colour here is a theme variable, never a hex.
+ *
+ * This surface is a full editor tab, so it sits next to real code all day. A
+ * hardcoded dark background is a pane that stays dark when somebody switches
+ * to a light theme, and a hardcoded border is one that disappears in high
+ * contrast. The design was drawn in the dark theme's own values, which is
+ * what these variables resolve to there.
+ */
+.cloudeide-cloud-editor {
+	overflow: auto;
+	background: var(--vscode-editor-background);
+	color: var(--vscode-foreground);
+}
+
+/*
+ * A column, not the width of the pane.
+ *
+ * On a wide screen an editor is easily 1800px across, and a row whose left
+ * end is a domain and whose right end is its status becomes two things read
+ * separately. Settings holds itself to a column for the same reason.
+ */
+.cloudeide-cloud-page {
+	max-width: 880px;
+	margin: 0 auto;
+	padding: 40px 40px 64px;
+	display: flex;
+	flex-direction: column;
+	gap: 34px;
+}
+
+.cloudeide-cloud-header {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+}
+
+.cloudeide-cloud-project {
+	margin: 0;
+	font-size: 26px;
+	font-weight: 600;
+	letter-spacing: -0.01em;
+}
+
+.cloudeide-cloud-live {
+	display: flex;
+	align-items: baseline;
+	flex-wrap: wrap;
+	gap: 10px;
+	font-size: 13px;
+	color: var(--vscode-descriptionForeground);
+}
+
+.cloudeide-cloud-address {
+	font-family: var(--monaco-monospace-font);
+	font-size: 13px;
+	color: var(--vscode-foreground);
+	text-decoration: none;
+	border-bottom: 1px solid var(--vscode-focusBorder);
+	padding-bottom: 1px;
+	cursor: pointer;
+}
+
+.cloudeide-cloud-address:hover {
+	color: var(--vscode-textLink-activeForeground, var(--vscode-foreground));
+}
+
+.cloudeide-cloud-actions {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-top: 4px;
+}
+
+.cloudeide-cloud-actions .monaco-button {
+	width: auto;
+	padding: 6px 18px;
+	font-size: 13px;
+}
+
+.cloudeide-cloud-actions .cloudeide-cloud-environment {
+	padding: 6px 14px;
+}
+
+.cloudeide-cloud-deploy-status {
+	font-size: 12.5px;
+	color: var(--vscode-descriptionForeground);
+}
+
+/* ── sections ────────────────────────────────────────────────────────────── */
+
+.cloudeide-cloud-section {
+	display: flex;
+	flex-direction: column;
+}
+
+.cloudeide-cloud-section-head {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding-bottom: 9px;
+	border-bottom: 1px solid var(--vscode-panel-border, var(--vscode-editorWidget-border));
+}
+
+.cloudeide-cloud-section-title {
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--vscode-descriptionForeground);
+}
+
+.cloudeide-cloud-spacer {
+	flex-grow: 1;
+}
+
+.cloudeide-cloud-section-head .monaco-button {
+	width: auto;
+	padding: 3px 12px;
+	font-size: 12px;
+}
+
+/* ── rows ────────────────────────────────────────────────────────────────── */
+
+.cloudeide-cloud-row {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	min-height: 40px;
+	padding: 10px 0;
+	border-bottom: 1px solid var(--vscode-panel-border, var(--vscode-editorWidget-border));
+	font-size: 13px;
+}
+
+/* The last row in a list has the section's own rule under it already. */
+.cloudeide-cloud-list > :last-child > .cloudeide-cloud-row,
+.cloudeide-cloud-list > .cloudeide-cloud-row:last-child {
+	border-bottom: 0;
+}
+
+.cloudeide-cloud-dot {
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	flex-shrink: 0;
+	background: var(--vscode-descriptionForeground);
+}
+
+.cloudeide-cloud-dot-ok {
+	background: var(--vscode-charts-green, var(--vscode-terminal-ansiGreen));
+}
+
+.cloudeide-cloud-dot-error {
+	background: var(--vscode-charts-red, var(--vscode-errorForeground));
+}
+
+.cloudeide-cloud-env {
+	width: 92px;
+	flex-shrink: 0;
+	text-transform: capitalize;
+}
+
+.cloudeide-cloud-host {
+	font-family: var(--monaco-monospace-font);
+	font-size: 13px;
+	color: var(--vscode-foreground);
+}
+
+.cloudeide-cloud-mono {
+	font-family: var(--monaco-monospace-font);
+	font-size: 12px;
+	color: var(--vscode-descriptionForeground);
+}
+
+.cloudeide-cloud-dim {
+	font-size: 12px;
+	color: var(--vscode-descriptionForeground);
+}
+
+.cloudeide-cloud-when {
+	margin-left: auto;
+	font-size: 12px;
+	color: var(--vscode-descriptionForeground);
+	white-space: nowrap;
+}
+
+.cloudeide-cloud-state {
+	margin-left: auto;
+	font-size: 12px;
+	text-transform: capitalize;
+}
+
+.cloudeide-cloud-link {
+	color: var(--vscode-textLink-foreground);
+	text-decoration: none;
+	cursor: pointer;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.cloudeide-cloud-link:hover {
+	text-decoration: underline;
+}
+
+.cloudeide-cloud-ok {
+	color: var(--vscode-charts-green, var(--vscode-terminal-ansiGreen));
+}
+
+.cloudeide-cloud-wait {
+	color: var(--vscode-descriptionForeground);
+}
+
+.cloudeide-cloud-error {
+	color: var(--vscode-errorForeground);
+}
+
+.cloudeide-cloud-muted {
+	color: var(--vscode-descriptionForeground);
+}
+
+.cloudeide-cloud-placeholder {
+	padding: 16px 0;
+	font-size: 13px;
+	color: var(--vscode-descriptionForeground);
+}
+
+/* ── row buttons ─────────────────────────────────────────────────────────── */
+
+.cloudeide-cloud-row-actions {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex-shrink: 0;
+}
+
+.cloudeide-cloud-row-button {
+	padding: 3px 11px;
+	border: 1px solid var(--vscode-panel-border, var(--vscode-editorWidget-border));
+	border-radius: 5px;
+	background: transparent;
+	color: var(--vscode-foreground);
+	font: inherit;
+	font-size: 12px;
+	cursor: pointer;
+}
+
+.cloudeide-cloud-row-button:hover {
+	background: var(--vscode-list-hoverBackground);
+}
+
+.cloudeide-cloud-icon-button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	border: 0;
+	border-radius: 5px;
+	background: transparent;
+	color: var(--vscode-descriptionForeground);
+	cursor: pointer;
+}
+
+.cloudeide-cloud-icon-button:hover {
+	background: var(--vscode-list-hoverBackground);
+	color: var(--vscode-foreground);
+}
+
+/* ── the DNS record ──────────────────────────────────────────────────────── */
+
+/*
+ * Shown without being asked for.
+ *
+ * A domain waiting on DNS is waiting on a person doing something at their
+ * registrar. Putting the record behind a button would mean pressing one to
+ * find out what you were supposed to have already done.
+ */
+.cloudeide-cloud-record {
+	margin: 2px 0 14px;
+	padding: 12px 14px;
+	border: 1px solid var(--vscode-panel-border, var(--vscode-editorWidget-border));
+	border-radius: 6px;
+	background: var(--vscode-textCodeBlock-background, var(--vscode-editorWidget-background));
+}
+
+.cloudeide-cloud-record-lead {
+	font-size: 12px;
+	color: var(--vscode-descriptionForeground);
+}
+
+.cloudeide-cloud-record-line {
+	display: flex;
+	align-items: center;
+	gap: 18px;
+	margin-top: 9px;
+}
+
+.cloudeide-cloud-record-line .cloudeide-cloud-mono {
+	font-size: 12.5px;
+	color: var(--vscode-foreground);
+	overflow-wrap: anywhere;
+}
+
+.cloudeide-cloud-record-line .cloudeide-cloud-icon-button {
+	margin-left: auto;
+	flex-shrink: 0;
+}
+
+.cloudeide-cloud-note {
+	margin-bottom: 12px;
+	font-size: 12px;
+	color: var(--vscode-descriptionForeground);
+}
+
+/* A narrow editor group, or a phone. The column's padding goes first. */
+@media (max-width: 600px) {
+	.cloudeide-cloud-page {
+		padding: 24px 16px 48px;
+		gap: 26px;
+	}
+
+	.cloudeide-cloud-row {
+		flex-wrap: wrap;
+	}
+
+	.cloudeide-cloud-record-line {
+		flex-wrap: wrap;
+		gap: 10px;
+	}
+}

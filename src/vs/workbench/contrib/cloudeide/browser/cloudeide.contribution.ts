@@ -31,8 +31,17 @@ import { IDialogService } from '../../../../platform/dialogs/common/dialogs.js';
 import { ICommandService } from '../../../../platform/commands/common/commands.js';
 import { AgentHostAnthropicKeySecret, CloudeideTokenSecret } from '../../../../platform/agentHost/common/agentService.js';
 import { registerWorkbenchContribution2, WorkbenchPhase } from '../../../common/contributions.js';
+import { EditorPaneDescriptor, IEditorPaneRegistry } from '../../../browser/editor.js';
+import { EditorExtensions, IEditorFactoryRegistry, IEditorSerializer } from '../../../common/editor.js';
+import { EditorInput } from '../../../common/editor/editorInput.js';
+import { IEditorService } from '../../../services/editor/common/editorService.js';
+import { CloudeideCloudEditor } from './cloudeideCloudEditor.js';
+import { CloudeideCloudInput } from './cloudeideCloudInput.js';
 
 const CONTAINER_ID = 'workbench.view.cloudeideContainer';
+
+/** The one way to open Cloud. */
+export const CLOUDEIDE_OPEN_CLOUD = 'cloudeide.openCloud';
 
 /*
  * The product's own mark, not a codicon standing in for it.
@@ -155,6 +164,68 @@ const accountViewDescriptor: IViewDescriptor = {
 
 Registry.as<IViewsRegistry>(ViewContainerExtensions.ViewsRegistry)
 	.registerViews([viewDescriptor, cloudViewDescriptor, accountViewDescriptor], container);
+
+/*
+ * Cloud, in the editor area.
+ *
+ * Deployments and domains are tables — a time, a commit, a status, a DNS
+ * record somebody has to copy into a form somewhere else. A table in a
+ * three-hundred-pixel pane is a column of wrapped fragments, which is what
+ * this was for months. Here it gets the width its content needs, next to
+ * Settings and Welcome, which are in the editor area for the same reason.
+ */
+Registry.as<IEditorPaneRegistry>(EditorExtensions.EditorPane).registerEditorPane(
+	EditorPaneDescriptor.create(
+		CloudeideCloudEditor,
+		CloudeideCloudEditor.ID,
+		localize('cloudeide.cloud.editor', "Cloud"),
+	),
+	[new SyncDescriptor(CloudeideCloudInput)],
+);
+
+/*
+ * So the tab is still there after a reload.
+ *
+ * There is no state to keep — the page asks the server for everything it
+ * shows — so this serializes to nothing and deserializes to the one input.
+ * Without it the workbench drops the tab on restart, and somebody who left
+ * Cloud open comes back to it gone.
+ */
+class CloudeideCloudInputSerializer implements IEditorSerializer {
+	canSerialize(): boolean {
+		return true;
+	}
+	serialize(): string {
+		return '';
+	}
+	deserialize(): EditorInput {
+		return CloudeideCloudInput.getOrCreate();
+	}
+}
+
+Registry.as<IEditorFactoryRegistry>(EditorExtensions.EditorFactory)
+	.registerEditorSerializer(CloudeideCloudInput.ID, CloudeideCloudInputSerializer);
+
+/*
+ * The command that opens it.
+ *
+ * Everything that can open Cloud goes through here — the button, the palette,
+ * anything later — so there is one place that decides what opening Cloud
+ * means, and one tab at the end of it.
+ */
+registerAction2(class extends Action2 {
+	constructor() {
+		super({
+			id: CLOUDEIDE_OPEN_CLOUD,
+			title: localize2('cloudeide.openCloud', "CloudeIDE: Cloud"),
+			f1: true,
+		});
+	}
+
+	async run(accessor: ServicesAccessor): Promise<void> {
+		await accessor.get(IEditorService).openEditor(CloudeideCloudInput.getOrCreate(), { pinned: true });
+	}
+});
 
 Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Configuration).registerConfiguration({
 	id: 'cloudeide',
