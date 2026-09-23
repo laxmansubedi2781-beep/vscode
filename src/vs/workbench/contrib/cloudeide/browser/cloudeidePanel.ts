@@ -29,14 +29,15 @@ import { CloudeideClient, type ChatMessage, type FileChange } from './cloudeideC
 import { collectWorkspaceFiles, toWorkspaceState } from './cloudeideWorkspace.js';
 import { VSBuffer } from '../../../../base/common/buffer.js';
 import { linesDiffComputers } from '../../../../editor/common/diff/linesDiffComputers.js';
-import { CancellationTokenSource } from '../../../../base/common/cancellation.js';
-import { toDisposable } from '../../../../base/common/lifecycle.js';
+import { CancellationToken, CancellationTokenSource } from '../../../../base/common/cancellation.js';
+import { DisposableStore, toDisposable } from '../../../../base/common/lifecycle.js';
 import { ISearchService } from '../../../services/search/common/search.js';
 import { IMarkerService } from '../../../../platform/markers/common/markers.js';
 import { ILanguageFeaturesService } from '../../../../editor/common/services/languageFeatures.js';
 import { ITextModelService } from '../../../../editor/common/services/resolverService.js';
+import { CloudeideCommandRunner, type CommandRunResult, type IAgentCommandRunner } from './cloudeideAgentCommand.js';
 import { QueryBuilder } from '../../../services/search/common/queryBuilder.js';
-import { AGENT_TOOLS, CloudeideAgentTools, type StagedEdit } from './cloudeideAgentTools.js';
+import { CloudeideAgentTools, type StagedEdit } from './cloudeideAgentTools.js';
 import { runAgentLoop } from './cloudeideAgentLoop.js';
 import { buildAgentSystemPrompt } from './cloudeideAgentPrompt.js';
 
@@ -78,6 +79,7 @@ function describeTool(name: string, input: Record<string, unknown>): string {
 		case 'edit_file': return localize('cloudeide.tool.edit', "Editing");
 		case 'find_symbol': return localize('cloudeide.tool.symbol', "Finding where {0} is declared", symbol);
 		case 'find_references': return localize('cloudeide.tool.references', "Finding what uses {0}", symbol);
+		case 'run_command': return localize('cloudeide.tool.run', "Ran {0}", typeof input.command === 'string' ? input.command : '');
 		case 'get_diagnostics': return localize('cloudeide.tool.diagnostics', "Checking for errors");
 		case 'write_file': return localize('cloudeide.tool.write', "Writing");
 		default: return name;
@@ -139,6 +141,8 @@ export class CloudeidePanel extends ViewPane {
 
 	/** The run in flight, so disposing the panel stops it. */
 	private runCancellation: CancellationTokenSource | undefined;
+	/** Built on first use and kept, so the agent's shell survives the turn. */
+	private runner: IAgentCommandRunner | undefined;
 
 	constructor(
 		options: IViewletViewOptions,
@@ -611,6 +615,7 @@ export class CloudeidePanel extends ViewPane {
 			this.markerService,
 			this.languageFeaturesService,
 			this.textModelService,
+			this.commandRunner(),
 		);
 
 		const folder = this.contextService.getWorkspace().folders[0];
@@ -639,7 +644,7 @@ export class CloudeidePanel extends ViewPane {
 				messages: contextNote
 					? [...this.messages, { role: 'user' as const, content: contextNote }]
 					: this.messages,
-				tools: AGENT_TOOLS,
+				tools: tools.schemas(),
 				toolHost: tools,
 				model: this.configuredModel(),
 				system,
@@ -759,6 +764,87 @@ export class CloudeidePanel extends ViewPane {
 	 * no run on the server to report a verdict to, because the model was the
 	 * only thing that left this machine.
 	 */
+	/**
+	 * The thing that runs commands, and the gate in front of it.
+	 *
+	 * Made once per window and kept, so the shell the agent works in is the
+	 * same shell across a conversation: a `cd` in one command still holds in
+	 * the next, which is how a person would expect it to behave.
+	 *
+	 * Everything the agent asks to run comes through `approveCommand` first.
+	 * There is no setting to turn that off and no list of commands that skip
+	 * it. A rule like "anything starting with npm is safe" is exactly the
+	 * rule `npm run deploy` walks through.
+	 */
+	private commandRunner(): IAgentCommandRunner {
+		if (!this.runner) {
+			const execute = this._register(this.instantiationService.createInstance(CloudeideCommandRunner));
+			this.runner = {
+				run: async (command: string, token: CancellationToken): Promise<CommandRunResult> => {
+					const allowed = await this.approveCommand(command, token);
+					if (!allowed) {
+						return { output: '', refused: true };
+					}
+					return execute.run(command, token);
+				},
+			};
+		}
+		return this.runner;
+	}
+
+	/**
+	 * Ask, and wait for an answer.
+	 *
+	 * The agent's loop is paused here, inside the tool call, which is what
+	 * makes this a gate rather than a notification: nothing has run when the
+	 * card appears, and nothing runs unless Run is pressed.
+	 *
+	 * Cancelling the run answers it too. Otherwise a person who pressed Stop
+	 * would be left with a card still waiting for them, for a run that is
+	 * already over.
+	 */
+	private approveCommand(command: string, token: CancellationToken): Promise<boolean> {
+		return new Promise<boolean>(resolve => {
+			const card = DOM.append(this.transcript, $('.cloudeide-permission'));
+
+			const head = DOM.append(card, $('.cloudeide-permission-head'));
+			head.textContent = localize('cloudeide.permission.head', "Run this command?");
+
+			const line = DOM.append(card, $('code.cloudeide-permission-command'));
+			line.textContent = command;
+
+			const actions = DOM.append(card, $('.cloudeide-permission-actions'));
+			const run = DOM.append(actions, $('button.cloudeide-button-primary')) as HTMLButtonElement;
+			run.textContent = localize('cloudeide.permission.run', "Run");
+			const skip = DOM.append(actions, $('button.cloudeide-button-quiet')) as HTMLButtonElement;
+			skip.textContent = localize('cloudeide.permission.skip', "Don't run");
+
+			this.transcript.scrollTop = this.transcript.scrollHeight;
+
+			const listeners = new DisposableStore();
+			let settled = false;
+			const answer = (allowed: boolean, verdict: string) => {
+				if (settled) {
+					return;
+				}
+				settled = true;
+				listeners.dispose();
+				run.remove();
+				skip.remove();
+				DOM.append(actions, $('span.cloudeide-permission-settled')).textContent = verdict;
+				resolve(allowed);
+			};
+
+			listeners.add(DOM.addDisposableListener(run, 'click',
+				() => answer(true, localize('cloudeide.permission.running', "Running"))));
+			listeners.add(DOM.addDisposableListener(skip, 'click',
+				() => answer(false, localize('cloudeide.permission.skipped', "Not run"))));
+			listeners.add(token.onCancellationRequested(
+				() => answer(false, localize('cloudeide.permission.stopped', "Stopped"))));
+			this._register(listeners);
+		});
+	}
+
 	private appendProposal(runId: string | undefined, changes: readonly FileChange[]): void {
 		const card = DOM.append(this.transcript, $('.cloudeide-proposal'));
 

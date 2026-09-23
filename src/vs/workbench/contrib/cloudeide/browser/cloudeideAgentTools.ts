@@ -32,6 +32,7 @@ import { IWorkspaceContextService } from '../../../../platform/workspace/common/
 import { QueryBuilder } from '../../../services/search/common/queryBuilder.js';
 import { ISearchService } from '../../../services/search/common/search.js';
 import { getWorkspaceSymbols } from '../../search/common/search.js';
+import type { IAgentCommandRunner } from './cloudeideAgentCommand.js';
 import { symbolKindNames } from '../../../../editor/common/languages.js';
 import { Position } from '../../../../editor/common/core/position.js';
 import { ILanguageFeaturesService } from '../../../../editor/common/services/languageFeatures.js';
@@ -222,6 +223,28 @@ export const AGENT_TOOLS: readonly AgentToolSchema[] = [
 			required: ['path', 'content'],
 		},
 	},
+	{
+		name: 'run_command',
+		description:
+			'Run a shell command in the project folder and read what it printed. Use it to check ' +
+			'your own work — run the tests, the type checker, the build, `git diff` — rather than ' +
+			'assuming a change is right. It runs in a terminal the person can see and stop.\n\n' +
+			'The person is asked before every command and can refuse. Ask for one command at a ' +
+			'time, and say in your message why you want to run it. Do not use it to read or ' +
+			'change files: read_file, edit_file and write_file are for that, and they do not need ' +
+			'anyone\'s permission.',
+		input_schema: {
+			type: 'object',
+			properties: {
+				command: { type: 'string', description: 'The command line, exactly as it would be typed.' },
+				why: {
+					type: 'string',
+					description: 'One short line the person will read, saying what this is for. Example: "to see whether the tests pass".',
+				},
+			},
+			required: ['command'],
+		},
+	},
 ];
 
 export class CloudeideAgentTools {
@@ -237,7 +260,26 @@ export class CloudeideAgentTools {
 		private readonly markerService: IMarkerService,
 		private readonly languageFeaturesService: ILanguageFeaturesService,
 		private readonly textModelService: ITextModelService,
+		/**
+		 * Undefined where nothing can run a command — the tests, and the web
+		 * build, which has no terminal. `run_command` is then not offered at
+		 * all rather than offered and always failing.
+		 */
+		private readonly commandRunner: IAgentCommandRunner | undefined,
 	) { }
+
+	/**
+	 * The tools to show the model on this machine.
+	 *
+	 * A tool the model can see is a tool it will try. Offering `run_command`
+	 * where nothing can run one buys a turn spent on a call that was never
+	 * going to work, so it is left out instead.
+	 */
+	schemas(): readonly AgentToolSchema[] {
+		return this.commandRunner
+			? AGENT_TOOLS
+			: AGENT_TOOLS.filter(tool => tool.name !== 'run_command');
+	}
 
 	edits(): readonly StagedEdit[] {
 		return [...this.staged.values()];
@@ -258,6 +300,7 @@ export class CloudeideAgentTools {
 				case 'find_references': return await this.findReferences(input, token);
 				case 'edit_file': return await this.editFile(input);
 				case 'write_file': return await this.writeFile(input);
+				case 'run_command': return await this.runCommand(input, token);
 				default: return { content: `There is no tool called ${name}.`, isError: true };
 			}
 		} catch (err) {
@@ -453,6 +496,66 @@ export class CloudeideAgentTools {
 
 		const capped = found.length > MAX_SYMBOLS ? `\n\n(${MAX_SYMBOLS} shown; there are more.)` : '';
 		return { content: lines.join('\n') + capped };
+	}
+
+	/**
+	 * Run something, once the person has said yes.
+	 *
+	 * The permission is not here. It is in whatever implements
+	 * `IAgentCommandRunner` — the panel — because asking is a thing only the
+	 * panel can do, and because keeping it out of this file is what lets
+	 * every other tool in here be tested with no window at all.
+	 *
+	 * What is here is the reporting, and it matters more than it looks. The
+	 * model has to be able to tell these three apart:
+	 *
+	 *   - the command ran and succeeded
+	 *   - the command ran and failed, and here is what it printed
+	 *   - the command never ran, because the person said no
+	 *
+	 * Collapse the third into the second and the agent tries again, louder,
+	 * having learned that the command "failed". So a refusal is not an error:
+	 * it is a plain answer saying the person declined, which is information
+	 * rather than a fault to retry.
+	 */
+	private async runCommand(input: Record<string, unknown>, token: CancellationToken): Promise<AgentToolResult> {
+		const command = typeof input.command === 'string' ? input.command.trim() : '';
+		if (!command) {
+			return { content: 'A command is required.', isError: true };
+		}
+		if (!this.commandRunner) {
+			return { content: 'Commands cannot be run here.', isError: true };
+		}
+
+		const result = await this.commandRunner.run(command, token);
+
+		if (result.refused) {
+			return {
+				content: `The person did not allow this command. Do not ask for it again unless ` +
+					`they bring it up. Carry on with what you can do without it, and say plainly ` +
+					`if there is something you now cannot check.`,
+			};
+		}
+		if (result.error) {
+			return { content: `The command could not be run: ${result.error}`, isError: true };
+		}
+
+		const output = result.output.trim();
+		const body = output || '(no output)';
+
+		// No exit code means the shell has no integration installed, so the
+		// end of the command could not be detected. Saying "exit 0" there
+		// would be a guess, and a guess the model would act on.
+		if (result.exitCode === undefined) {
+			return {
+				content: `${body}\n\n(This shell does not report exit codes, so whether the ` +
+					`command succeeded has to be read from the output above.)`,
+			};
+		}
+		if (result.exitCode === 0) {
+			return { content: body };
+		}
+		return { content: `Exited ${result.exitCode}.\n\n${body}`, isError: true };
 	}
 
 	/**

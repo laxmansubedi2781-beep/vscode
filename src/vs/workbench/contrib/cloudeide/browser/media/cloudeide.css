@@ -408,6 +408,71 @@
 	color: var(--vscode-descriptionForeground);
 }
 
+/* ── permission ──────────────────────────────────────────────────────────── */
+
+/*
+ * The card that asks before a command runs.
+ *
+ * It borrows the proposal card's frame on purpose — same border, same radius,
+ * same button row — because it is the same kind of moment: the agent has
+ * stopped and is waiting on a person. What is different is the left edge,
+ * which is coloured, because unlike a file change this one cannot be undone
+ * by pressing Discard afterwards.
+ */
+.cloudeide-permission {
+	margin: 4px 0 14px;
+	padding: 10px 0 0;
+	border: 1px solid var(--vscode-panel-border, var(--vscode-editorWidget-border));
+	border-left: 2px solid var(--vscode-charts-orange, var(--vscode-editorWarning-foreground));
+	border-radius: 6px;
+	background: var(--vscode-editorWidget-background);
+	overflow: hidden;
+}
+
+.cloudeide-permission-head {
+	margin: 0 12px 8px;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: .04em;
+	color: var(--vscode-descriptionForeground);
+}
+
+/* The command, verbatim and selectable: the person is being asked to vouch
+ * for this exact text, so it is shown as text and never shortened. It wraps
+ * rather than scrolls — a long command that runs off the edge is one whose
+ * end nobody read. */
+.cloudeide-permission-command {
+	display: block;
+	margin: 0 12px 10px;
+	padding: 8px 10px;
+	border-radius: 4px;
+	background: var(--vscode-textCodeBlock-background, rgba(127, 127, 127, .1));
+	font-family: var(--monaco-monospace-font);
+	font-size: 12px;
+	line-height: 1.5;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	user-select: text;
+}
+
+.cloudeide-permission-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 9px 12px;
+}
+
+.cloudeide-permission-actions button {
+	padding: 4px 12px;
+	font-size: 12px;
+}
+
+.cloudeide-permission-settled {
+	font-size: 12px;
+	color: var(--vscode-descriptionForeground);
+}
+
 /* ── composer ────────────────────────────────────────────────────────────── */
 
 .cloudeide-composer {
