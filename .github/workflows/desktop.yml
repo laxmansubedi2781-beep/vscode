@@ -58,8 +58,29 @@ jobs:
           sudo apt-get install -y build-essential pkg-config \
             libx11-dev libx11-xcb-dev libxkbfile-dev libnotify-bin libkrb5-dev
 
+      # npm ci, and again if the network drops it.
+      #
+      # The macOS job died here at 2m41s with a TLS socket error inside npm's
+      # own HTTP parsing — a download cut off mid-stream, not a package that
+      # will not install. This build pulls a few hundred megabytes including
+      # Electron, so one lost connection is enough to lose twenty minutes.
+      #
+      # npm's own --fetch-retries covers a single request giving up; it does
+      # not cover the install dying partway through, which is what happened.
+      # So the whole command is retried, three times, with a pause between.
       - name: Install dependencies
-        run: npm ci
+        run: |
+          set -uo pipefail
+          for attempt in 1 2 3; do
+            echo "--- npm ci, attempt ${attempt} ---"
+            if npm ci --fetch-retries 5 --fetch-retry-maxtimeout 120000; then
+              exit 0
+            fi
+            echo "::warning::npm ci failed on attempt ${attempt}"
+            sleep $(( attempt * 20 ))
+          done
+          echo "::error::npm ci failed three times"
+          exit 1
 
       # Not the minified build: its mangling step fails on upstream source this
       # fork has not touched, which is the same wall the web build hit. The
@@ -296,8 +317,29 @@ jobs:
           Write-Output "Visual Studio: $installPath"
           "vs2022_install=$installPath" | Out-File -FilePath $env:GITHUB_ENV -Append
 
+      # npm ci, and again if the network drops it.
+      #
+      # The macOS job died here at 2m41s with a TLS socket error inside npm's
+      # own HTTP parsing — a download cut off mid-stream, not a package that
+      # will not install. This build pulls a few hundred megabytes including
+      # Electron, so one lost connection is enough to lose twenty minutes.
+      #
+      # npm's own --fetch-retries covers a single request giving up; it does
+      # not cover the install dying partway through, which is what happened.
+      # So the whole command is retried, three times, with a pause between.
       - name: Install dependencies
-        run: npm ci
+        run: |
+          set -uo pipefail
+          for attempt in 1 2 3; do
+            echo "--- npm ci, attempt ${attempt} ---"
+            if npm ci --fetch-retries 5 --fetch-retry-maxtimeout 120000; then
+              exit 0
+            fi
+            echo "::warning::npm ci failed on attempt ${attempt}"
+            sleep $(( attempt * 20 ))
+          done
+          echo "::error::npm ci failed three times"
+          exit 1
         env:
           npm_config_arch: x64
 
@@ -476,8 +518,29 @@ jobs:
           df -h /
           xcodebuild -version || true
 
+      # npm ci, and again if the network drops it.
+      #
+      # The macOS job died here at 2m41s with a TLS socket error inside npm's
+      # own HTTP parsing — a download cut off mid-stream, not a package that
+      # will not install. This build pulls a few hundred megabytes including
+      # Electron, so one lost connection is enough to lose twenty minutes.
+      #
+      # npm's own --fetch-retries covers a single request giving up; it does
+      # not cover the install dying partway through, which is what happened.
+      # So the whole command is retried, three times, with a pause between.
       - name: Install dependencies
-        run: npm ci
+        run: |
+          set -uo pipefail
+          for attempt in 1 2 3; do
+            echo "--- npm ci, attempt ${attempt} ---"
+            if npm ci --fetch-retries 5 --fetch-retry-maxtimeout 120000; then
+              exit 0
+            fi
+            echo "::warning::npm ci failed on attempt ${attempt}"
+            sleep $(( attempt * 20 ))
+          done
+          echo "::error::npm ci failed three times"
+          exit 1
         env:
           npm_config_arch: arm64
 
