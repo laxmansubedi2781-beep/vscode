@@ -20,6 +20,9 @@ on:
     paths:
       - '.github/workflows/api-check.yml'
 
+permissions:
+  contents: write
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -177,3 +180,56 @@ jobs:
             exit 1
           fi
           echo "no localhost address baked into the dashboard"
+
+      # The answers, on a branch, because the log is not readable from where
+      # they get acted on.
+      #
+      # The same trick evidence.yml uses for the smoke test's screenshot: the
+      # artifact store is served from a host the session reviewing this cannot
+      # reach, and git is the one channel that comes through. Without it every
+      # one of these checks costs somebody a screenshot taken on a phone.
+      - name: Write the answers somewhere readable
+        if: always()
+        run: |
+          set -uo pipefail
+          {
+            echo "# API check — run ${{ github.run_id }}"
+            echo
+            echo "Written by .github/workflows/api-check.yml. Rewritten every run."
+            echo
+            echo '```'
+            echo "host:            $(curl -s -o /dev/null -w '%{http_code}' --max-time 20 https://api.cloudeide.com/ || echo 000)"
+            echo "dashboard:       $(curl -s -o /dev/null -w '%{http_code}' --max-time 20 https://api.cloudeide.com/app/signin || echo 000)"
+            echo "missing file:    $(curl -s -o /dev/null -w '%{http_code}' --max-time 20 https://api.cloudeide.com/app/no-such-file.js || echo 000)"
+            echo "agent, no token: $(curl -s -o /dev/null -w '%{http_code}' --max-time 20 -X POST https://api.cloudeide.com/api/anthropic/v1/messages -H 'content-type: application/json' -d '{}' || echo 000)"
+            echo '```'
+            echo
+            echo "## Where the dashboard thinks the API is"
+            echo
+            page="$(curl -s --max-time 30 https://api.cloudeide.com/app/signin)"
+            bundle="$(printf '%s' "$page" | grep -oE '/app/assets/index-[A-Za-z0-9_-]+\.js' | head -1)"
+            if [ -z "$bundle" ]; then
+              echo "Could not find the dashboard's script in /app/signin."
+            else
+              echo "Script: \`${bundle}\`"
+              echo
+              js="$(curl -s --max-time 60 "https://api.cloudeide.com${bundle}")"
+              echo "Size: $(printf '%s' "$js" | wc -c) bytes"
+              echo
+              hits="$(printf '%s' "$js" | grep -oE 'https?://[a-zA-Z0-9.:_-]{4,60}' | sort -u | head -20)"
+              echo "Absolute addresses baked into it:"
+              echo '```'
+              printf '%s\n' "$hits"
+              echo '```'
+            fi
+          } > /tmp/report.md
+
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git checkout --orphan api-evidence
+          git rm -rf --cached . >/dev/null 2>&1 || true
+          find . -maxdepth 1 -not -name . -not -name .git -exec rm -rf {} +
+          cp /tmp/report.md README.md
+          git add -A
+          git commit -m "API check from run ${{ github.run_id }}"
+          git push --force origin api-evidence
