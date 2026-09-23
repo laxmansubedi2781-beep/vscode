@@ -53,21 +53,19 @@ import { ChatViewPane } from './widgetHosts/viewPane/chatViewPane.js';
  * flip, not a feature torn out.
  */
 /*
- * On, everywhere, and wearing this product's name.
+ * Off, now that there is something to put in its place.
  *
- * It was withheld on the web because sending did nothing — a model is
- * registered but no agent is, since the participant came from the Copilot
- * extension that no longer ships. Hiding it was the wrong answer. What this
- * view carries is the part worth having: the tool surface, where `read`,
- * `execute`, `agent` and `todo` are already listed and already wired to the
- * workbench. Throwing that away to keep a text-only panel would be throwing
- * away the thing that makes an agent an agent.
+ * It was turned on for a while and named CloudeIDE, on the reasoning that its
+ * tool surface was worth keeping until an agent existed to use it. The agent
+ * exists — it is in `contrib/cloudeide`, with its own loop, its own tools and
+ * its own terminal — so the reason has expired, and what is left is a second
+ * panel that answers nothing, sitting beside the one that does and wearing
+ * the same name.
  *
- * So it stays, and the missing agent is what gets built. Until then it is
- * named and iconed as CloudeIDE rather than as Chat, because there should be
- * one chat in this product and it should be ours.
+ * Everything the comment above this one warned about still applies, so this
+ * goes back to false rather than to a rename.
  */
-const REGISTER_BUILTIN_CHAT_VIEW = true;
+const REGISTER_BUILTIN_CHAT_VIEW = false;
 
 /*
  * The CloudeIDE mark, the same file the product's own container uses.
