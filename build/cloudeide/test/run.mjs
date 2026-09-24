@@ -36,6 +36,7 @@ const TESTS = [
 	'src/vs/workbench/contrib/cloudeide/test/browser/cloudeideMentions.test.ts',
 	'src/vs/workbench/contrib/cloudeide/test/browser/cloudeideModes.test.ts',
 	'src/vs/workbench/contrib/cloudeide/test/browser/cloudeidePullRequest.test.ts',
+	'src/vs/workbench/contrib/cloudeide/test/browser/cloudeideCommands.test.ts',
 ];
 
 const work = mkdtempSync(path.join(tmpdir(), 'cloudeide-test-'));

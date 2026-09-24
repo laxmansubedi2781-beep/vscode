@@ -43,6 +43,7 @@ import { CloudeideHistory, historyFileUri, type HistoryRun } from './cloudeideHi
 import { CloudeideMentions, mentionNote, mentionedFiles } from './cloudeideMentions.js';
 import { AGENT_MODES, modeById, toolsForMode, type AgentMode } from './cloudeideModes.js';
 import { CloudeidePullRequests, describeChange } from './cloudeidePullRequest.js';
+import { applySlash } from './cloudeideCommands.js';
 import { QueryBuilder } from '../../../services/search/common/queryBuilder.js';
 import { CloudeideAgentTools, type StagedEdit } from './cloudeideAgentTools.js';
 import { runAgentLoop } from './cloudeideAgentLoop.js';
@@ -624,8 +625,31 @@ export class CloudeidePanel extends ViewPane {
 	}
 
 	private async send(): Promise<void> {
-		const text = this.input.value.trim();
-		if (!text || this.busy) {
+		const typed = this.input.value.trim();
+		if (!typed || this.busy) {
+			return;
+		}
+
+		/*
+		 * `/` first, because some of them never reach a model.
+		 *
+		 * The rest turn into ordinary text or flip the mode — nothing a
+		 * person could not have typed, which is what keeps these shorthand
+		 * rather than a second way for the agent to behave.
+		 */
+		const command = applySlash(typed);
+		if (command.local) {
+			this.input.value = '';
+			await this.runLocalCommand(command.local);
+			return;
+		}
+		if (command.mode) {
+			this.mode = command.mode;
+			this.updateModeLabel();
+		}
+		const text = command.text.trim();
+		if (!text) {
+			this.input.value = '';
 			return;
 		}
 
@@ -957,6 +981,41 @@ export class CloudeidePanel extends ViewPane {
 	 * that asks about nothing is a question people learn to dismiss without
 	 * reading, and then the one that mattered goes with it.
 	 */
+	/**
+	 * The `/` commands that have nothing to say to a model.
+	 *
+	 * Undo, a pull request, a fresh conversation — all three are things the
+	 * panel already does, reached by a word instead of by hunting for the
+	 * button. Nothing is sent, so nothing is paid for.
+	 */
+	private async runLocalCommand(which: 'undo' | 'pr' | 'clear'): Promise<void> {
+		switch (which) {
+			case 'undo':
+				if (!this.preview.pending) {
+					this.setStatus(localize('cloudeide.slash.nothingToUndo',
+						"There is no change waiting to be undone."), 'muted');
+					return;
+				}
+				await this.preview.undo();
+				this.appendStep(localize('cloudeide.slash.undone', "Put the last change back"));
+				return;
+
+			case 'pr':
+				await this.offerPullRequest();
+				return;
+
+			case 'clear':
+				// The conversation, not the history: what the agent did to
+				// this folder outlives the chat about it, and somebody
+				// starting a new thread is not asking to forget last week.
+				this.messages.length = 0;
+				this.lastRun = undefined;
+				this.lastReply = '';
+				this.renderEmptyTranscript();
+				return;
+		}
+	}
+
 	/** The command's way in. Everything it needs is on this view. */
 	async offerPullRequestFromCommand(): Promise<void> {
 		await this.offerPullRequest();

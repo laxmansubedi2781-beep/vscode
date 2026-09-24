@@ -29,6 +29,7 @@ import { localize } from '../../../../nls.js';
 import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
 import { QueryBuilder } from '../../../services/search/common/queryBuilder.js';
 import { ISearchService } from '../../../services/search/common/search.js';
+import { findSlash, matchingCommands } from './cloudeideCommands.js';
 
 const $ = DOM.$;
 
@@ -72,6 +73,7 @@ export class CloudeideMentions extends Disposable {
 	private readonly search = this._register(new MutableDisposable<CancellationTokenSource>());
 
 	private paths: string[] = [];
+	private commands: { name: string; hint: string }[] = [];
 	private active = 0;
 	private mention: ActiveMention | undefined;
 
@@ -122,7 +124,7 @@ export class CloudeideMentions extends Disposable {
 				return true;
 			case 'Enter':
 			case 'Tab':
-				this.choose(this.paths[this.active]);
+				this.chooseAt(this.active);
 				return true;
 			case 'Escape':
 				this.close();
@@ -133,6 +135,28 @@ export class CloudeideMentions extends Disposable {
 	}
 
 	private async refresh(): Promise<void> {
+		/*
+		 * One list, two things that open it.
+		 *
+		 * `/` and `@` want the same box in the same place with the same keys;
+		 * two popups would be two sets of arrow-key handling and two ways for
+		 * Enter to go wrong. The rows differ, the machinery does not.
+		 */
+		const slash = findSlash(this.input.value, this.input.selectionStart ?? 0);
+		if (slash) {
+			this.mention = undefined;
+			const found = matchingCommands(slash.query);
+			if (found.length === 0) {
+				this.close();
+				return;
+			}
+			this.commands = found.map(c => ({ name: `/${c.name}`, hint: c.summary }));
+			this.paths = [];
+			this.render();
+			return;
+		}
+		this.commands = [];
+
 		const mention = findMention(this.input.value, this.input.selectionStart ?? 0);
 		this.mention = mention;
 		if (!mention) {
@@ -177,44 +201,81 @@ export class CloudeideMentions extends Disposable {
 
 	private render(): void {
 		DOM.clearNode(this.list);
-		if (this.paths.length === 0) {
+		const rows = this.commands.length > 0
+			? this.commands
+			: this.paths.map(path => {
+				// The file's own name first and the folder after it, dimmed:
+				// twenty rows of `src/components/…` all start the same way,
+				// and the part that tells them apart is at the end.
+				const cut = path.lastIndexOf('/');
+				return { name: cut === -1 ? path : path.slice(cut + 1), hint: cut === -1 ? '' : path.slice(0, cut) };
+			});
+
+		if (rows.length === 0) {
 			this.close();
 			return;
 		}
 
-		this.active = Math.min(this.active, this.paths.length - 1);
+		this.active = Math.min(this.active, rows.length - 1);
 		this.list.style.display = '';
 
-		this.paths.forEach((path, index) => {
+		rows.forEach((entry, index) => {
 			const row = DOM.append(this.list, $('button.cloudeide-mention')) as HTMLButtonElement;
 			row.classList.toggle('cloudeide-mention-active', index === this.active);
 			row.setAttribute('role', 'option');
 
-			// The file's own name first and the folder after it, dimmed:
-			// twenty rows of `src/components/…` all start the same way, and
-			// the part that tells them apart is at the end.
-			const cut = path.lastIndexOf('/');
 			const name = DOM.append(row, $('span.cloudeide-mention-name'));
-			name.textContent = cut === -1 ? path : path.slice(cut + 1);
-			if (cut !== -1) {
+			name.textContent = entry.name;
+			if (entry.hint) {
 				const where = DOM.append(row, $('span.cloudeide-mention-where'));
-				where.textContent = path.slice(0, cut);
+				where.textContent = entry.hint;
 			}
 
 			this._register(DOM.addDisposableListener(row, 'mousedown', event => {
 				// mousedown, not click: the box's blur fires first otherwise
 				// and the list is gone before the click arrives.
 				DOM.EventHelper.stop(event, true);
-				this.choose(path);
+				this.chooseAt(index);
 			}));
 		});
 	}
 
-	private move(by: number): void {
-		if (this.paths.length === 0) {
+	private chooseAt(index: number): void {
+		if (this.commands.length > 0) {
+			this.chooseCommand(this.commands[index]?.name);
 			return;
 		}
-		this.active = (this.active + by + this.paths.length) % this.paths.length;
+		this.choose(this.paths[index]);
+	}
+
+	/**
+	 * A command replaces the word, and leaves the caret after it.
+	 *
+	 * With a space, so `/test the cart ones` is one keystroke away from
+	 * `/test` — a command that carries the rest of the sentence is a common
+	 * enough thing to want that it should not need a second thought.
+	 */
+	private chooseCommand(name: string | undefined): void {
+		if (!name) {
+			this.close();
+			return;
+		}
+		const text = this.input.value;
+		const firstSpace = text.indexOf(' ');
+		const rest = firstSpace === -1 ? '' : text.slice(firstSpace);
+		this.input.value = `${name}${rest || ' '}`;
+		const caret = name.length + 1;
+		this.input.setSelectionRange(caret, caret);
+		this.input.focus();
+		this.close();
+	}
+
+	private move(by: number): void {
+		const count = this.commands.length > 0 ? this.commands.length : this.paths.length;
+		if (count === 0) {
+			return;
+		}
+		this.active = (this.active + by + count) % count;
 		this.render();
 	}
 
@@ -240,6 +301,7 @@ export class CloudeideMentions extends Disposable {
 	}
 
 	private close(): void {
+		this.commands = [];
 		this.search.clear();
 		this.list.style.display = 'none';
 		this.active = 0;
