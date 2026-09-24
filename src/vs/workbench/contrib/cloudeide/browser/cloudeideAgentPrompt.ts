@@ -23,6 +23,8 @@
  * asked permission for things it had already been asked to do.
  */
 
+import { modeInstructions, type AgentMode } from './cloudeideModes.js';
+
 export interface AgentPromptContext {
 	/** What the open folder is called, for the agent to refer to. */
 	readonly workspaceName: string;
@@ -32,6 +34,8 @@ export interface AgentPromptContext {
 	readonly activeFile?: string;
 	/** The project's own instructions file, if it has one. */
 	readonly projectRules?: { readonly path: string; readonly text: string };
+	/** What this turn is for. Decides which tools exist, and what to say about it. */
+	readonly mode?: AgentMode;
 }
 
 export function buildAgentSystemPrompt(context: AgentPromptContext): string {
@@ -100,6 +104,14 @@ export function buildAgentSystemPrompt(context: AgentPromptContext): string {
 		``,
 		`If a question can be answered without touching anything, answer it. Not every request is a change.`,
 	);
+
+	// Before the project, after the habits: what this turn is for changes how
+	// to read everything above it, so it should be read last of the rules and
+	// first of the situation.
+	const mode = modeInstructions(context.mode ?? 'agent');
+	if (mode.length > 0) {
+		lines.push(``, ...mode);
+	}
 
 	lines.push(``, `## The project`, ``, `The open folder is \`${context.workspaceName}\`.`);
 

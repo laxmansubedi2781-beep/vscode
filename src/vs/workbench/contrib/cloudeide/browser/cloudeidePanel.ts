@@ -41,6 +41,7 @@ import { CloudeideAppliedMarks } from './cloudeideAppliedMarks.js';
 import { CloudeideEditPreview, type PreviewedFile } from './cloudeideEditPreview.js';
 import { CloudeideHistory, historyFileUri, type HistoryRun } from './cloudeideHistory.js';
 import { CloudeideMentions, mentionNote, mentionedFiles } from './cloudeideMentions.js';
+import { AGENT_MODES, modeById, toolsForMode, type AgentMode } from './cloudeideModes.js';
 import { QueryBuilder } from '../../../services/search/common/queryBuilder.js';
 import { CloudeideAgentTools, type StagedEdit } from './cloudeideAgentTools.js';
 import { runAgentLoop } from './cloudeideAgentLoop.js';
@@ -157,6 +158,9 @@ export class CloudeidePanel extends ViewPane {
 	private lastAsk = '';
 	private historyStrip!: HTMLElement;
 	private mentions!: CloudeideMentions;
+	private modeButton!: HTMLButtonElement;
+	/** What the next turn is for. Kept here, not in settings: it changes per question. */
+	private mode: AgentMode = 'agent';
 	/** The green and red marks left on whatever the last Apply wrote. */
 	private readonly appliedMarks = this._register(new CloudeideAppliedMarks(this.textModelService));
 	/** Where a run's change lands, and what Keep and Undo act on. */
@@ -308,6 +312,17 @@ export class CloudeidePanel extends ViewPane {
 		 * label most of the time — and pressing it opens the workbench's own
 		 * quick pick rather than a menu built here.
 		 */
+		/*
+		 * What this turn is for, in front of what it runs on.
+		 *
+		 * Left of the model because it is the bigger decision: which model
+		 * answers matters less than whether the answer is allowed to change
+		 * anything.
+		 */
+		this.modeButton = DOM.append(row, $('button.cloudeide-mode')) as HTMLButtonElement;
+		this.updateModeLabel();
+		this._register(DOM.addDisposableListener(this.modeButton, 'click', () => void this.pickMode()));
+
 		this.modelButton = DOM.append(row, $('button.cloudeide-model')) as HTMLButtonElement;
 		this.updateModelLabel();
 		this._register(DOM.addDisposableListener(this.modelButton, 'click', () => void this.pickModel()));
@@ -783,6 +798,7 @@ export class CloudeidePanel extends ViewPane {
 			openFiles: open,
 			activeFile: open[0],
 			projectRules: await this.readProjectRules(folder.uri),
+			mode: this.mode,
 		});
 
 		const source = new CancellationTokenSource();
@@ -802,7 +818,14 @@ export class CloudeidePanel extends ViewPane {
 				messages: contextNote
 					? [...this.messages, { role: 'user' as const, content: contextNote }]
 					: this.messages,
-				tools: tools.schemas(),
+				// The fence, not a request. A mode that may not change
+				// anything is not offered the tools that change things, so
+				// there is nothing for the model to decide to respect.
+				tools: (() => {
+					const all = tools.schemas();
+					const allowed = new Set(toolsForMode(this.mode, all.map(t => t.name)));
+					return all.filter(t => allowed.has(t.name));
+				})(),
 				toolHost: tools,
 				model: this.configuredModel(),
 				system,
@@ -909,6 +932,35 @@ export class CloudeidePanel extends ViewPane {
 		const line = DOM.append(this.transcript, $('.cloudeide-summary'));
 		line.textContent = localize('cloudeide.summary', "{0} · {1}", parts.join(' · '), elapsed(elapsedMs));
 		this.transcript.scrollTop = this.transcript.scrollHeight;
+	}
+
+	private updateModeLabel(): void {
+		const found = AGENT_MODES.find(m => m.id === this.mode) ?? AGENT_MODES[0];
+		this.modeButton.textContent = found.label;
+		this.modeButton.title = found.detail;
+		this.modeButton.setAttribute('aria-label',
+			localize('cloudeide.mode.current', "Mode: {0}. Press to change.", found.label));
+		// Plan and Ask cannot change anything, and the composer should look
+		// different when that is true — otherwise somebody types a change,
+		// presses send, and gets a paragraph.
+		this.modeButton.classList.toggle('cloudeide-mode-readonly', this.mode !== 'agent');
+	}
+
+	private async pickMode(): Promise<void> {
+		const picked = await this.quickInputService.pick(
+			AGENT_MODES.map(m => ({
+				label: m.label,
+				detail: m.detail,
+				id: m.id,
+				description: m.id === this.mode ? localize('cloudeide.mode.inUse', "in use") : undefined,
+			})),
+			{ placeHolder: localize('cloudeide.mode.placeholder', "What is this turn for?") });
+		if (!picked) {
+			return;
+		}
+		this.mode = modeById(picked.id);
+		this.updateModeLabel();
+		this.input.focus();
 	}
 
 	/**

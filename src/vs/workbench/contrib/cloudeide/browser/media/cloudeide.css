@@ -1566,3 +1566,43 @@
 	direction: rtl;
 	text-align: left;
 }
+
+/* ── what this turn is for ───────────────────────────────────────────────── */
+
+/*
+ * Left of the model, and slightly louder than it, because it is the bigger
+ * decision: which model answers matters less than whether the answer is
+ * allowed to change anything.
+ */
+.cloudeide-mode {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	padding: 3px 9px;
+	border: 1px solid var(--vscode-panel-border, var(--vscode-editorWidget-border));
+	border-radius: 5px;
+	background: var(--vscode-input-background, transparent);
+	color: var(--vscode-foreground);
+	font: inherit;
+	font-size: 11.5px;
+	cursor: pointer;
+}
+
+.cloudeide-mode:hover {
+	border-color: var(--vscode-focusBorder);
+}
+
+.cloudeide-mode:focus-visible {
+	outline: 1px solid var(--vscode-focusBorder);
+	outline-offset: -1px;
+}
+
+/*
+ * A mode that cannot change anything says so before the message is sent,
+ * not after. Without this somebody types a change, presses send, and gets a
+ * paragraph back with no idea why.
+ */
+.cloudeide-mode-readonly {
+	border-color: var(--vscode-focusBorder);
+	color: var(--vscode-foreground);
+}
