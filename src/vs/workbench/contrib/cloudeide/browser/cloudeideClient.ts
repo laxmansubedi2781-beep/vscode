@@ -154,6 +154,14 @@ export interface PullRequestOpened {
 	readonly number: number;
 }
 
+/** One instruction the whole organisation's agents follow. */
+export interface OrgRule {
+	readonly title: string;
+	readonly body: string;
+	/** True when it may not be set aside, even by the project's own file. */
+	readonly required: boolean;
+}
+
 export interface DeployStarted {
 	/** A string, not a number: the server's `deploymentId`. */
 	readonly deploymentId: string;
@@ -618,6 +626,23 @@ export class CloudeideClient {
 	async profile(): Promise<UserProfile> {
 		const body = await this.request<{ user?: { name?: string; email?: string } }>('/user/profile');
 		return { name: body.user?.name ?? '', email: body.user?.email ?? '' };
+	}
+
+	/**
+	 * The rules this account's organisation asks every agent to follow.
+	 *
+	 * Empty for somebody with no employer, which is most people, and empty
+	 * rather than an error for anyone the server cannot place — the agent
+	 * asks this at the start of every run and a failure here must not be the
+	 * thing that stops a run from happening.
+	 */
+	async orgRules(): Promise<OrgRule[]> {
+		try {
+			const body = await this.request<{ rules?: OrgRule[] }>('/org/rules');
+			return body.rules ?? [];
+		} catch {
+			return [];
+		}
 	}
 
 	// ── GitHub ────────────────────────────────────────────────────────────────

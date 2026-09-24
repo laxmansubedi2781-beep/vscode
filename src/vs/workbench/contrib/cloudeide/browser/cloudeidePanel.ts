@@ -829,6 +829,10 @@ export class CloudeidePanel extends ViewPane {
 			openFiles: open,
 			activeFile: open[0],
 			projectRules: await this.readProjectRules(folder.uri),
+			// Asked every run, not cached: an administrator who adds a rule
+			// to stop something expects it to take effect on the next
+			// question, not when everyone next restarts their editor.
+			orgRules: await this.client.orgRules(),
 			mode: this.mode,
 		});
 
