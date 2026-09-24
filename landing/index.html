@@ -88,6 +88,7 @@
 
     <nav class="nav-links" aria-label="Primary">
       <a href="#demo">Demo</a>
+      <a href="#agent">Agent</a>
       <a href="#why">How it works</a>
     </nav>
 
@@ -113,6 +114,7 @@
   <div class="mobile-menu" id="mobileMenu" hidden>
     <a href="https://api.cloudeide.com/app/signin">Sign in</a>
     <a href="#demo">Demo</a>
+    <a href="#agent">Agent</a>
     <a href="#why">How it works</a>
     <a href="#desktop">Download</a>
   </div>
@@ -246,9 +248,9 @@
             takes — creating new ones where it has to.
           </p>
           <p>
-            Nothing is written until you have seen it. Every change arrives as a
-            diff with an Apply button, and the answer you get says what it did
-            rather than what it intends to do.
+            Nothing is saved until you have seen it. Every change is marked in
+            the file — green for what it added, red for what it took out — and
+            the answer you get says what it did rather than what it intends to do.
           </p>
           <a class="showcase-link" href="#desktop">Download CloudeIDE <span class="showcase-arrow" aria-hidden="true">&rarr;</span></a>
         </div>
@@ -313,6 +315,189 @@
     </div>
   </section>
 
+  <!-- ------------------------------------------------------------ agent -- -->
+  <!--
+    What the agent can do, all of it, in one place.
+
+    The two showcases above make one claim each: it works on your code, and it
+    ships. This section is for the visitor who wants the rest before they
+    download — every capability that is in the editor today, grouped by what
+    you would be trying to do, one sentence each.
+
+    Only what is shipped. Every card here names something a person can find
+    in the panel on first launch: a button, a command, a key. Nothing that is
+    planned, and nothing measured against another product by name.
+
+    It reuses the "how it works" cards (.steps / .step) rather than inventing
+    a third card style, so no colour on this page is new.
+  -->
+  <section class="section" id="agent">
+    <div class="wrap">
+      <div class="panel reveal">
+        <div class="section-head">
+          <div class="section-label">Inside the agent</div>
+          <h2>What the agent can do</h2>
+          <p>
+            Ask in plain words. It reads your project, makes the change, checks
+            it, and asks you before anything runs on your machine.
+          </p>
+        </div>
+
+        <div class="agent-group">
+          <h3 class="agent-group-title">It understands your project</h3>
+          <div class="steps" aria-label="Understanding the project">
+            <div class="step">
+              <span class="step-n">Read</span>
+              <h3>Your real files</h3>
+              <p>It lists, reads and searches the folder you have open, not a copy uploaded somewhere else.</p>
+            </div>
+            <div class="step">
+              <span class="step-n">Navigate</span>
+              <h3>Definitions and every use</h3>
+              <p>It finds where a function is defined and everywhere it is called, using the editor's own language support rather than a text search.</p>
+            </div>
+            <div class="step">
+              <span class="step-n">Check</span>
+              <h3>The errors you see</h3>
+              <p>It reads the same Problems list you do, so it notices when a change broke something and fixes it.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="agent-group">
+          <h3 class="agent-group-title">It changes code, and you decide</h3>
+          <div class="steps" aria-label="Changing code">
+            <div class="step">
+              <span class="step-n">Edit</span>
+              <h3>Across many files</h3>
+              <p>One request can touch as many files as the change needs, and create new ones where it has to.</p>
+            </div>
+            <div class="step">
+              <span class="step-n">Review</span>
+              <h3>Green and red, in the file</h3>
+              <p>Added lines are marked green and removed lines red, right where they are. <code>Keep</code> saves them; <code>Undo</code> puts everything back.</p>
+            </div>
+            <div class="step">
+              <span class="step-n">Ctrl+I · ⌘I</span>
+              <h3>Edit in place</h3>
+              <p>Select some code, press the key, and say what you want. The change appears in the file, marked the same way.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="agent-group">
+          <h3 class="agent-group-title">It runs things, with your permission</h3>
+          <div class="steps" aria-label="Running commands">
+            <div class="step">
+              <span class="step-n">Run</span>
+              <h3>Your real terminal</h3>
+              <p>Tests, builds, installs — in the terminal on your machine. It shows you the command and waits for <code>Run</code> every time.</p>
+            </div>
+            <div class="step">
+              <span class="step-n">/test</span>
+              <h3>Fix until it passes</h3>
+              <p>It runs the tests, reads the failures, fixes the cause rather than the test, and runs them again.</p>
+            </div>
+            <div class="step">
+              <span class="step-n">Ask</span>
+              <h3>It asks, instead of guessing</h3>
+              <p>When there are two sensible ways to do something, it gives you the choices to click rather than picking one quietly.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="agent-group">
+          <h3 class="agent-group-title">Three ways to ask</h3>
+          <div class="steps" aria-label="Modes">
+            <div class="step">
+              <span class="step-n">Agent</span>
+              <h3>Do the work</h3>
+              <p>Reads, changes files and runs commands. The default.</p>
+            </div>
+            <div class="step">
+              <span class="step-n">Plan</span>
+              <h3>Steps first</h3>
+              <p>Works out the steps, file by file, and changes nothing. When the plan is right, switch to Agent and tell it to go.</p>
+            </div>
+            <div class="step">
+              <span class="step-n">Ask</span>
+              <h3>Just answer</h3>
+              <p>Questions about the project, answered with the file and the line. Reads only.</p>
+            </div>
+          </div>
+          <p class="agent-note">
+            In Plan and Ask the tools that write files and run commands are not
+            offered to the model at all. It is a lock, not a polite request.
+          </p>
+        </div>
+
+        <div class="agent-group">
+          <h3 class="agent-group-title">Quick to drive</h3>
+          <div class="steps" aria-label="Controls">
+            <div class="step">
+              <span class="step-n">@</span>
+              <h3>Point at a file</h3>
+              <p>Type <code>@</code>, pick a file, and the agent starts from it.</p>
+            </div>
+            <div class="step">
+              <span class="step-n">/</span>
+              <h3>Commands</h3>
+              <p><code>/plan</code> <code>/ask</code> <code>/test</code> <code>/review</code> <code>/pr</code> <code>/undo</code> <code>/clear</code></p>
+            </div>
+            <div class="step">
+              <span class="step-n">Model</span>
+              <h3>Pick the model</h3>
+              <p>Claude and GPT models, chosen per request, from the same box you type in.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="agent-group">
+          <h3 class="agent-group-title">From change to shipped</h3>
+          <div class="steps" aria-label="Shipping">
+            <div class="step">
+              <span class="step-n">/review</span>
+              <h3>A second reading</h3>
+              <p>It reads the last change back as if somebody else wrote it, and says what is wrong with it.</p>
+            </div>
+            <div class="step">
+              <span class="step-n">/pr</span>
+              <h3>A pull request</h3>
+              <p>With GitHub connected, it makes the branch, the commit and the pull request in one step, and shows you it first.</p>
+            </div>
+            <div class="step">
+              <span class="step-n">History</span>
+              <h3>Your recent runs</h3>
+              <p>The last ten requests in this project, which files each one changed, and how it ended.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="agent-group">
+          <h3 class="agent-group-title">It follows your rules</h3>
+          <div class="steps" aria-label="Rules">
+            <div class="step">
+              <span class="step-n">AGENTS.md</span>
+              <h3>Project rules</h3>
+              <p>Write how your project works in <code>AGENTS.md</code>. The agent reads it on every request in that folder.</p>
+            </div>
+            <div class="step">
+              <span class="step-n">Teams</span>
+              <h3>Organization rules</h3>
+              <p>An admin writes a rule once, and every member's agent follows it in every repository.</p>
+            </div>
+            <div class="step">
+              <span class="step-n">Safe</span>
+              <h3>Rules cannot unlock anything</h3>
+              <p>No rule can give the agent a permission it does not have, or skip the question before a command runs.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
   <!-- --------------------------------------------------------------- why -- -->
   <section class="section" id="why">
     <div class="wrap">
@@ -343,8 +528,8 @@
         </div>
         <div class="step">
           <span class="step-n">3</span>
-          <h3>Read the diff</h3>
-          <p>Nothing is saved until you press Apply. Then ship it, from the same window.</p>
+          <h3>Check the change</h3>
+          <p>Nothing is saved until you press Keep. Then ship it, from the same window.</p>
         </div>
       </div>
       </div>
@@ -559,6 +744,7 @@
 
     <nav class="footer-links" aria-label="Footer">
       <a href="#demo">Demo</a>
+      <a href="#agent">Agent</a>
       <a href="#why">How it works</a>
     </nav>
 

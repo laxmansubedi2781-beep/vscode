@@ -900,6 +900,41 @@ section {
   line-height: 1.6;
 }
 
+/* ---------------------------------------------------------------- agent -- */
+
+/*
+ * The agent's capabilities: the same .steps cards as "how it works", in
+ * groups, each under a small heading. Nothing here adds a colour — the
+ * heading is the primary text colour and the note is the secondary one.
+ */
+.agent-group + .agent-group {
+  margin-top: 40px;
+}
+
+.agent-group .steps {
+  margin-top: 14px;
+}
+
+.agent-group-title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+.agent-note {
+  margin-top: 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* A row of commands wraps onto a second line rather than overflowing. */
+.agent-group .step p code {
+  display: inline-block;
+  margin: 2px 2px 2px 0;
+}
+
 /* ------------------------------------------------------------------ why -- */
 
 /*
