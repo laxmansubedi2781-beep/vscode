@@ -33,6 +33,7 @@ const root = path.resolve(here, '..', '..', '..');
 const TESTS = [
 	'src/vs/workbench/contrib/cloudeide/test/browser/cloudeideAgentLoop.test.ts',
 	'src/vs/workbench/contrib/cloudeide/test/browser/cloudeideAgentTools.test.ts',
+	'src/vs/workbench/contrib/cloudeide/test/browser/cloudeideMentions.test.ts',
 ];
 
 const work = mkdtempSync(path.join(tmpdir(), 'cloudeide-test-'));

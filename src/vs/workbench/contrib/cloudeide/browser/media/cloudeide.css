@@ -1507,3 +1507,62 @@
 	font-size: 11px;
 	color: var(--vscode-descriptionForeground);
 }
+
+/* ── naming a file with @ ────────────────────────────────────────────────── */
+
+/*
+ * Under the box, not over the window.
+ *
+ * Ctrl+P's picker is better at finding a file you cannot name, and it takes
+ * the whole screen to do it — which takes the person out of the sentence they
+ * were half-way through writing. This stays where they are looking.
+ */
+.cloudeide-mentions {
+	margin-bottom: 8px;
+	border: 1px solid var(--vscode-panel-border, var(--vscode-editorWidget-border));
+	border-radius: 6px;
+	background: var(--vscode-editorWidget-background);
+	overflow: hidden;
+}
+
+.cloudeide-mention {
+	display: flex;
+	align-items: baseline;
+	gap: 9px;
+	width: 100%;
+	box-sizing: border-box;
+	padding: 5px 10px;
+	border: 0;
+	background: transparent;
+	color: var(--vscode-foreground);
+	font: inherit;
+	font-size: 12px;
+	text-align: left;
+	cursor: pointer;
+}
+
+.cloudeide-mention-active,
+.cloudeide-mention:hover {
+	background: var(--vscode-list-hoverBackground);
+}
+
+.cloudeide-mention-name {
+	font-family: var(--monaco-monospace-font);
+	flex-shrink: 0;
+}
+
+/*
+ * The folder after the name, dimmed and allowed to be cut.
+ *
+ * Twenty rows of src/components/… all start the same way, and the part that
+ * tells them apart is at the end, so the name leads and the path follows.
+ */
+.cloudeide-mention-where {
+	font-size: 11px;
+	color: var(--vscode-descriptionForeground);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	direction: rtl;
+	text-align: left;
+}

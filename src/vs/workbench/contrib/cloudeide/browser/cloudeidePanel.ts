@@ -40,6 +40,7 @@ import { CloudeideCommandRunner, type CommandRunResult, type IAgentCommandRunner
 import { CloudeideAppliedMarks } from './cloudeideAppliedMarks.js';
 import { CloudeideEditPreview, type PreviewedFile } from './cloudeideEditPreview.js';
 import { CloudeideHistory, historyFileUri, type HistoryRun } from './cloudeideHistory.js';
+import { CloudeideMentions, mentionNote, mentionedFiles } from './cloudeideMentions.js';
 import { QueryBuilder } from '../../../services/search/common/queryBuilder.js';
 import { CloudeideAgentTools, type StagedEdit } from './cloudeideAgentTools.js';
 import { runAgentLoop } from './cloudeideAgentLoop.js';
@@ -155,6 +156,7 @@ export class CloudeidePanel extends ViewPane {
 	/** The question that started the run now in flight. */
 	private lastAsk = '';
 	private historyStrip!: HTMLElement;
+	private mentions!: CloudeideMentions;
 	/** The green and red marks left on whatever the last Apply wrote. */
 	private readonly appliedMarks = this._register(new CloudeideAppliedMarks(this.textModelService));
 	/** Where a run's change lands, and what Keep and Undo act on. */
@@ -291,6 +293,10 @@ export class CloudeidePanel extends ViewPane {
 		this.input.placeholder = localize('cloudeide.ask', "Ask for a change…");
 		this.input.setAttribute('aria-label', localize('cloudeide.askLabel', "Ask for a change"));
 
+		this.mentions = this._register(new CloudeideMentions(
+			composer, this.input, this.contextService, this.searchService,
+			this.instantiationService.createInstance(QueryBuilder)));
+
 		const row = DOM.append(composer, $('.cloudeide-composer-row'));
 
 		/*
@@ -330,6 +336,14 @@ export class CloudeidePanel extends ViewPane {
 		this._register(DOM.addDisposableListener(this.input, 'input', () => this.updateSendEnablement()));
 		this._register(DOM.addDisposableListener(this.sendButton, 'click', () => void this.send()));
 		this._register(DOM.addDisposableListener(this.input, 'keydown', (e: KeyboardEvent) => {
+			// The file list gets the key first when it is open, or Enter
+			// sends the message instead of choosing the file somebody was
+			// half-way through picking.
+			if (this.mentions.handleKey(e)) {
+				DOM.EventHelper.stop(e, true);
+				return;
+			}
+
 			// Enter sends; Shift+Enter is a newline. The panel is for one-line
 			// asks far more often than for paragraphs.
 			if (e.key === 'Enter' && !e.shiftKey) {
@@ -610,6 +624,19 @@ export class CloudeidePanel extends ViewPane {
 		const context = await this.gatherContext();
 
 		/*
+		 * Files named with `@`, said plainly.
+		 *
+		 * The model could notice the `@` in the sentence and work out what it
+		 * meant, and mostly would. Telling it outright costs one line and
+		 * removes the "mostly" — which is the whole point of letting somebody
+		 * name the file in the first place.
+		 */
+		const named = mentionNote(mentionedFiles(text));
+		const withNamed = named
+			? (context ? `${context}\n\n${named}` : named)
+			: context;
+
+		/*
 		 * Which agent answers this.
 		 *
 		 * A folder open means the tools have something real to read, so the
@@ -621,7 +648,7 @@ export class CloudeidePanel extends ViewPane {
 		 */
 		if (this.contextService.getWorkspace().folders.length > 0) {
 			try {
-				const local = await this.runLocalAgent(pending, context);
+				const local = await this.runLocalAgent(pending, withNamed);
 				if (local) {
 					this.messages.push({ role: 'assistant', content: local });
 				}
