@@ -28,6 +28,9 @@ import { IWorkspaceContextService } from '../../../../platform/workspace/common/
 import { CloudeideClient, type ChatMessage, type FileChange } from './cloudeideClient.js';
 import { collectWorkspaceFiles, toWorkspaceState } from './cloudeideWorkspace.js';
 import { CancellationToken, CancellationTokenSource } from '../../../../base/common/cancellation.js';
+import { Registry } from '../../../../platform/registry/common/platform.js';
+import { Extensions as ConfigurationExtensions, IConfigurationRegistry } from '../../../../platform/configuration/common/configurationRegistry.js';
+import { IQuickInputService } from '../../../../platform/quickinput/common/quickInput.js';
 import { DisposableStore, toDisposable } from '../../../../base/common/lifecycle.js';
 import { ISearchService } from '../../../services/search/common/search.js';
 import { IMarkerService } from '../../../../platform/markers/common/markers.js';
@@ -80,6 +83,7 @@ function describeTool(name: string, input: Record<string, unknown>): string {
 		case 'find_symbol': return localize('cloudeide.tool.symbol', "Finding where {0} is declared", symbol);
 		case 'find_references': return localize('cloudeide.tool.references', "Finding what uses {0}", symbol);
 		case 'run_command': return localize('cloudeide.tool.run', "Ran {0}", typeof input.command === 'string' ? input.command : '');
+		case 'ask_user': return localize('cloudeide.tool.ask', "Asking");
 		case 'get_diagnostics': return localize('cloudeide.tool.diagnostics', "Checking for errors");
 		case 'write_file': return localize('cloudeide.tool.write', "Writing");
 		default: return name;
@@ -143,6 +147,7 @@ export class CloudeidePanel extends ViewPane {
 	private runCancellation: CancellationTokenSource | undefined;
 	/** Built on first use and kept, so the agent's shell survives the turn. */
 	private runner: IAgentCommandRunner | undefined;
+	private modelButton!: HTMLButtonElement;
 	/** The green and red marks left on whatever the last Apply wrote. */
 	private readonly appliedMarks = this._register(new CloudeideAppliedMarks(this.textModelService));
 	/** Where a run's change lands, and what Keep and Undo act on. */
@@ -169,6 +174,7 @@ export class CloudeidePanel extends ViewPane {
 		@IMarkerService private readonly markerService: IMarkerService,
 		@ILanguageFeaturesService private readonly languageFeaturesService: ILanguageFeaturesService,
 		@ITextModelService private readonly textModelService: ITextModelService,
+		@IQuickInputService private readonly quickInputService: IQuickInputService,
 	) {
 		super(options, keybindingService, contextMenuService, configurationService, contextKeyService,
 			viewDescriptorService, instantiationService, openerService, themeService, hoverService);
@@ -275,6 +281,26 @@ export class CloudeidePanel extends ViewPane {
 		this.input.setAttribute('aria-label', localize('cloudeide.askLabel', "Ask for a change"));
 
 		const row = DOM.append(composer, $('.cloudeide-composer-row'));
+
+		/*
+		 * Which model, next to the thing you are about to send.
+		 *
+		 * It was in Settings, which is the right place to store it and the
+		 * wrong place to change it: nobody opens Settings mid-thought to move
+		 * one question onto a bigger model. The button is quiet — it is a
+		 * label most of the time — and pressing it opens the workbench's own
+		 * quick pick rather than a menu built here.
+		 */
+		this.modelButton = DOM.append(row, $('button.cloudeide-model')) as HTMLButtonElement;
+		this.updateModelLabel();
+		this._register(DOM.addDisposableListener(this.modelButton, 'click', () => void this.pickModel()));
+		this._register(this.configurationService.onDidChangeConfiguration(e => {
+			if (e.affectsConfiguration(CLOUDEIDE_MODEL_SETTING)) {
+				this.updateModelLabel();
+			}
+		}));
+
+		DOM.append(row, $('span.cloudeide-composer-spacer'));
 
 		// An arrow, not the word "Send". Sending a message is the ordinary act
 		// here, and every chat the person already uses marks it with an
@@ -619,6 +645,7 @@ export class CloudeidePanel extends ViewPane {
 			this.languageFeaturesService,
 			this.textModelService,
 			this.commandRunner(),
+			{ ask: (question, options, token) => this.askQuestion(question, options, token) },
 		);
 
 		const folder = this.contextService.getWorkspace().folders[0];
@@ -701,6 +728,46 @@ export class CloudeidePanel extends ViewPane {
 			pending.textContent = reply || localize('cloudeide.noAnswer', "The run finished without an answer.");
 		}
 		return reply;
+	}
+
+	/**
+	 * The models this product offers, read from the setting that declares them.
+	 *
+	 * Not a second list kept here. The setting's `enum` and
+	 * `enumDescriptions` are already the answer to "which models, and what is
+	 * each one for", and a copy in this file would be a copy that drifts —
+	 * which is how a picker ends up offering a model the server stopped
+	 * accepting.
+	 */
+	private availableModels(): { id: string; detail?: string }[] {
+		const schema = Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Configuration)
+			.getConfigurationProperties()[CLOUDEIDE_MODEL_SETTING];
+		const ids = Array.isArray(schema?.enum) ? schema.enum.filter((v): v is string => typeof v === 'string') : [];
+		const details = Array.isArray(schema?.enumDescriptions) ? schema.enumDescriptions : [];
+		return ids.map((id, i) => ({ id, detail: typeof details[i] === 'string' ? details[i] : undefined }));
+	}
+
+	private updateModelLabel(): void {
+		const model = this.configuredModel();
+		this.modelButton.textContent = model;
+		this.modelButton.title = localize('cloudeide.model.pick', "Which model the agent runs on");
+		this.modelButton.setAttribute('aria-label',
+			localize('cloudeide.model.current', "Model: {0}. Press to change.", model));
+	}
+
+	private async pickModel(): Promise<void> {
+		const current = this.configuredModel();
+		const picked = await this.quickInputService.pick(
+			this.availableModels().map(m => ({
+				label: m.id,
+				detail: m.detail,
+				description: m.id === current ? localize('cloudeide.model.inUse', "in use") : undefined,
+			})),
+			{ placeHolder: localize('cloudeide.model.placeholder', "Which model should the agent run on?") });
+		if (!picked || picked.label === current) {
+			return;
+		}
+		await this.configurationService.updateValue(CLOUDEIDE_MODEL_SETTING, picked.label);
 	}
 
 	/** The model this account should use, from settings, with a sensible default. */
@@ -859,6 +926,68 @@ export class CloudeidePanel extends ViewPane {
 	 *
 	 * Clicking a row opens that file. Keep saves; Undo puts everything back.
 	 */
+	/**
+	 * A question from the agent, and the wait for an answer.
+	 *
+	 * The same shape as the command card — the run is paused inside the tool
+	 * call, the card appears, and nothing continues until somebody presses
+	 * something — but without its coloured edge. That edge means "this cannot
+	 * be undone by pressing Discard afterwards", and a question cannot do any
+	 * harm. Giving it the same warning stripe would make the warning mean
+	 * nothing.
+	 *
+	 * Skip is a real answer, and cancelling the run answers it too. Otherwise
+	 * a person who pressed Stop is left with a question about a run that is
+	 * already over.
+	 */
+	private askQuestion(question: string, options: readonly string[], token: CancellationToken): Promise<string | undefined> {
+		return new Promise<string | undefined>(resolve => {
+			const card = DOM.append(this.transcript, $('.cloudeide-question'));
+
+			const head = DOM.append(card, $('.cloudeide-question-head'));
+			head.textContent = question;
+
+			const list = DOM.append(card, $('.cloudeide-question-options'));
+			const listeners = new DisposableStore();
+			let settled = false;
+
+			const answer = (chosen: string | undefined, verdict: string) => {
+				if (settled) {
+					return;
+				}
+				settled = true;
+				listeners.dispose();
+				DOM.clearNode(list);
+				const said = DOM.append(list, $('.cloudeide-question-answer'));
+				said.textContent = verdict;
+				resolve(chosen);
+			};
+
+			options.forEach((option, index) => {
+				const button = DOM.append(list, $('button.cloudeide-question-option')) as HTMLButtonElement;
+				// A number in front of each: it is how the agent will refer
+				// back to the choice, and how somebody skimming tells two
+				// similar-sounding options apart.
+				const ordinal = DOM.append(button, $('span.cloudeide-question-ordinal'));
+				ordinal.textContent = String(index + 1);
+				const label = DOM.append(button, $('span'));
+				label.textContent = option;
+				listeners.add(DOM.addDisposableListener(button, 'click', () => answer(option, option)));
+			});
+
+			const skip = DOM.append(list, $('button.cloudeide-question-skip')) as HTMLButtonElement;
+			skip.textContent = localize('cloudeide.question.skip', "You decide");
+			listeners.add(DOM.addDisposableListener(skip, 'click',
+				() => answer(undefined, localize('cloudeide.question.skipped', "You decide"))));
+
+			listeners.add(token.onCancellationRequested(
+				() => answer(undefined, localize('cloudeide.question.stopped', "Stopped"))));
+			this._register(listeners);
+
+			this.transcript.scrollTop = this.transcript.scrollHeight;
+		});
+	}
+
 	private appendProposal(runId: string | undefined, files: readonly PreviewedFile[]): void {
 		const card = DOM.append(this.transcript, $('.cloudeide-proposal'));
 

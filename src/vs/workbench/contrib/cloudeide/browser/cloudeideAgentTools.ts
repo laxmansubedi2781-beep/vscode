@@ -33,6 +33,19 @@ import { QueryBuilder } from '../../../services/search/common/queryBuilder.js';
 import { ISearchService } from '../../../services/search/common/search.js';
 import { getWorkspaceSymbols } from '../../search/common/search.js';
 import type { IAgentCommandRunner } from './cloudeideAgentCommand.js';
+
+/**
+ * Asking the person something, mid-run.
+ *
+ * The panel implements it, for the same reason it implements the command
+ * runner: putting a question on screen is a thing only the panel can do, and
+ * keeping it out of here is what lets every other tool be tested with no
+ * window at all.
+ */
+export interface IAgentQuestionHost {
+	/** Resolves with the chosen option, or undefined when the person skips. */
+	ask(question: string, options: readonly string[], token: CancellationToken): Promise<string | undefined>;
+}
 import { symbolKindNames } from '../../../../editor/common/languages.js';
 import { Position } from '../../../../editor/common/core/position.js';
 import { ILanguageFeaturesService } from '../../../../editor/common/services/languageFeatures.js';
@@ -80,6 +93,9 @@ const MAX_MATCHES = 80;
 const MAX_MARKERS = 60;
 /** How many declarations `find_symbol` will report. */
 const MAX_SYMBOLS = 40;
+/** How many answers a question may offer. */
+const MAX_OPTIONS = 4;
+
 /** How many uses `find_references` will report. */
 const MAX_REFERENCES = 60;
 
@@ -224,6 +240,34 @@ export const AGENT_TOOLS: readonly AgentToolSchema[] = [
 		},
 	},
 	{
+		name: 'ask_user',
+		description:
+			'Ask the person a question and wait for their answer, without ending your turn. ' +
+			'Use it when the work genuinely forks and the two paths are hard to undo — where a ' +
+			'file goes, which of two libraries to use, whether to change an interface other code ' +
+			'depends on. One question, two to four options, each option a thing you would ' +
+			'actually do.\n\n' +
+			'Do not use it for anything you can find out yourself: read the file, search the ' +
+			'project, check the errors. Do not use it to be asked permission — you already have ' +
+			'that. Do not ask twice in a row. A person who is asked about every small choice ' +
+			'stops reading the questions, and then the one that mattered goes past unread.',
+		input_schema: {
+			type: 'object',
+			properties: {
+				question: {
+					type: 'string',
+					description: 'One sentence. What you need decided, in their words rather than in code.',
+				},
+				options: {
+					type: 'array',
+					items: { type: 'string' },
+					description: 'Two to four short answers. Each one says what would happen, not just "yes" or "no".',
+				},
+			},
+			required: ['question', 'options'],
+		},
+	},
+	{
 		name: 'run_command',
 		description:
 			'Run a shell command in the project folder and read what it printed. Use it to check ' +
@@ -266,6 +310,8 @@ export class CloudeideAgentTools {
 		 * all rather than offered and always failing.
 		 */
 		private readonly commandRunner: IAgentCommandRunner | undefined,
+		/** Undefined where there is nobody to ask — the tests, and a headless run. */
+		private readonly questionHost: IAgentQuestionHost | undefined,
 	) { }
 
 	/**
@@ -276,9 +322,14 @@ export class CloudeideAgentTools {
 	 * going to work, so it is left out instead.
 	 */
 	schemas(): readonly AgentToolSchema[] {
-		return this.commandRunner
-			? AGENT_TOOLS
-			: AGENT_TOOLS.filter(tool => tool.name !== 'run_command');
+		const missing = new Set<string>();
+		if (!this.commandRunner) {
+			missing.add('run_command');
+		}
+		if (!this.questionHost) {
+			missing.add('ask_user');
+		}
+		return missing.size === 0 ? AGENT_TOOLS : AGENT_TOOLS.filter(tool => !missing.has(tool.name));
 	}
 
 	edits(): readonly StagedEdit[] {
@@ -301,6 +352,7 @@ export class CloudeideAgentTools {
 				case 'edit_file': return await this.editFile(input);
 				case 'write_file': return await this.writeFile(input);
 				case 'run_command': return await this.runCommand(input, token);
+				case 'ask_user': return await this.askUser(input, token);
 				default: return { content: `There is no tool called ${name}.`, isError: true };
 			}
 		} catch (err) {
@@ -496,6 +548,56 @@ export class CloudeideAgentTools {
 
 		const capped = found.length > MAX_SYMBOLS ? `\n\n(${MAX_SYMBOLS} shown; there are more.)` : '';
 		return { content: lines.join('\n') + capped };
+	}
+
+	/**
+	 * Ask, and wait.
+	 *
+	 * The reason this exists is not politeness. An agent that cannot ask has
+	 * to guess, and a guess about something hard to undo — where a file goes,
+	 * which library, whether an interface others depend on may change — costs
+	 * more to unpick than the question would have cost to answer.
+	 *
+	 * What is guarded here is the opposite failure. A tool that is pleasant
+	 * to call gets called constantly, and a person asked about every small
+	 * choice stops reading the questions — at which point the one that
+	 * mattered goes past unread, and the tool has made things worse than no
+	 * tool at all. So: between two and four options, each one a real answer,
+	 * and a skip that means what it says.
+	 */
+	private async askUser(input: Record<string, unknown>, token: CancellationToken): Promise<AgentToolResult> {
+		const question = typeof input.question === 'string' ? input.question.trim() : '';
+		if (!question) {
+			return { content: 'A question is required.', isError: true };
+		}
+		if (!this.questionHost) {
+			return { content: 'There is nobody to ask here. Decide it yourself and say what you chose.', isError: true };
+		}
+
+		const options = Array.isArray(input.options)
+			? input.options.filter((o): o is string => typeof o === 'string' && o.trim().length > 0).map(o => o.trim())
+			: [];
+
+		if (options.length < 2) {
+			return {
+				content: 'Give at least two options. A question with one answer is not a question, ' +
+					'and if there is only one thing to do, do it.',
+				isError: true,
+			};
+		}
+		// More than four and it stops being a decision and becomes a menu,
+		// which is slower to read than the code would have been.
+		const shown = options.slice(0, MAX_OPTIONS);
+
+		const chosen = await this.questionHost.ask(question, shown, token);
+
+		if (chosen === undefined) {
+			return {
+				content: 'The person did not answer. Choose whichever option you think is right, ' +
+					'say in one line which one you took and why, and carry on.',
+			};
+		}
+		return { content: `They chose: ${chosen}` };
 	}
 
 	/**

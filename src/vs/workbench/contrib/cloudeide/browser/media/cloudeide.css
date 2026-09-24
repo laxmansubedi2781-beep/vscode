@@ -1256,3 +1256,134 @@
 	margin-top: -3px;
 	border-radius: 2px;
 }
+
+/* ── a question from the agent ───────────────────────────────────────────── */
+
+/*
+ * The permission card's shape, without its coloured edge.
+ *
+ * That edge means "this cannot be undone by pressing Discard afterwards". A
+ * question cannot do any harm, and giving it the same stripe would make the
+ * stripe stop meaning anything.
+ */
+.cloudeide-question {
+	margin: 4px 0 14px;
+	padding: 11px 0 4px;
+	border: 1px solid var(--vscode-panel-border, var(--vscode-editorWidget-border));
+	border-radius: 6px;
+	background: var(--vscode-editorWidget-background);
+	overflow: hidden;
+}
+
+.cloudeide-question-head {
+	margin: 0 12px 10px;
+	font-size: 13px;
+	line-height: 1.5;
+	color: var(--vscode-foreground);
+}
+
+.cloudeide-question-options {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+	padding: 0 12px 9px;
+}
+
+/*
+ * Options stack rather than sit in a row. Each one is a sentence — "put it in
+ * src/components", not "yes" — and a row of sentences either wraps into a
+ * shape nobody can scan or truncates the part that distinguishes them.
+ */
+.cloudeide-question-option {
+	display: flex;
+	align-items: baseline;
+	gap: 9px;
+	width: 100%;
+	box-sizing: border-box;
+	padding: 7px 10px;
+	border: 1px solid var(--vscode-panel-border, var(--vscode-editorWidget-border));
+	border-radius: 5px;
+	background: transparent;
+	color: var(--vscode-foreground);
+	font: inherit;
+	font-size: 12.5px;
+	line-height: 1.45;
+	text-align: left;
+	cursor: pointer;
+}
+
+.cloudeide-question-option:hover {
+	background: var(--vscode-list-hoverBackground);
+	border-color: var(--vscode-focusBorder);
+}
+
+.cloudeide-question-option:focus-visible {
+	outline: 1px solid var(--vscode-focusBorder);
+	outline-offset: -1px;
+}
+
+/* The number the agent will refer back to. */
+.cloudeide-question-ordinal {
+	flex: 0 0 auto;
+	min-width: 12px;
+	font-family: var(--monaco-monospace-font);
+	font-size: 11px;
+	color: var(--vscode-descriptionForeground);
+}
+
+.cloudeide-question-skip {
+	align-self: flex-start;
+	margin-top: 2px;
+	padding: 3px 2px;
+	border: 0;
+	background: transparent;
+	color: var(--vscode-descriptionForeground);
+	font: inherit;
+	font-size: 12px;
+	text-decoration: underline;
+	text-underline-offset: 3px;
+	cursor: pointer;
+}
+
+.cloudeide-question-skip:hover {
+	color: var(--vscode-foreground);
+}
+
+.cloudeide-question-answer {
+	padding: 2px 0 4px;
+	font-size: 12.5px;
+	color: var(--vscode-descriptionForeground);
+}
+
+/* ── which model ─────────────────────────────────────────────────────────── */
+
+/*
+ * A label that happens to be pressable, not a button that shouts.
+ *
+ * It sits beside the send arrow and is read far more often than it is used,
+ * so at rest it is the same weight as the placeholder above it.
+ */
+.cloudeide-model {
+	padding: 3px 7px;
+	border: 1px solid transparent;
+	border-radius: 5px;
+	background: transparent;
+	color: var(--vscode-descriptionForeground);
+	font: inherit;
+	font-size: 11.5px;
+	cursor: pointer;
+}
+
+.cloudeide-model:hover {
+	border-color: var(--vscode-panel-border, var(--vscode-editorWidget-border));
+	color: var(--vscode-foreground);
+}
+
+.cloudeide-model:focus-visible {
+	outline: 1px solid var(--vscode-focusBorder);
+	outline-offset: -1px;
+}
+
+.cloudeide-composer-spacer {
+	flex-grow: 1;
+}
