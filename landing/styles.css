@@ -900,39 +900,328 @@ section {
   line-height: 1.6;
 }
 
-/* ---------------------------------------------------------------- agent -- */
+/* ------------------------------------------------------------- features -- */
 
 /*
- * The agent's capabilities: the same .steps cards as "how it works", in
- * groups, each under a small heading. Nothing here adds a colour — the
- * heading is the primary text colour and the note is the secondary one.
+ * One idea per tile: a sentence beside a picture, sides alternating.
+ *
+ * The tile is a --panel card on the --bg page; the picture sits on a
+ * --panel-raised stage inside it, and the drawn window on that stage is --bg
+ * again. Three steps of the surface ramp the page already had, and no new
+ * colour except the added/removed tints, which belong to one tile.
  */
-.agent-group + .agent-group {
-  margin-top: 40px;
+.features {
+  border-top: none;
+  padding-top: 24px;
 }
 
-.agent-group .steps {
-  margin-top: 14px;
+.feature {
+  display: grid;
+  grid-template-columns: minmax(260px, 5fr) minmax(0, 7fr);
+  align-items: center;
+  gap: 56px;
+  padding: 56px;
+  background: var(--panel);
+  border-radius: 14px;
 }
 
-.agent-group-title {
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--text-primary);
+.feature + .feature {
+  margin-top: 24px;
 }
 
-.agent-note {
-  margin-top: 12px;
+.feature--reverse {
+  grid-template-columns: minmax(0, 7fr) minmax(260px, 5fr);
+}
+
+.feature--reverse .feature-copy {
+  order: 2;
+}
+
+/* The heading and the sentence are one paragraph in two colours: the heading
+   is what gets read, and the sentence is there for anybody who stops. */
+.feature-lede {
   color: var(--text-secondary);
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: 21px;
+  line-height: 1.4;
+  letter-spacing: -0.015em;
+  max-width: 30ch;
 }
 
-/* A row of commands wraps onto a second line rather than overflowing. */
-.agent-group .step p code {
+.feature-lede strong {
+  display: block;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.feature-stage {
+  background: var(--panel-raised);
+  border-radius: 10px;
+  padding: 40px;
+  min-width: 0;
+}
+
+/* ----- the drawn window ----- */
+
+.mock {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.mock-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+}
+
+.mock-ask {
+  color: var(--text-primary);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 12px;
+}
+
+.mock-step {
+  color: var(--text-tertiary);
+  font-size: 12.5px;
+}
+
+.mock-text {
+  color: var(--text-secondary);
+}
+
+.mock-text--quiet {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.mock-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mock-card-head {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.mock-command,
+.mock-body--code {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12px;
+}
+
+.mock-command {
+  color: var(--text-primary);
+  background: var(--overlay-3);
+  border-radius: 6px;
+  padding: 6px 9px;
+}
+
+.mock-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.mock-btn {
+  font-size: 12px;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 3px 10px;
+}
+
+.mock-btn--primary {
+  color: var(--bg);
+  background: var(--text-primary);
+  border-color: transparent;
+  font-weight: 500;
+}
+
+.mock-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 6px;
+  padding: 5px 8px;
+}
+
+.mock-option--picked {
+  color: var(--text-primary);
+  background: var(--overlay-3);
+}
+
+.mock-n {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  width: 18px;
+  text-align: center;
+}
+
+.mock-composer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+/* The placeholder gives way to the chips on a narrow screen, not the reverse. */
+.mock-composer > span:first-child {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mock-chips {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.mock-chip {
+  color: var(--text-secondary);
+  background: var(--overlay-3);
+  border-radius: 5px;
+  padding: 1px 7px;
+}
+
+/* The editor's own marks for added and removed lines, at the strength the
+   editor draws them. The only hue on the page, and only here. */
+.mock-add { color: #56d364; }
+.mock-del { color: #f85149; }
+
+.mock-body--code {
+  gap: 0;
+  padding: 12px 0 0;
+  color: var(--text-secondary);
+}
+
+.mock-line {
+  padding: 1px 16px;
+  white-space: pre;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mock-line--add { background: rgba(63, 185, 80, 0.22); color: var(--text-primary); }
+.mock-line--del { background: rgba(248, 81, 73, 0.22); color: var(--text-primary); }
+.mock-line--out { color: var(--text-tertiary); }
+
+/* Room under the last line when no bar closes the window. */
+.mock-line:last-child {
+  margin-bottom: 12px;
+}
+
+.mock-ln {
   display: inline-block;
-  margin: 2px 2px 2px 0;
+  width: 26px;
+  color: var(--text-tertiary);
+  user-select: none;
+}
+
+.mock-prompt {
+  color: var(--text-tertiary);
+}
+
+.mock-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.mock-rule {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.mock-pill {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--bg);
+  background: var(--text-primary);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+
+/* The install command, beside the copy button — the one thing in this tile
+   a visitor might actually want to take away. */
+.copy-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 22px;
+  padding: 6px 6px 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  max-width: 100%;
+}
+
+.copy-chip code {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12.5px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 819px) {
+  .feature,
+  .feature--reverse {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+    padding: 24px;
+  }
+
+  .feature--reverse .feature-copy {
+    order: 0;
+  }
+
+  .feature-lede {
+    font-size: 18px;
+  }
+
+  .feature-stage {
+    padding: 14px;
+  }
+
+  .mock {
+    font-size: 12px;
+  }
 }
 
 /* ------------------------------------------------------------------ why -- */

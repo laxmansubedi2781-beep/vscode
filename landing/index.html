@@ -87,9 +87,8 @@
     </a>
 
     <nav class="nav-links" aria-label="Primary">
-      <a href="#demo">Demo</a>
       <a href="#agent">Agent</a>
-      <a href="#why">How it works</a>
+      <a href="#cli">CLI</a>
     </nav>
 
     <!--
@@ -113,9 +112,8 @@
 
   <div class="mobile-menu" id="mobileMenu" hidden>
     <a href="https://api.cloudeide.com/app/signin">Sign in</a>
-    <a href="#demo">Demo</a>
     <a href="#agent">Agent</a>
-    <a href="#why">How it works</a>
+    <a href="#cli">CLI</a>
     <a href="#desktop">Download</a>
   </div>
 </header>
@@ -160,7 +158,7 @@
       </p>
       <div class="hero-actions">
         <a class="btn btn-primary" href="#desktop">Download for desktop</a>
-        <a class="btn btn-secondary" href="#demo">See it work <span class="showcase-arrow" aria-hidden="true">&rarr;</span></a>
+        <a class="btn btn-secondary" href="#agent">See it work <span class="showcase-arrow" aria-hidden="true">&rarr;</span></a>
       </div>
 
     </div>
@@ -222,394 +220,164 @@
 
   </section>
 
-  <!-- ------------------------------------------------------------- demo -- -->
+  <!-- --------------------------------------------------------- features -- -->
   <!--
-    Two-column showcases, sides alternating.
+    One idea per tile: a sentence on one side, a picture on the other.
 
-    The films used to run full-bleed with a centred caption beneath each. That
-    reads as the same shape twice in a row, and the eye stops travelling. Here
-    the copy sits opposite the film and swaps sides between the two, so the
-    page moves down rather than repeating.
+    This replaced four sections that explained themselves at length — two
+    showcases, a grid of twenty-one capability cards, and three numbered
+    steps. All of it was true, and none of it was read: a visitor scrolling a
+    product page is looking at pictures and reading headings. So each tile
+    now carries one heading, in the primary colour, and one sentence after it
+    in the secondary colour, in the same paragraph. The picture does the rest.
 
-    The window frame earns its place now in a way it did not when the film was
-    edge-to-edge: at half width the film needs an edge to sit against, and the
-    title bar names which product surface is being shown.
+    The pictures are drawn in HTML rather than photographed, and they are
+    drawn from the product: every label in them — "Run this command?",
+    "Don't run", "You decide", "Keep", "Undo", "Open PR", "Not now" — is the
+    string the panel actually shows. A picture that shows a button the
+    product does not have is the one thing these must never do.
+
+    Colour: the page's own tokens, plus the two tints the editor uses to mark
+    added and removed lines. Those appear in exactly one tile, because that
+    tile is about them.
   -->
-  <section class="section" id="demo">
+  <section class="section features" id="agent">
     <div class="wrap">
 
-      <div class="showcase reveal">
-        <div class="showcase-copy">
-          <div class="section-label">The agent</div>
-          <h2>It works on your code,<br />not a copy of it</h2>
-          <p>
-            Ask in plain words. The agent reads the files on your disk, searches
-            the project for what it needs, and edits as many files as the change
-            takes — creating new ones where it has to.
-          </p>
-          <p>
-            Nothing is saved until you have seen it. Every change is marked in
-            the file — green for what it added, red for what it took out — and
-            the answer you get says what it did rather than what it intends to do.
-          </p>
+      <article class="feature reveal">
+        <div class="feature-copy">
+          <p class="feature-lede"><strong>Ask, and it builds.</strong> It reads your project, changes every file the work needs, and asks before it runs a command.</p>
           <a class="showcase-link" href="#desktop">Download CloudeIDE <span class="showcase-arrow" aria-hidden="true">&rarr;</span></a>
         </div>
-
-        <!--
-          A detail, not the whole window — because the row below is the whole
-          window, and two pictures of the same workbench one under the other
-          is the repetition this layout was rebuilt to get rid of. Close on
-          the file and the answer beside it, which is what this section claims;
-          the row below pulls back to the frame and ends on a live address.
-
-          It used to be a recording, and the recording went because of what was
-          in it rather than because a still is better. It was filmed against
-          the web build, which opens no folder, so the frame was an empty
-          editor holding three scratch buffers and an answer that began "I
-          don't see a file named menu.js" — true, and the exact opposite of
-          what this section says. The film comes back when it is filmed
-          against a real folder; see build/cloudeide/record-panel.mjs.
-        -->
-        <div class="window" style="--ar-narrow: 780 / 975; --ar-wide: 1360 / 545">
-          <div class="window-bar">
-            <span class="window-dots" aria-hidden="true">
-              <span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span>
-            </span>
-            <span class="window-title">Editor</span>
-          </div>
-          <picture>
-            <source srcset="assets/panel-detail-wide.jpg" media="(min-width: 760px)" />
-            <img src="assets/panel-detail.jpg" loading="lazy" decoding="async" width="780" height="975"
-                 alt="menu.js open in CloudeIDE, with a question about it answered in the panel beside the code" />
-          </picture>
-        </div>
-      </div>
-
-      <div class="showcase showcase--reverse reveal">
-        <div class="showcase-copy">
-          <div class="section-label">And then</div>
-          <h2>One button, one live URL</h2>
-          <p>
-            When the change is right, the same window publishes it. No pipeline
-            to set up, no host to choose.
-          </p>
-          <p class="showcase-note">Static frontends — React, Vue, Svelte, Astro, Next static export.</p>
-          <a class="showcase-link" href="#desktop">Download CloudeIDE <span class="showcase-arrow" aria-hidden="true">&rarr;</span></a>
-        </div>
-
-        <div class="window" style="--ar-narrow: 1080 / 1350">
-          <div class="window-bar">
-            <span class="window-dots" aria-hidden="true">
-              <span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span>
-            </span>
-            <span class="window-title">Deploy</span>
-          </div>
-          <picture>
-            <source srcset="assets/shot-deploy-wide.jpg" media="(min-width: 760px)" />
-            <img src="assets/shot-deploy.jpg" loading="lazy" decoding="async" width="1080" height="1350"
-                 alt="The same editor after pressing Deploy, with the live address returned in the panel" />
-          </picture>
-        </div>
-      </div>
-
-    </div>
-  </section>
-
-  <!-- ------------------------------------------------------------ agent -- -->
-  <!--
-    What the agent can do, all of it, in one place.
-
-    The two showcases above make one claim each: it works on your code, and it
-    ships. This section is for the visitor who wants the rest before they
-    download — every capability that is in the editor today, grouped by what
-    you would be trying to do, one sentence each.
-
-    Only what is shipped. Every card here names something a person can find
-    in the panel on first launch: a button, a command, a key. Nothing that is
-    planned, and nothing measured against another product by name.
-
-    It reuses the "how it works" cards (.steps / .step) rather than inventing
-    a third card style, so no colour on this page is new.
-  -->
-  <section class="section" id="agent">
-    <div class="wrap">
-      <div class="panel reveal">
-        <div class="section-head">
-          <div class="section-label">Inside the agent</div>
-          <h2>What the agent can do</h2>
-          <p>
-            Ask in plain words. It reads your project, makes the change, checks
-            it, and asks you before anything runs on your machine.
-          </p>
-        </div>
-
-        <div class="agent-group">
-          <h3 class="agent-group-title">It understands your project</h3>
-          <div class="steps" aria-label="Understanding the project">
-            <div class="step">
-              <span class="step-n">Read</span>
-              <h3>Your real files</h3>
-              <p>It lists, reads and searches the folder you have open, not a copy uploaded somewhere else.</p>
-            </div>
-            <div class="step">
-              <span class="step-n">Navigate</span>
-              <h3>Definitions and every use</h3>
-              <p>It finds where a function is defined and everywhere it is called, using the editor's own language support rather than a text search.</p>
-            </div>
-            <div class="step">
-              <span class="step-n">Check</span>
-              <h3>The errors you see</h3>
-              <p>It reads the same Problems list you do, so it notices when a change broke something and fixes it.</p>
+        <div class="feature-stage" aria-hidden="true">
+          <div class="mock">
+            <div class="window-bar"><span class="window-dots"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span></span><span class="window-title">Agent</span></div>
+            <div class="mock-body">
+              <div class="mock-ask">Add a dark mode toggle to the settings page</div>
+              <div class="mock-step">Searching for theme</div>
+              <div class="mock-step">Reading src/settings.tsx</div>
+              <div class="mock-step">Editing src/settings.tsx <span class="mock-add">+24</span> <span class="mock-del">&minus;3</span></div>
+              <div class="mock-step">Editing src/theme.ts <span class="mock-add">+11</span></div>
+              <div class="mock-card">
+                <div class="mock-card-head">Run this command?</div>
+                <code class="mock-command">npm test</code>
+                <div class="mock-actions"><span class="mock-btn mock-btn--primary">Run</span><span class="mock-btn">Don't run</span></div>
+              </div>
+              <div class="mock-composer"><span>Ask for a change…</span><span class="mock-chips"><span class="mock-chip">Agent</span><span class="mock-chip">Claude Sonnet 5</span></span></div>
             </div>
           </div>
         </div>
+      </article>
 
-        <div class="agent-group">
-          <h3 class="agent-group-title">It changes code, and you decide</h3>
-          <div class="steps" aria-label="Changing code">
-            <div class="step">
-              <span class="step-n">Edit</span>
-              <h3>Across many files</h3>
-              <p>One request can touch as many files as the change needs, and create new ones where it has to.</p>
-            </div>
-            <div class="step">
-              <span class="step-n">Review</span>
-              <h3>Green and red, in the file</h3>
-              <p>Added lines are marked green and removed lines red, right where they are. <code>Keep</code> saves them; <code>Undo</code> puts everything back.</p>
-            </div>
-            <div class="step">
-              <span class="step-n">Ctrl+I · ⌘I</span>
-              <h3>Edit in place</h3>
-              <p>Select some code, press the key, and say what you want. The change appears in the file, marked the same way.</p>
+      <article class="feature feature--reverse reveal">
+        <div class="feature-copy">
+          <p class="feature-lede"><strong>Plan first, then build.</strong> Plan mode works out the steps and changes nothing. When there is a real choice, it asks you.</p>
+        </div>
+        <div class="feature-stage" aria-hidden="true">
+          <div class="mock">
+            <div class="window-bar"><span class="window-dots"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span></span><span class="window-title">Plan</span></div>
+            <div class="mock-body">
+              <div class="mock-ask">Remember the theme the user picked</div>
+              <div class="mock-step">Reading src/theme.ts</div>
+              <div class="mock-step">Finding what uses applyTheme</div>
+              <div class="mock-text">Three steps drafted. One question first:</div>
+              <div class="mock-card">
+                <div class="mock-card-head">Where should the choice be saved?</div>
+                <div class="mock-option"><span class="mock-n">1</span>In this browser</div>
+                <div class="mock-option mock-option--picked"><span class="mock-n">2</span>In the user's account</div>
+                <div class="mock-option"><span class="mock-n">3</span>Both</div>
+                <div class="mock-actions"><span class="mock-btn">You decide</span><span class="mock-btn mock-btn--primary">Continue</span></div>
+              </div>
+              <div class="mock-composer"><span>Ask for a change…</span><span class="mock-chips"><span class="mock-chip">Plan</span><span class="mock-chip">Claude Opus 5</span></span></div>
             </div>
           </div>
         </div>
+      </article>
 
-        <div class="agent-group">
-          <h3 class="agent-group-title">It runs things, with your permission</h3>
-          <div class="steps" aria-label="Running commands">
-            <div class="step">
-              <span class="step-n">Run</span>
-              <h3>Your real terminal</h3>
-              <p>Tests, builds, installs — in the terminal on your machine. It shows you the command and waits for <code>Run</code> every time.</p>
-            </div>
-            <div class="step">
-              <span class="step-n">/test</span>
-              <h3>Fix until it passes</h3>
-              <p>It runs the tests, reads the failures, fixes the cause rather than the test, and runs them again.</p>
-            </div>
-            <div class="step">
-              <span class="step-n">Ask</span>
-              <h3>It asks, instead of guessing</h3>
-              <p>When there are two sensible ways to do something, it gives you the choices to click rather than picking one quietly.</p>
+      <article class="feature reveal">
+        <div class="feature-copy">
+          <p class="feature-lede"><strong>Every change, marked in the file.</strong> Added lines in green, removed lines in red. Keep it, or undo all of it in one click.</p>
+        </div>
+        <div class="feature-stage" aria-hidden="true">
+          <div class="mock">
+            <div class="window-bar"><span class="window-dots"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span></span><span class="window-title">settings.tsx</span></div>
+            <div class="mock-body mock-body--code">
+              <div class="mock-line"><span class="mock-ln">12</span>export function Settings() {</div>
+              <div class="mock-line"><span class="mock-ln">13</span>  const user = useUser();</div>
+              <div class="mock-line mock-line--del"><span class="mock-ln">14</span>  return &lt;Page title="Settings"&gt;</div>
+              <div class="mock-line mock-line--add"><span class="mock-ln">14</span>  const [dark, setDark] = useTheme();</div>
+              <div class="mock-line mock-line--add"><span class="mock-ln">15</span>  return &lt;Page title="Settings"&gt;</div>
+              <div class="mock-line mock-line--add"><span class="mock-ln">16</span>    &lt;Toggle on={dark} onChange={setDark} /&gt;</div>
+              <div class="mock-line"><span class="mock-ln">17</span>    &lt;Profile user={user} /&gt;</div>
+              <div class="mock-line"><span class="mock-ln">18</span>  &lt;/Page&gt;;</div>
+              <div class="mock-line"><span class="mock-ln">19</span>}</div>
+              <div class="mock-bar"><span>2 files changed</span><span class="mock-actions"><span class="mock-btn mock-btn--primary">Keep</span><span class="mock-btn">Undo</span></span></div>
             </div>
           </div>
         </div>
+      </article>
 
-        <div class="agent-group">
-          <h3 class="agent-group-title">Three ways to ask</h3>
-          <div class="steps" aria-label="Modes">
-            <div class="step">
-              <span class="step-n">Agent</span>
-              <h3>Do the work</h3>
-              <p>Reads, changes files and runs commands. The default.</p>
-            </div>
-            <div class="step">
-              <span class="step-n">Plan</span>
-              <h3>Steps first</h3>
-              <p>Works out the steps, file by file, and changes nothing. When the plan is right, switch to Agent and tell it to go.</p>
-            </div>
-            <div class="step">
-              <span class="step-n">Ask</span>
-              <h3>Just answer</h3>
-              <p>Questions about the project, answered with the file and the line. Reads only.</p>
-            </div>
-          </div>
-          <p class="agent-note">
-            In Plan and Ask the tools that write files and run commands are not
-            offered to the model at all. It is a lock, not a polite request.
-          </p>
+      <article class="feature feature--reverse reveal">
+        <div class="feature-copy">
+          <p class="feature-lede"><strong>Ship it from the same window.</strong> Type /pr to open a pull request on GitHub, or press Deploy for a live URL.</p>
         </div>
-
-        <div class="agent-group">
-          <h3 class="agent-group-title">Quick to drive</h3>
-          <div class="steps" aria-label="Controls">
-            <div class="step">
-              <span class="step-n">@</span>
-              <h3>Point at a file</h3>
-              <p>Type <code>@</code>, pick a file, and the agent starts from it.</p>
-            </div>
-            <div class="step">
-              <span class="step-n">/</span>
-              <h3>Commands</h3>
-              <p><code>/plan</code> <code>/ask</code> <code>/test</code> <code>/review</code> <code>/pr</code> <code>/undo</code> <code>/clear</code></p>
-            </div>
-            <div class="step">
-              <span class="step-n">Model</span>
-              <h3>Pick the model</h3>
-              <p>Claude and GPT models, chosen per request, from the same box you type in.</p>
+        <div class="feature-stage" aria-hidden="true">
+          <div class="mock">
+            <div class="window-bar"><span class="window-dots"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span></span><span class="window-title">Agent</span></div>
+            <div class="mock-body">
+              <div class="mock-ask">/pr</div>
+              <div class="mock-card">
+                <div class="mock-card-head">Open a pull request?</div>
+                <div class="mock-text">acme/menu-app · a new branch &rarr; main</div>
+                <div class="mock-actions"><span class="mock-btn mock-btn--primary">Open PR</span><span class="mock-btn">Not now</span></div>
+              </div>
+              <div class="mock-step">acme/menu-app#42 opened</div>
             </div>
           </div>
         </div>
+      </article>
 
-        <div class="agent-group">
-          <h3 class="agent-group-title">From change to shipped</h3>
-          <div class="steps" aria-label="Shipping">
-            <div class="step">
-              <span class="step-n">/review</span>
-              <h3>A second reading</h3>
-              <p>It reads the last change back as if somebody else wrote it, and says what is wrong with it.</p>
-            </div>
-            <div class="step">
-              <span class="step-n">/pr</span>
-              <h3>A pull request</h3>
-              <p>With GitHub connected, it makes the branch, the commit and the pull request in one step, and shows you it first.</p>
-            </div>
-            <div class="step">
-              <span class="step-n">History</span>
-              <h3>Your recent runs</h3>
-              <p>The last ten requests in this project, which files each one changed, and how it ended.</p>
+      <article class="feature reveal">
+        <div class="feature-copy">
+          <p class="feature-lede"><strong>Rules your whole team follows.</strong> Write them once, and every agent in your organization follows them, in every repository.</p>
+        </div>
+        <div class="feature-stage" aria-hidden="true">
+          <div class="mock">
+            <div class="window-bar"><span class="window-dots"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span></span><span class="window-title">Agent Rules</span></div>
+            <div class="mock-body">
+              <div class="mock-rule"><span>Never commit a file holding a key</span><span class="mock-pill">required</span></div>
+              <div class="mock-rule"><span>Use the shared fetch helper for API calls</span></div>
+              <div class="mock-rule"><span>Tests live next to the file they test</span></div>
+              <div class="mock-rule"><span>Every migration needs a rollback</span></div>
+              <div class="mock-text mock-text--quiet">Sent with every request, for every member.</div>
             </div>
           </div>
         </div>
+      </article>
 
-        <div class="agent-group">
-          <h3 class="agent-group-title">It follows your rules</h3>
-          <div class="steps" aria-label="Rules">
-            <div class="step">
-              <span class="step-n">AGENTS.md</span>
-              <h3>Project rules</h3>
-              <p>Write how your project works in <code>AGENTS.md</code>. The agent reads it on every request in that folder.</p>
+      <article class="feature feature--reverse reveal" id="cli">
+        <div class="feature-copy">
+          <p class="feature-lede"><strong>In your terminal, too.</strong> Deploy from your shell, or connect CloudeIDE to Cursor, Claude Code and Codex.</p>
+          <div class="copy-chip">
+            <code>npm install -g cloudeide</code>
+            <button class="cli-copy" type="button" data-copy="npm install -g cloudeide">Copy</button>
+          </div>
+        </div>
+        <div class="feature-stage" aria-hidden="true">
+          <div class="mock">
+            <div class="window-bar"><span class="window-dots"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span></span><span class="window-title">Terminal</span></div>
+            <div class="mock-body mock-body--code">
+              <div class="mock-line"><span class="mock-prompt">$</span> cloudeide login</div>
+              <div class="mock-line mock-line--out">Signed in as you@acme.com</div>
+              <div class="mock-line"><span class="mock-prompt">$</span> cloudeide deploy .</div>
+              <div class="mock-line mock-line--out">Live at https://menu-app.cloudeide.app</div>
+              <div class="mock-line"><span class="mock-prompt">$</span> cloudeide install cursor</div>
+              <div class="mock-line mock-line--out">Added the CloudeIDE MCP server for Cursor.</div>
             </div>
-            <div class="step">
-              <span class="step-n">Teams</span>
-              <h3>Organization rules</h3>
-              <p>An admin writes a rule once, and every member's agent follows it in every repository.</p>
-            </div>
-            <div class="step">
-              <span class="step-n">Safe</span>
-              <h3>Rules cannot unlock anything</h3>
-              <p>No rule can give the agent a permission it does not have, or skip the question before a command runs.</p>
-            </div>
           </div>
         </div>
+      </article>
 
-      </div>
-    </div>
-  </section>
-
-  <!-- --------------------------------------------------------------- why -- -->
-  <section class="section" id="why">
-    <div class="wrap">
-      <div class="panel reveal">
-      <div class="section-head reveal">
-        <div class="section-label">Why CloudeIDE</div>
-        <h2>Everything you already know,<br />and an agent that can act</h2>
-        <p>Your extensions, your keybindings, your terminal, your git — all of it comes with you.</p>
-      </div>
-
-      <!--
-        These three used to begin with "Sign in", and step three promised a
-        sandbox instead of your laptop. Neither is true any more: there is no
-        account to make, and the desktop build runs on the machine in front of
-        you. A page that describes a product nobody can get is worse than a
-        plain one, so they now describe what actually happens.
-      -->
-      <div class="steps reveal" aria-label="How it works">
-        <div class="step">
-          <span class="step-n">1</span>
-          <h3>Open your project</h3>
-          <p>Install it and open the folder you already work in. Nothing to move.</p>
-        </div>
-        <div class="step">
-          <span class="step-n">2</span>
-          <h3>Ask for the change</h3>
-          <p>The agent reads the same files you do, and edits across as many as it needs.</p>
-        </div>
-        <div class="step">
-          <span class="step-n">3</span>
-          <h3>Check the change</h3>
-          <p>Nothing is saved until you press Keep. Then ship it, from the same window.</p>
-        </div>
-      </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- --------------------------------------------------------------- cli -- -->
-  <!--
-    The terminal section, placed after "how it works" on purpose.
-
-    Someone who has read this far has already decided the editor is
-    interesting. This is the second thing to know, not the first: the account
-    they just read about also works from their own shell and from the editor
-    they already use. Leading with it would answer a question nobody has yet.
-  -->
-  <section class="section" id="cli">
-    <div class="wrap">
-      <div class="panel reveal">
-      <div class="section-head reveal">
-        <!--
-          Last, and short.
-
-          This is a real part of the product and it is nobody's reason to try
-          it. Somebody who wants a CLI will find it; somebody deciding whether
-          to download an editor does not need three paragraphs about one first.
-        -->
-        <div class="section-label">Also</div>
-        <h2>There is a CLI, and an MCP server</h2>
-        <p>The same account from your own shell, or from another agent.</p>
-      </div>
-
-      <div class="cli-block reveal">
-        <div class="cli-row">
-          <div class="cli-code"><span class="cli-prompt" aria-hidden="true">$ </span><code>npm install -g cloudeide</code></div>
-          <button class="cli-copy" type="button" data-copy="npm install -g cloudeide">Copy</button>
-        </div>
-        <div class="cli-row">
-          <div class="cli-code"><span class="cli-prompt" aria-hidden="true">$ </span><code>cloudeide login</code></div>
-          <button class="cli-copy" type="button" data-copy="cloudeide login">Copy</button>
-        </div>
-        <div class="cli-row">
-          <div class="cli-code"><span class="cli-prompt" aria-hidden="true">$ </span><code>cloudeide deploy .</code></div>
-          <button class="cli-copy" type="button" data-copy="cloudeide deploy .">Copy</button>
-        </div>
-      </div>
-
-      <!--
-        One command per editor rather than a page of JSON.
-
-        Each of these writes that editor's own config format — Cursor and Claude
-        Code take JSON in different places, Codex takes TOML — and merges into
-        whatever is already there instead of overwriting it.
-      -->
-      <div class="steps reveal" aria-label="Editor integrations">
-        <div class="step">
-          <span class="step-n">MCP</span>
-          <h3>Cursor</h3>
-          <div class="cli-mini">
-            <code>cloudeide install cursor</code>
-            <button class="cli-copy" type="button" data-copy="cloudeide install cursor">Copy</button>
-          </div>
-        </div>
-        <div class="step">
-          <span class="step-n">MCP</span>
-          <h3>Claude Code</h3>
-          <div class="cli-mini">
-            <code>cloudeide install claude-code</code>
-            <button class="cli-copy" type="button" data-copy="cloudeide install claude-code">Copy</button>
-          </div>
-        </div>
-        <div class="step">
-          <span class="step-n">MCP</span>
-          <h3>Codex</h3>
-          <div class="cli-mini">
-            <code>cloudeide install codex</code>
-            <button class="cli-copy" type="button" data-copy="cloudeide install codex">Copy</button>
-          </div>
-        </div>
-      </div>
-      </div>
     </div>
   </section>
 
@@ -649,10 +417,7 @@
         <div class="showcase-copy">
           <div class="section-label">Desktop app</div>
           <h2>Install it</h2>
-          <p>
-            Your files stay where they are, the terminal is a real terminal,
-            and the agent reads the project you actually have open.
-          </p>
+          <p>Your files stay on your machine, and the agent works on the project you have open.</p>
 
           <!--
             Three platforms, one button.
@@ -743,9 +508,9 @@
     </a>
 
     <nav class="footer-links" aria-label="Footer">
-      <a href="#demo">Demo</a>
       <a href="#agent">Agent</a>
-      <a href="#why">How it works</a>
+      <a href="#cli">CLI</a>
+      <a href="#desktop">Download</a>
     </nav>
 
     <span class="footer-copy">© <span id="year">2026</span> CloudeIDE</span>
