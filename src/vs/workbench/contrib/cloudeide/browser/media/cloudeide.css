@@ -1387,3 +1387,109 @@
 .cloudeide-composer-spacer {
 	flex-grow: 1;
 }
+
+/* ── earlier runs ────────────────────────────────────────────────────────── */
+
+/*
+ * One line until somebody wants more.
+ *
+ * A list of past work permanently open at the top of a panel this narrow
+ * would push the box people came for off the bottom of the screen. It is not
+ * there at all until there is something in it.
+ */
+.cloudeide-history {
+	flex-shrink: 0;
+	border-bottom: 1px solid var(--vscode-panel-border, var(--vscode-editorWidget-border));
+}
+
+.cloudeide-history-toggle {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	width: 100%;
+	box-sizing: border-box;
+	padding: 7px 14px;
+	border: 0;
+	background: transparent;
+	color: var(--vscode-descriptionForeground);
+	font: inherit;
+	font-size: 11.5px;
+	text-align: left;
+	cursor: pointer;
+}
+
+.cloudeide-history-toggle:hover {
+	color: var(--vscode-foreground);
+}
+
+.cloudeide-history-twisty {
+	display: inline-block;
+	transition: transform .1s ease;
+}
+
+.cloudeide-history-open .cloudeide-history-twisty {
+	transform: rotate(90deg);
+}
+
+.cloudeide-history-list {
+	max-height: 260px;
+	overflow-y: auto;
+	padding: 0 14px 10px;
+}
+
+.cloudeide-history-run {
+	padding: 8px 0;
+	border-top: 1px solid var(--vscode-panel-border, var(--vscode-editorWidget-border));
+}
+
+.cloudeide-history-ask {
+	font-size: 12.5px;
+	line-height: 1.45;
+	color: var(--vscode-foreground);
+	/* Two lines of the question, not the whole paste. */
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
+.cloudeide-history-meta {
+	margin-top: 2px;
+	font-size: 11px;
+	color: var(--vscode-descriptionForeground);
+}
+
+.cloudeide-history-file {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	width: 100%;
+	box-sizing: border-box;
+	margin-top: 4px;
+	padding: 3px 6px;
+	border: 0;
+	border-radius: 4px;
+	background: transparent;
+	color: var(--vscode-descriptionForeground);
+	font: inherit;
+	font-size: 11.5px;
+	text-align: left;
+	cursor: pointer;
+}
+
+.cloudeide-history-file:hover {
+	background: var(--vscode-list-hoverBackground);
+	color: var(--vscode-foreground);
+}
+
+.cloudeide-history-path {
+	font-family: var(--monaco-monospace-font);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.cloudeide-history-file .cloudeide-proposal-tally {
+	margin-left: auto;
+	flex-shrink: 0;
+}

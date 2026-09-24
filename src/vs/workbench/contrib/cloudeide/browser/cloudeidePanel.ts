@@ -39,6 +39,7 @@ import { ITextModelService } from '../../../../editor/common/services/resolverSe
 import { CloudeideCommandRunner, type CommandRunResult, type IAgentCommandRunner } from './cloudeideAgentCommand.js';
 import { CloudeideAppliedMarks } from './cloudeideAppliedMarks.js';
 import { CloudeideEditPreview, type PreviewedFile } from './cloudeideEditPreview.js';
+import { CloudeideHistory, historyFileUri, type HistoryRun } from './cloudeideHistory.js';
 import { QueryBuilder } from '../../../services/search/common/queryBuilder.js';
 import { CloudeideAgentTools, type StagedEdit } from './cloudeideAgentTools.js';
 import { runAgentLoop } from './cloudeideAgentLoop.js';
@@ -148,10 +149,15 @@ export class CloudeidePanel extends ViewPane {
 	/** Built on first use and kept, so the agent's shell survives the turn. */
 	private runner: IAgentCommandRunner | undefined;
 	private modelButton!: HTMLButtonElement;
+	/** The question that started the run now in flight. */
+	private lastAsk = '';
+	private historyStrip!: HTMLElement;
 	/** The green and red marks left on whatever the last Apply wrote. */
 	private readonly appliedMarks = this._register(new CloudeideAppliedMarks(this.textModelService));
 	/** Where a run's change lands, and what Keep and Undo act on. */
 	private readonly preview = this._register(this.instantiationService.createInstance(CloudeideEditPreview, this.appliedMarks));
+	/** What the agent has done in this folder, across windows. */
+	private readonly history = this._register(this.instantiationService.createInstance(CloudeideHistory));
 
 	constructor(
 		options: IViewletViewOptions,
@@ -270,8 +276,10 @@ export class CloudeidePanel extends ViewPane {
 	private buildMainView(): void {
 		this.mainView.style.display = 'none';
 
+		this.historyStrip = DOM.append(this.mainView, $('.cloudeide-history'));
 		this.transcript = DOM.append(this.mainView, $('.cloudeide-transcript'));
 		this.renderEmptyTranscript();
+		this.renderHistory();
 
 		const composer = DOM.append(this.mainView, $('.cloudeide-composer'));
 
@@ -335,6 +343,88 @@ export class CloudeidePanel extends ViewPane {
 	 * the box underneath already says what to type, and the second line told
 	 * people to press a Deploy button that is no longer on this panel.
 	 */
+	/**
+	 * Earlier runs, as one line until somebody wants them.
+	 *
+	 * A list of past work permanently open at the top of a panel this narrow
+	 * would push the thing people came for — the box — off the bottom of the
+	 * screen. So it is a line, and it is only there at all when there is
+	 * something to show.
+	 *
+	 * Rows are not clickable as a whole, because there is nothing to reopen:
+	 * the conversation is not kept. The files are, and each one opens.
+	 */
+	private renderHistory(): void {
+		DOM.clearNode(this.historyStrip);
+		const runs = this.history.read();
+		if (runs.length === 0) {
+			this.historyStrip.style.display = 'none';
+			return;
+		}
+		this.historyStrip.style.display = '';
+
+		const toggle = DOM.append(this.historyStrip, $('button.cloudeide-history-toggle')) as HTMLButtonElement;
+		const twisty = DOM.append(toggle, $('span.cloudeide-history-twisty'));
+		twisty.textContent = '\u203A';
+		const label = DOM.append(toggle, $('span'));
+		label.textContent = runs.length === 1
+			? localize('cloudeide.history.one', "1 earlier run")
+			: localize('cloudeide.history.many', "{0} earlier runs", runs.length);
+
+		const list = DOM.append(this.historyStrip, $('.cloudeide-history-list'));
+		list.style.display = 'none';
+
+		let filled = false;
+		this._register(DOM.addDisposableListener(toggle, 'click', () => {
+			const open = list.style.display === 'none';
+			if (open && !filled) {
+				for (const run of runs) {
+					this.renderHistoryRun(list, run);
+				}
+				filled = true;
+			}
+			list.style.display = open ? '' : 'none';
+			toggle.classList.toggle('cloudeide-history-open', open);
+		}));
+	}
+
+	private renderHistoryRun(list: HTMLElement, run: HistoryRun): void {
+		const item = DOM.append(list, $('.cloudeide-history-run'));
+
+		const head = DOM.append(item, $('.cloudeide-history-ask'));
+		head.textContent = run.ask || localize('cloudeide.history.noAsk', "(no question recorded)");
+		head.title = run.ask;
+
+		const meta = DOM.append(item, $('.cloudeide-history-meta'));
+		meta.textContent = `${when(run.at)} · ${outcomeLabel(run.outcome)}`;
+
+		const folder = this.contextService.getWorkspace().folders[0];
+		for (const file of run.files) {
+			const row = DOM.append(item, $('button.cloudeide-history-file')) as HTMLButtonElement;
+			const name = DOM.append(row, $('span.cloudeide-history-path'));
+			name.textContent = file.path;
+
+			const tally = DOM.append(row, $('span.cloudeide-proposal-tally'));
+			if (file.added > 0) {
+				DOM.append(tally, $('span.cloudeide-proposal-added')).textContent = `+${file.added}`;
+			}
+			if (file.removed > 0) {
+				DOM.append(tally, $('span.cloudeide-proposal-removed')).textContent = `\u2212${file.removed}`;
+			}
+
+			if (folder) {
+				const target = historyFileUri(folder.uri, file.path);
+				row.title = localize('cloudeide.history.open', "Open {0}", file.path);
+				this._register(DOM.addDisposableListener(row, 'click', () => {
+					// The file may be gone — undone, or deleted since. Opening
+					// it then does nothing rather than throwing a dialog at
+					// somebody who only wanted a look.
+					void this.editorService.openEditor({ resource: target }).catch(() => { });
+				}));
+			}
+		}
+	}
+
 	private renderEmptyTranscript(): void {
 		DOM.clearNode(this.transcript);
 	}
@@ -502,6 +592,10 @@ export class CloudeidePanel extends ViewPane {
 
 		this.appendTurn('user', text);
 		this.messages.push({ role: 'user', content: text });
+		// Kept for the history entry this run will write. Taken here rather
+		// than from the message list, which by then holds the whole
+		// conversation and not the question that started this run.
+		this.lastAsk = text;
 		this.input.value = '';
 		this.setBusy(true);
 
@@ -988,7 +1082,7 @@ export class CloudeidePanel extends ViewPane {
 		});
 	}
 
-	private appendProposal(runId: string | undefined, files: readonly PreviewedFile[]): void {
+	private appendProposal(historyId: string, runId: string | undefined, files: readonly PreviewedFile[]): void {
 		const card = DOM.append(this.transcript, $('.cloudeide-proposal'));
 
 		const head = DOM.append(card, $('.cloudeide-proposal-head'));
@@ -1045,6 +1139,8 @@ export class CloudeidePanel extends ViewPane {
 				if (runId) {
 					await this.client.decideProposal(runId, 'applied');
 				}
+				this.history.settle(historyId, 'kept');
+				this.renderHistory();
 				settle(saved === 1
 					? localize('cloudeide.proposal.keptOne', "Saved 1 file")
 					: localize('cloudeide.proposal.keptMany', "Saved {0} files", saved));
@@ -1066,6 +1162,8 @@ export class CloudeidePanel extends ViewPane {
 				if (runId) {
 					await this.client.decideProposal(runId, 'discarded').catch(() => { /* best effort */ });
 				}
+				this.history.settle(historyId, 'undone');
+				this.renderHistory();
 				settle(localize('cloudeide.proposal.undone', "Undone"));
 			} catch (err) {
 				accept.disabled = false;
@@ -1102,7 +1200,20 @@ export class CloudeidePanel extends ViewPane {
 		try {
 			const files = await this.preview.show(folders[0].uri, changes);
 			if (files.length > 0) {
-				this.appendProposal(runId, files);
+				// Written down before anybody has decided, with the decision
+				// filled in later. A run that changed files and was then
+				// abandoned — window closed, question forgotten — is exactly
+				// the one worth being able to find again.
+				const id = runId ?? `local-${Date.now()}`;
+				this.history.add({
+					id,
+					ask: this.lastAsk,
+					at: new Date().toISOString(),
+					files: files.map(f => ({ path: f.path, added: f.added, removed: f.removed })),
+					outcome: 'pending',
+				});
+				this.appendProposal(id, runId, files);
+				this.renderHistory();
 			}
 		} catch (err) {
 			this.setStatus(err instanceof Error ? err.message : String(err), 'error');
@@ -1122,3 +1233,38 @@ export class CloudeidePanel extends ViewPane {
  * has to draw one, and the counts on each row come back from the marks that
  * were actually placed rather than from a second diff computed for the label.
  */
+
+/** "4 minutes ago", because nobody subtracts a timestamp from now in their head. */
+function when(iso: string): string {
+	const then = Date.parse(iso);
+	if (Number.isNaN(then)) {
+		return iso;
+	}
+	const minutes = Math.max(0, Math.round((Date.now() - then) / 60000));
+	if (minutes < 1) {
+		return localize('cloudeide.history.justNow', "just now");
+	}
+	if (minutes < 60) {
+		return localize('cloudeide.history.minutes', "{0}m ago", minutes);
+	}
+	const hours = Math.round(minutes / 60);
+	if (hours < 24) {
+		return localize('cloudeide.history.hours', "{0}h ago", hours);
+	}
+	return localize('cloudeide.history.days', "{0}d ago", Math.round(hours / 24));
+}
+
+/**
+ * What became of a run's change.
+ *
+ * "Pending" is the one worth naming. A run whose change was never kept or
+ * undone left files sitting unsaved in a window that has since closed, and
+ * that is a thing somebody wants to know about rather than a blank.
+ */
+function outcomeLabel(outcome: HistoryRun['outcome']): string {
+	switch (outcome) {
+		case 'kept': return localize('cloudeide.history.kept', "kept");
+		case 'undone': return localize('cloudeide.history.undone', "undone");
+		default: return localize('cloudeide.history.pending', "never decided");
+	}
+}
