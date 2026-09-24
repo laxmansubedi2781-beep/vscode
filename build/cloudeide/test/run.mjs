@@ -39,7 +39,39 @@ const TESTS = [
 	'src/vs/workbench/contrib/cloudeide/test/browser/cloudeideCommands.test.ts',
 	'src/vs/workbench/contrib/cloudeide/test/browser/cloudeideInlinePrompt.test.ts',
 	'src/vs/workbench/contrib/cloudeide/test/browser/cloudeideOrgRules.test.ts',
+	'src/vs/workbench/contrib/cloudeide/test/browser/cloudeideGallery.test.ts',
 ];
+
+/*
+ * product.json names the extension store, and src/vs may not import it, so
+ * the test that covers the store holds a copy of the block (OPEN_VSX in
+ * cloudeideGallery.test.ts). This makes sure the copy and the file agree —
+ * otherwise the test would keep passing against a store the product no
+ * longer points at.
+ */
+{
+	const product = JSON.parse(readFileSync(path.join(root, 'product.json'), 'utf8'));
+	const gallery = product.extensionsGallery;
+	const testSource = readFileSync(path.join(root, 'src/vs/workbench/contrib/cloudeide/test/browser/cloudeideGallery.test.ts'), 'utf8');
+	const problems = [];
+	if (!gallery) {
+		problems.push('product.json has no extensionsGallery');
+	} else {
+		if (JSON.stringify(gallery).includes('marketplace.visualstudio.com')) {
+			problems.push('product.json names the Microsoft marketplace');
+		}
+		for (const [key, value] of Object.entries(gallery)) {
+			if (!testSource.includes(`${key}: '${value}'`)) {
+				problems.push(`OPEN_VSX in the test does not match product.json for ${key}: ${value}`);
+			}
+		}
+	}
+	if (problems.length) {
+		console.error(problems.join('\n'));
+		process.exit(1);
+	}
+	console.log('product.json: extension store is Open VSX, and the test agrees');
+}
 
 const work = mkdtempSync(path.join(tmpdir(), 'cloudeide-test-'));
 const entry = path.join(work, 'entry.ts');

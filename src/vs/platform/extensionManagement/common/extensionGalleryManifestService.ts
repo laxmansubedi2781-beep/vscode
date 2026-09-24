@@ -17,6 +17,12 @@ type ExtensionGalleryConfig = {
 	readonly extensionUrlTemplate: string;
 	readonly controlUrl: string;
 	readonly nlsBaseUrl: string;
+	/**
+	 * Where to ask for the newest version of one extension. When it is not
+	 * set, no such resource is advertised and the gallery service finds the
+	 * newest version through the extension query instead.
+	 */
+	readonly latestUrlTemplate?: string;
 };
 
 export class ExtensionGalleryManifestService extends Disposable implements IExtensionGalleryManifestService {
@@ -47,14 +53,28 @@ export class ExtensionGalleryManifestService extends Disposable implements IExte
 				type: ExtensionGalleryResourceType.ExtensionQueryService
 			},
 			{
-				id: `${extensionsGallery.serviceUrl}/vscode/{publisher}/{name}/latest`,
-				type: ExtensionGalleryResourceType.ExtensionLatestVersionUri
-			},
-			{
 				id: `${extensionsGallery.serviceUrl}/publishers/{publisher}/extensions/{name}/{version}/stats?statType={statTypeName}`,
 				type: ExtensionGalleryResourceType.ExtensionStatisticsUri
 			},
 		];
+
+		/*
+		 * CloudeIDE: the latest-version resource only when the product names one.
+		 *
+		 * Upstream always advertised `${serviceUrl}/vscode/{publisher}/{name}/latest`,
+		 * which is the path Microsoft's marketplace answers. This product's
+		 * gallery is Open VSX, and a gallery that answers that path with 404 is
+		 * read as "this extension is not in the gallery" — no error, no
+		 * fallback, and no update is ever found. Without the resource, the
+		 * gallery service looks versions up through the extension query, which
+		 * is the one endpoint every VS Code-compatible gallery serves.
+		 */
+		if (extensionsGallery.latestUrlTemplate) {
+			resources.push({
+				id: extensionsGallery.latestUrlTemplate,
+				type: ExtensionGalleryResourceType.ExtensionLatestVersionUri
+			});
+		}
 
 		if (extensionsGallery.publisherUrl) {
 			resources.push({

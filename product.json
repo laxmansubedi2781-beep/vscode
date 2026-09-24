@@ -31,6 +31,18 @@
   "linuxIconName": "cloudeide",
   "licenseFileName": "LICENSE.txt",
   "reportIssueUrl": "https://github.com/laxmansubedi2781-beep/vscode/issues/new",
+  "extensionsGallery": {
+    "serviceUrl": "https://open-vsx.org/vscode/gallery",
+    "itemUrl": "https://open-vsx.org/vscode/item",
+    "publisherUrl": "https://open-vsx.org/namespace",
+    "resourceUrlTemplate": "https://open-vsx.org/vscode/unpkg/{publisher}/{name}/{version}/{path}",
+    "extensionUrlTemplate": "https://open-vsx.org/vscode/gallery/{publisher}/{name}/latest",
+    "controlUrl": "https://raw.githubusercontent.com/EclipseFdn/publish-extensions/refs/heads/master/extension-control/extensions.json",
+    "nlsBaseUrl": ""
+  },
+  "linkProtectionTrustedDomains": [
+    "https://open-vsx.org"
+  ],
   "nodejsArtifactFeed": "",
   "electronArtifactFeed": "",
   "urlProtocol": "cloudeide",
