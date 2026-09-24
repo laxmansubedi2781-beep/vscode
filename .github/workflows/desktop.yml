@@ -12,6 +12,12 @@ name: Desktop app
 # from an event. Pushing a change to this file is exactly when it wants
 # testing, so that is the event — and the path filter keeps every other push
 # from starting an hour-long build.
+#
+# A push builds, starts and photographs; it does not publish. It used to: a
+# release replaces what the landing page's download buttons serve, for
+# everyone, and that happened as a side effect of editing this file — which is
+# mostly done to fix the build, not to ship it. Publishing is now only the
+# manual run with `release` ticked, after a build has been looked at.
 on:
   workflow_dispatch:
     inputs:
@@ -251,7 +257,7 @@ jobs:
       # working if the name is the same in every release; the version is in
       # the release title instead.
       - name: Publish a release
-        if: github.event_name == 'push' || inputs.release
+        if: inputs.release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -328,6 +334,11 @@ jobs:
       # not cover the install dying partway through, which is what happened.
       # So the whole command is retried, three times, with a pause between.
       - name: Install dependencies
+        # bash, not the Windows default. The retry loop is a bash loop, and
+        # PowerShell stopped at its first line — "Missing opening '(' after
+        # keyword 'for'" — in no time at all, so the Windows job failed before
+        # npm ran once. Git Bash is on every Windows runner.
+        shell: bash
         run: |
           set -uo pipefail
           for attempt in 1 2 3; do
@@ -474,7 +485,7 @@ jobs:
           retention-days: 14
 
       - name: Publish a release
-        if: github.event_name == 'push' || inputs.release
+        if: inputs.release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -666,7 +677,7 @@ jobs:
           retention-days: 14
 
       - name: Publish a release
-        if: github.event_name == 'push' || inputs.release
+        if: inputs.release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
