@@ -137,6 +137,23 @@ export interface DeploymentSummary {
 	readonly durationSeconds?: number;
 }
 
+/** What `/github-connect/status` reports about the account's GitHub link. */
+export interface GithubStatus {
+	readonly connected: boolean;
+	readonly login?: string;
+}
+
+export interface GithubRepo {
+	readonly fullName: string;
+	readonly defaultBranch: string;
+	readonly private: boolean;
+}
+
+export interface PullRequestOpened {
+	readonly url: string;
+	readonly number: number;
+}
+
 export interface DeployStarted {
 	/** A string, not a number: the server's `deploymentId`. */
 	readonly deploymentId: string;
@@ -601,6 +618,61 @@ export class CloudeideClient {
 	async profile(): Promise<UserProfile> {
 		const body = await this.request<{ user?: { name?: string; email?: string } }>('/user/profile');
 		return { name: body.user?.name ?? '', email: body.user?.email ?? '' };
+	}
+
+	// ── GitHub ────────────────────────────────────────────────────────────────
+
+	/*
+	 * All of this was on the server before the editor could reach it.
+	 *
+	 * `/github-connect` has held connect, disconnect, the repository list,
+	 * import, commit, pull-request and the commit log since the dashboard
+	 * needed them. Nothing new is added here — these are four calls that let
+	 * the panel ask for what was already there.
+	 */
+	async githubStatus(): Promise<GithubStatus> {
+		return this.request<GithubStatus>('/github-connect/status');
+	}
+
+	async githubRepos(): Promise<GithubRepo[]> {
+		const body = await this.request<{ repos?: GithubRepo[] }>('/github-connect/repos');
+		return body.repos ?? [];
+	}
+
+	/**
+	 * Opens a pull request with the files as they stand.
+	 *
+	 * The server makes the branch, commits onto it and opens the request, in
+	 * that order, and names the branch itself. Doing it in one call rather
+	 * than three is what keeps a half-finished attempt — a branch with no
+	 * commit, a commit with no request — from being something this editor can
+	 * produce.
+	 */
+	async openPullRequest(input: {
+		repo: string;
+		base: string;
+		title: string;
+		message: string;
+		files: { path: string; content: string }[];
+		deletedPaths?: string[];
+	}): Promise<PullRequestOpened> {
+		return this.request<PullRequestOpened>('/github-connect/pull-request', {
+			method: 'POST',
+			body: JSON.stringify(input),
+		});
+	}
+
+	async githubCommit(input: {
+		repo: string;
+		branch: string;
+		message: string;
+		files: { path: string; content: string }[];
+		deletedPaths?: string[];
+	}): Promise<unknown> {
+		return this.request('/github-connect/commit', {
+			method: 'POST',
+			body: JSON.stringify(input),
+		});
 	}
 
 	async billingPlan(): Promise<BillingPlan> {

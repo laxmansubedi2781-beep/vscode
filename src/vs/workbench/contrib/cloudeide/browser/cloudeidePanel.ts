@@ -42,6 +42,7 @@ import { CloudeideEditPreview, type PreviewedFile } from './cloudeideEditPreview
 import { CloudeideHistory, historyFileUri, type HistoryRun } from './cloudeideHistory.js';
 import { CloudeideMentions, mentionNote, mentionedFiles } from './cloudeideMentions.js';
 import { AGENT_MODES, modeById, toolsForMode, type AgentMode } from './cloudeideModes.js';
+import { CloudeidePullRequests, describeChange } from './cloudeidePullRequest.js';
 import { QueryBuilder } from '../../../services/search/common/queryBuilder.js';
 import { CloudeideAgentTools, type StagedEdit } from './cloudeideAgentTools.js';
 import { runAgentLoop } from './cloudeideAgentLoop.js';
@@ -156,11 +157,17 @@ export class CloudeidePanel extends ViewPane {
 	private modelButton!: HTMLButtonElement;
 	/** The question that started the run now in flight. */
 	private lastAsk = '';
+	/** What the agent last said, used to title a pull request. */
+	private lastReply = '';
 	private historyStrip!: HTMLElement;
 	private mentions!: CloudeideMentions;
 	private modeButton!: HTMLButtonElement;
 	/** What the next turn is for. Kept here, not in settings: it changes per question. */
 	private mode: AgentMode = 'agent';
+	/** Getting a run's work off this machine. Built on first use: the client is not ready at field time. */
+	private pullRequestsValue: CloudeidePullRequests | undefined;
+	/** The last run's reply and files, for the pull request that may follow it. */
+	private lastRun: { reply: string; files: string[] } | undefined;
 	/** The green and red marks left on whatever the last Apply wrote. */
 	private readonly appliedMarks = this._register(new CloudeideAppliedMarks(this.textModelService));
 	/** Where a run's change lands, and what Keep and Undo act on. */
@@ -881,6 +888,7 @@ export class CloudeidePanel extends ViewPane {
 		}
 
 		this.appendSummary(used, Date.now() - startedAt);
+		this.lastReply = reply;
 		return reply;
 	}
 
@@ -931,6 +939,138 @@ export class CloudeidePanel extends ViewPane {
 
 		const line = DOM.append(this.transcript, $('.cloudeide-summary'));
 		line.textContent = localize('cloudeide.summary', "{0} · {1}", parts.join(' · '), elapsed(elapsedMs));
+		this.transcript.scrollTop = this.transcript.scrollHeight;
+	}
+
+	private get pullRequests(): CloudeidePullRequests {
+		if (!this.pullRequestsValue) {
+			this.pullRequestsValue = this._register(
+				new CloudeidePullRequests(this.client, this.fileService, this.contextService));
+		}
+		return this.pullRequestsValue;
+	}
+
+	/**
+	 * Offers to put the last run on GitHub.
+	 *
+	 * Shown after a run that changed files, not after every run: a question
+	 * that asks about nothing is a question people learn to dismiss without
+	 * reading, and then the one that mattered goes with it.
+	 */
+	/** The command's way in. Everything it needs is on this view. */
+	async offerPullRequestFromCommand(): Promise<void> {
+		await this.offerPullRequest();
+	}
+
+	private async offerPullRequest(): Promise<void> {
+		const run = this.lastRun;
+		const folders = this.contextService.getWorkspace().folders;
+		if (!run || run.files.length === 0 || folders.length === 0) {
+			this.setStatus(localize('cloudeide.pr.nothing',
+				"Nothing to open a pull request for yet."), 'muted');
+			return;
+		}
+
+		// Asked before the card is drawn. "Open PR" that answers "connect
+		// GitHub first" is a button that should have said so while there was
+		// still time to do something about it.
+		const connection = await this.pullRequests.connected();
+		if (!connection.ok) {
+			this.setStatus(connection.why ?? localize('cloudeide.pr.noGithub', "GitHub is not connected."), 'error');
+			return;
+		}
+
+		let repos: { label: string; base: string }[];
+		try {
+			repos = await this.pullRequests.repos();
+		} catch (err) {
+			this.setStatus(err instanceof Error ? err.message : String(err), 'error');
+			return;
+		}
+		if (repos.length === 0) {
+			this.setStatus(localize('cloudeide.pr.noRepos',
+				"That GitHub account has no repositories this can push to."), 'error');
+			return;
+		}
+
+		const picked = await this.quickInputService.pick(
+			repos.map(r => ({ label: r.label, description: r.base, base: r.base })),
+			{ placeHolder: localize('cloudeide.pr.pickRepo', "Which repository?") });
+		if (!picked) {
+			return;
+		}
+
+		const described = describeChange(run.reply, run.files);
+		this.appendPullRequestCard(picked.label, picked.base, described, run.files);
+	}
+
+	private appendPullRequestCard(repo: string, base: string, described: { title: string; message: string }, files: readonly string[]): void {
+		const card = DOM.append(this.transcript, $('.cloudeide-proposal'));
+
+		const head = DOM.append(card, $('.cloudeide-proposal-head'));
+		head.textContent = localize('cloudeide.pr.head', "Open a pull request?");
+
+		const title = DOM.append(card, $('.cloudeide-pr-title'));
+		title.textContent = described.title;
+
+		const where = DOM.append(card, $('.cloudeide-pr-where'));
+		where.textContent = localize('cloudeide.pr.where', "{0} · a new branch → {1}", repo, base);
+
+		for (const path of files) {
+			const row = DOM.append(card, $('.cloudeide-pr-file'));
+			row.textContent = path;
+		}
+
+		const actions = DOM.append(card, $('.cloudeide-proposal-actions'));
+		const go = DOM.append(actions, $('button.cloudeide-button-primary')) as HTMLButtonElement;
+		go.textContent = localize('cloudeide.pr.open', "Open PR");
+		const no = DOM.append(actions, $('button.cloudeide-button-quiet')) as HTMLButtonElement;
+		no.textContent = localize('cloudeide.pr.no', "Not now");
+
+		const settle = (verdict: string, href?: string) => {
+			go.remove();
+			no.remove();
+			const done = DOM.append(actions, $('span.cloudeide-proposal-settled'));
+			if (href) {
+				const link = DOM.append(done, $('a.cloudeide-cloud-link')) as HTMLAnchorElement;
+				link.textContent = verdict;
+				link.href = href;
+				this._register(DOM.addDisposableListener(link, 'click', event => {
+					DOM.EventHelper.stop(event, true);
+					void this.openerService.open(URI.parse(href));
+				}));
+			} else {
+				done.textContent = verdict;
+			}
+		};
+
+		this._register(DOM.addDisposableListener(go, 'click', async () => {
+			go.disabled = true;
+			no.disabled = true;
+			try {
+				/*
+				 * The whole folder, not only what the agent touched.
+				 *
+				 * A pull request is a statement about the state of a branch,
+				 * not a patch. A branch built from four files would delete
+				 * every file the person did not happen to have the agent edit.
+				 */
+				const folder = this.contextService.getWorkspace().folders[0];
+				const collected = await this.pullRequests.collect(folder.uri, CancellationToken.None);
+				const opened = await this.pullRequests.open({
+					repo, base, title: described.title, message: described.message, files: collected,
+				});
+				settle(localize('cloudeide.pr.opened', "{0}#{1} opened", repo, opened.number), opened.url);
+			} catch (err) {
+				go.disabled = false;
+				no.disabled = false;
+				this.setStatus(err instanceof Error ? err.message : String(err), 'error');
+			}
+		}));
+
+		this._register(DOM.addDisposableListener(no, 'click',
+			() => settle(localize('cloudeide.pr.notNow', "Not now"))));
+
 		this.transcript.scrollTop = this.transcript.scrollHeight;
 	}
 
@@ -1426,6 +1566,7 @@ export class CloudeidePanel extends ViewPane {
 				});
 				this.appendProposal(id, runId, files);
 				this.renderHistory();
+				this.lastRun = { reply: this.lastReply, files: files.map(f => f.path) };
 			}
 		} catch (err) {
 			this.setStatus(err instanceof Error ? err.message : String(err), 'error');

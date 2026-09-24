@@ -35,6 +35,7 @@ import { EditorPaneDescriptor, IEditorPaneRegistry } from '../../../browser/edit
 import { EditorExtensions, IEditorFactoryRegistry, IEditorSerializer } from '../../../common/editor.js';
 import { EditorInput } from '../../../common/editor/editorInput.js';
 import { IEditorService } from '../../../services/editor/common/editorService.js';
+import { IViewsService } from '../../../services/views/common/viewsService.js';
 import { CLOUDEIDE_DEPLOY_CHANNEL, CloudeideCloudEditor } from './cloudeideCloudEditor.js';
 import { Extensions as OutputExtensions, IOutputChannelRegistry } from '../../../services/output/common/output.js';
 import { CloudeideCloudInput } from './cloudeideCloudInput.js';
@@ -220,6 +221,32 @@ class CloudeideCloudInputSerializer implements IEditorSerializer {
 
 Registry.as<IEditorFactoryRegistry>(EditorExtensions.EditorFactory)
 	.registerEditorSerializer(CloudeideCloudInput.ID, CloudeideCloudInputSerializer);
+
+/*
+ * Putting the last run on GitHub.
+ *
+ * A command rather than a button on every card: a pull request is not what
+ * follows most runs, and a card that offered one every time would be a
+ * question people learn to dismiss without reading.
+ */
+registerAction2(class extends Action2 {
+	constructor() {
+		super({
+			id: 'cloudeide.openPullRequest',
+			title: localize2('cloudeide.openPullRequest', "CloudeIDE: Open a Pull Request for the Last Change"),
+			f1: true,
+		});
+	}
+
+	async run(accessor: ServicesAccessor): Promise<void> {
+		// Through the view rather than a service, because what is being
+		// offered is the run that is on screen — there is no such thing as
+		// "the last change" without the panel that made it.
+		const views = accessor.get(IViewsService);
+		const view = await views.openView<CloudeidePanel>(CloudeidePanel.ID, false);
+		await view?.offerPullRequestFromCommand();
+	}
+});
 
 /*
  * The command that opens it.

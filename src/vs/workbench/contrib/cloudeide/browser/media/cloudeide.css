@@ -1647,3 +1647,39 @@
 	border-color: var(--vscode-focusBorder);
 	color: var(--vscode-foreground);
 }
+
+/* ── the pull request card ───────────────────────────────────────────────── */
+
+.cloudeide-pr-title {
+	margin: 0 12px 6px;
+	font-size: 13px;
+	line-height: 1.45;
+	color: var(--vscode-foreground);
+}
+
+.cloudeide-pr-where {
+	margin: 0 12px 9px;
+	font-size: 11.5px;
+	color: var(--vscode-descriptionForeground);
+}
+
+/*
+ * The files, listed without counts.
+ *
+ * The counts belong on the run's own card, where they were the thing being
+ * decided. Here the question is whether this goes to GitHub, and repeating
+ * "+20 −3" invites somebody to re-read a change they have already kept.
+ */
+.cloudeide-pr-file {
+	padding: 2px 12px;
+	font-family: var(--monaco-monospace-font);
+	font-size: 11.5px;
+	color: var(--vscode-descriptionForeground);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.cloudeide-pr-file:last-of-type {
+	padding-bottom: 8px;
+}
