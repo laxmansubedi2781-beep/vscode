@@ -784,7 +784,7 @@ export class CloudeidePanel extends ViewPane {
 			this.languageFeaturesService,
 			this.textModelService,
 			this.commandRunner(),
-			{ ask: (question, options, token) => this.askQuestion(question, options, token) },
+			{ ask: (question, options, multiple, token) => this.askQuestion(question, options, multiple, token) },
 		);
 
 		const folder = this.contextService.getWorkspace().folders[0];
@@ -1204,8 +1204,8 @@ export class CloudeidePanel extends ViewPane {
 	 * a person who pressed Stop is left with a question about a run that is
 	 * already over.
 	 */
-	private askQuestion(question: string, options: readonly string[], token: CancellationToken): Promise<string | undefined> {
-		return new Promise<string | undefined>(resolve => {
+	private askQuestion(question: string, options: readonly string[], multiple: boolean, token: CancellationToken): Promise<string[] | undefined> {
+		return new Promise<string[] | undefined>(resolve => {
 			const card = DOM.append(this.transcript, $('.cloudeide-question'));
 
 			const head = DOM.append(card, $('.cloudeide-question-head'));
@@ -1213,9 +1213,10 @@ export class CloudeidePanel extends ViewPane {
 
 			const list = DOM.append(card, $('.cloudeide-question-options'));
 			const listeners = new DisposableStore();
+			const picked = new Set<string>();
 			let settled = false;
 
-			const answer = (chosen: string | undefined, verdict: string) => {
+			const answer = (chosen: string[] | undefined, verdict: string) => {
 				if (settled) {
 					return;
 				}
@@ -1229,17 +1230,58 @@ export class CloudeidePanel extends ViewPane {
 
 			options.forEach((option, index) => {
 				const button = DOM.append(list, $('button.cloudeide-question-option')) as HTMLButtonElement;
-				// A number in front of each: it is how the agent will refer
-				// back to the choice, and how somebody skimming tells two
-				// similar-sounding options apart.
-				const ordinal = DOM.append(button, $('span.cloudeide-question-ordinal'));
-				ordinal.textContent = String(index + 1);
+				button.setAttribute('role', multiple ? 'checkbox' : 'radio');
+				button.setAttribute('aria-checked', 'false');
+
+				/*
+				 * A box when the answers combine, a number when they do not.
+				 *
+				 * The shape says how many you get to pick before you have
+				 * pressed anything — a row of numbers that turns out to be
+				 * multi-select, or a row of boxes where the first click ends
+				 * the question, are both small betrayals.
+				 */
+				const mark = DOM.append(button, $(multiple
+					? 'span.cloudeide-question-box'
+					: 'span.cloudeide-question-ordinal'));
+				if (!multiple) {
+					mark.textContent = String(index + 1);
+				}
+
 				const label = DOM.append(button, $('span'));
 				label.textContent = option;
-				listeners.add(DOM.addDisposableListener(button, 'click', () => answer(option, option)));
+
+				listeners.add(DOM.addDisposableListener(button, 'click', () => {
+					if (!multiple) {
+						answer([option], option);
+						return;
+					}
+					const on = !picked.has(option);
+					if (on) {
+						picked.add(option);
+					} else {
+						picked.delete(option);
+					}
+					button.classList.toggle('cloudeide-question-picked', on);
+					button.setAttribute('aria-checked', String(on));
+					mark.textContent = on ? '\u2713' : '';
+				}));
 			});
 
-			const skip = DOM.append(list, $('button.cloudeide-question-skip')) as HTMLButtonElement;
+			const actions = DOM.append(list, $('.cloudeide-question-actions'));
+
+			if (multiple) {
+				const go = DOM.append(actions, $('button.cloudeide-button-primary')) as HTMLButtonElement;
+				go.textContent = localize('cloudeide.question.continue', "Continue");
+				listeners.add(DOM.addDisposableListener(go, 'click', () => {
+					const chosen = options.filter(o => picked.has(o));
+					answer(chosen, chosen.length > 0
+						? chosen.join(', ')
+						: localize('cloudeide.question.none', "None of these"));
+				}));
+			}
+
+			const skip = DOM.append(actions, $('button.cloudeide-question-skip')) as HTMLButtonElement;
 			skip.textContent = localize('cloudeide.question.skip', "You decide");
 			listeners.add(DOM.addDisposableListener(skip, 'click',
 				() => answer(undefined, localize('cloudeide.question.skipped', "You decide"))));

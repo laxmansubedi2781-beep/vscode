@@ -25,12 +25,16 @@ function toolsWith(runner: IAgentCommandRunner | undefined, asking?: IAgentQuest
 	return new CloudeideAgentTools(unused, unused, unused, unused, unused, unused, unused, runner, asking);
 }
 
-/** A person who always picks the option at `index`, or skips when it is -1. */
-function answering(index: number, seen?: { question: string; options: readonly string[] }[]): IAgentQuestionHost {
+/**
+ * A person who picks the options at `indexes`, or skips when it is empty and
+ * `skip` is set. An empty array with `skip` false is somebody who cleared
+ * every box, which is a different answer from not answering.
+ */
+function answering(indexes: number[], seen?: { question: string; options: readonly string[]; multiple: boolean }[], skip = false): IAgentQuestionHost {
 	return {
-		ask: async (question, options) => {
-			seen?.push({ question, options });
-			return index < 0 ? undefined : options[index];
+		ask: async (question, options, multiple) => {
+			seen?.push({ question, options, multiple });
+			return skip ? undefined : indexes.map(i => options[i]);
 		},
 	};
 }
@@ -130,7 +134,7 @@ suite('CloudeIDE agent tools — ask_user', () => {
 	test('the chosen option comes back named, not as an index', async () => {
 		// An index would make the model count the list again to find out what
 		// it had been told, and get it wrong on the first off-by-one.
-		const tools = toolsWith(undefined, answering(1));
+		const tools = toolsWith(undefined, answering([1]));
 
 		const result = await tools.run('ask_user', {
 			question: 'Where should the component go?',
@@ -142,7 +146,7 @@ suite('CloudeIDE agent tools — ask_user', () => {
 	});
 
 	test('skipping tells the model to decide and say which way it went', async () => {
-		const tools = toolsWith(undefined, answering(-1));
+		const tools = toolsWith(undefined, answering([], undefined, true));
 
 		const result = await tools.run('ask_user', {
 			question: 'Which library?',
@@ -157,8 +161,8 @@ suite('CloudeIDE agent tools — ask_user', () => {
 	});
 
 	test('one option is refused before anybody is interrupted', async () => {
-		const seen: { question: string; options: readonly string[] }[] = [];
-		const tools = toolsWith(undefined, answering(0, seen));
+		const seen: { question: string; options: readonly string[]; multiple: boolean }[] = [];
+		const tools = toolsWith(undefined, answering([0], seen));
 
 		const result = await tools.run('ask_user', {
 			question: 'Shall I?',
@@ -170,8 +174,8 @@ suite('CloudeIDE agent tools — ask_user', () => {
 	});
 
 	test('a fifth option is dropped rather than shown', async () => {
-		const seen: { question: string; options: readonly string[] }[] = [];
-		const tools = toolsWith(undefined, answering(0, seen));
+		const seen: { question: string; options: readonly string[]; multiple: boolean }[] = [];
+		const tools = toolsWith(undefined, answering([0], seen));
 
 		await tools.run('ask_user', {
 			question: 'Which one?',
@@ -183,7 +187,7 @@ suite('CloudeIDE agent tools — ask_user', () => {
 	});
 
 	test('blank options do not count towards the two it needs', async () => {
-		const tools = toolsWith(undefined, answering(0));
+		const tools = toolsWith(undefined, answering([0]));
 
 		const result = await tools.run('ask_user', {
 			question: 'Which one?',
@@ -203,5 +207,48 @@ suite('CloudeIDE agent tools — ask_user', () => {
 
 		assert.strictEqual(result.isError, true);
 		assert.ok(/nobody to ask/i.test(result.content), result.content);
+	});
+
+	test('a question that combines answers is passed through as such', async () => {
+		const seen: { question: string; options: readonly string[]; multiple: boolean }[] = [];
+		const tools = toolsWith(undefined, answering([0, 2], seen));
+
+		const result = await tools.run('ask_user', {
+			question: 'What should it show?',
+			options: ['thumbnails', 'CPU', 'search'],
+			multiple: true,
+		}, CancellationToken.None);
+
+		assert.strictEqual(seen[0].multiple, true);
+		assert.ok(result.content.includes('thumbnails'), result.content);
+		assert.ok(result.content.includes('search'), result.content);
+	});
+
+	test('clearing every box is an answer, not a skip', async () => {
+		// "None of these" rules the options out. Reporting it as a skip
+		// would have the model pick one of the things just rejected.
+		const tools = toolsWith(undefined, answering([]));
+
+		const result = await tools.run('ask_user', {
+			question: 'What should it show?',
+			options: ['thumbnails', 'CPU'],
+			multiple: true,
+		}, CancellationToken.None);
+
+		assert.strictEqual(result.isError, undefined);
+		assert.ok(/none of the options/i.test(result.content), result.content);
+		assert.ok(!/did not answer/i.test(result.content), result.content);
+	});
+
+	test('a question with one answer is not marked as combining', async () => {
+		const seen: { question: string; options: readonly string[]; multiple: boolean }[] = [];
+		const tools = toolsWith(undefined, answering([0], seen));
+
+		await tools.run('ask_user', {
+			question: 'Which one?',
+			options: ['a', 'b'],
+		}, CancellationToken.None);
+
+		assert.strictEqual(seen[0].multiple, false);
 	});
 });

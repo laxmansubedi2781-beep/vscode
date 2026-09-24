@@ -70,6 +70,8 @@ export function buildAgentSystemPrompt(context: AgentPromptContext): string {
 		``,
 		`Do not ask anything you can find out yourself. Read the file, search the project, look at the errors — that is what the other tools are for, and a question that the code already answers wastes somebody's attention on your behalf.`,
 		``,
+		`Set \`multiple\` when the answers combine — features to include, files to cover, checks to run — and leave it out when they are alternatives and exactly one has to win. Getting this wrong is worth avoiding: a person offered boxes for two things that cannot both be true will tick both.`,
+		``,
 		`Ask at most once in a run unless something new came up. Somebody asked about every small choice stops reading the questions, and then the one that mattered goes past unread. If they skip, choose the option you think is right, say in one line which one you took, and carry on — do not ask again.`,
 		``,
 		`## Running things`,

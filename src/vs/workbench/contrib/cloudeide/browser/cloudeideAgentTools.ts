@@ -43,8 +43,14 @@ import type { IAgentCommandRunner } from './cloudeideAgentCommand.js';
  * window at all.
  */
 export interface IAgentQuestionHost {
-	/** Resolves with the chosen option, or undefined when the person skips. */
-	ask(question: string, options: readonly string[], token: CancellationToken): Promise<string | undefined>;
+	/**
+	 * Resolves with what was chosen, or undefined when the person skips.
+	 *
+	 * An array either way. A question that takes one answer resolves with one
+	 * entry rather than with a bare string, so the caller has one shape to
+	 * handle instead of two.
+	 */
+	ask(question: string, options: readonly string[], multiple: boolean, token: CancellationToken): Promise<string[] | undefined>;
 }
 import { symbolKindNames } from '../../../../editor/common/languages.js';
 import { Position } from '../../../../editor/common/core/position.js';
@@ -262,6 +268,12 @@ export const AGENT_TOOLS: readonly AgentToolSchema[] = [
 					type: 'array',
 					items: { type: 'string' },
 					description: 'Two to four short answers. Each one says what would happen, not just "yes" or "no".',
+				},
+				multiple: {
+					type: 'boolean',
+					description:
+						'True when the answers combine — features to include, files to cover, checks to run. ' +
+						'Leave it out when they are alternatives and exactly one has to win.',
 				},
 			},
 			required: ['question', 'options'],
@@ -589,7 +601,8 @@ export class CloudeideAgentTools {
 		// which is slower to read than the code would have been.
 		const shown = options.slice(0, MAX_OPTIONS);
 
-		const chosen = await this.questionHost.ask(question, shown, token);
+		const multiple = input.multiple === true;
+		const chosen = await this.questionHost.ask(question, shown, multiple, token);
 
 		if (chosen === undefined) {
 			return {
@@ -597,7 +610,13 @@ export class CloudeideAgentTools {
 					'say in one line which one you took and why, and carry on.',
 			};
 		}
-		return { content: `They chose: ${chosen}` };
+		if (chosen.length === 0) {
+			// Every box cleared is an answer with a meaning of its own: none
+			// of these. Reporting it as a skip would have the model guess at
+			// something the person has just ruled out.
+			return { content: 'They chose none of the options. Ask what they want instead, or do the smallest thing that is clearly right.' };
+		}
+		return { content: `They chose: ${chosen.join(', ')}` };
 	}
 
 	/**

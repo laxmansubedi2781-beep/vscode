@@ -1331,9 +1331,50 @@
 	color: var(--vscode-descriptionForeground);
 }
 
+/*
+ * A box when the answers combine, a number when they do not.
+ *
+ * The shape says how many you get to pick before anything is pressed. A row
+ * of numbers that turns out to be multi-select, or a row of boxes where the
+ * first click ends the question, are both small betrayals.
+ */
+.cloudeide-question-box {
+	flex: 0 0 auto;
+	width: 14px;
+	height: 14px;
+	border: 1px solid var(--vscode-panel-border, var(--vscode-editorWidget-border));
+	border-radius: 3px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 10px;
+	line-height: 1;
+	color: var(--vscode-editor-background);
+	align-self: center;
+}
+
+.cloudeide-question-picked .cloudeide-question-box {
+	background: var(--vscode-foreground);
+	border-color: var(--vscode-foreground);
+}
+
+.cloudeide-question-picked {
+	border-color: var(--vscode-focusBorder);
+}
+
+.cloudeide-question-actions {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin-top: 3px;
+}
+
+.cloudeide-question-actions .cloudeide-button-primary {
+	padding: 4px 13px;
+	font-size: 12px;
+}
+
 .cloudeide-question-skip {
-	align-self: flex-start;
-	margin-top: 2px;
 	padding: 3px 2px;
 	border: 0;
 	background: transparent;
