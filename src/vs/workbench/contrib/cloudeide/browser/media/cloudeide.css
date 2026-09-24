@@ -1683,3 +1683,105 @@
 .cloudeide-pr-file:last-of-type {
 	padding-bottom: 8px;
 }
+
+/* ── editing in place ────────────────────────────────────────────────────── */
+
+/*
+ * The box sits between two lines of code, so it borrows the editor's own
+ * surface rather than the panel's: a widget that looked like the chat would
+ * read as something that had opened over the file rather than in it.
+ */
+.cloudeide-inline-zone {
+	z-index: 10;
+}
+
+.cloudeide-inline {
+	margin: 4px 0 4px 44px;
+	margin-right: 24px;
+	border: 1px solid var(--vscode-focusBorder);
+	border-radius: 7px;
+	background: var(--vscode-editorWidget-background);
+	box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
+	overflow: hidden;
+}
+
+/*
+ * The instruction is written in prose, not code, so it is set in the UI font
+ * rather than the editor's. It also grows: one line is the common case and
+ * three is a sentence somebody thought about.
+ */
+.cloudeide-inline-input {
+	display: block;
+	width: 100%;
+	box-sizing: border-box;
+	padding: 8px 11px;
+	border: 0;
+	background: transparent;
+	color: var(--vscode-foreground);
+	font-family: inherit;
+	font-size: 12.5px;
+	line-height: 1.5;
+	resize: none;
+	outline: none;
+}
+
+.cloudeide-inline-input::placeholder {
+	color: var(--vscode-input-placeholderForeground, var(--vscode-descriptionForeground));
+}
+
+.cloudeide-inline-foot {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 6px 11px;
+	border-top: 1px solid var(--vscode-panel-border, var(--vscode-editorWidget-border));
+}
+
+.cloudeide-inline-status {
+	font-size: 11px;
+	color: var(--vscode-descriptionForeground);
+}
+
+.cloudeide-inline-failed {
+	color: var(--vscode-errorForeground);
+}
+
+.cloudeide-inline-spacer {
+	flex-grow: 1;
+}
+
+.cloudeide-inline-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.cloudeide-inline-actions button {
+	padding: 3px 12px;
+	font-size: 11.5px;
+}
+
+.cloudeide-inline-hint {
+	font-size: 11px;
+	color: var(--vscode-descriptionForeground);
+}
+
+/*
+ * Again is quieter than the two decisions beside it. It is the way out of a
+ * wrong answer, not one of the answers.
+ */
+.cloudeide-inline-again {
+	padding: 3px 4px;
+	border: 0;
+	background: transparent;
+	color: var(--vscode-descriptionForeground);
+	font: inherit;
+	font-size: 11.5px;
+	text-decoration: underline;
+	text-underline-offset: 3px;
+	cursor: pointer;
+}
+
+.cloudeide-inline-again:hover {
+	color: var(--vscode-foreground);
+}

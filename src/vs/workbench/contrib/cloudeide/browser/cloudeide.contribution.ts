@@ -36,6 +36,11 @@ import { EditorExtensions, IEditorFactoryRegistry, IEditorSerializer } from '../
 import { EditorInput } from '../../../common/editor/editorInput.js';
 import { IEditorService } from '../../../services/editor/common/editorService.js';
 import { IViewsService } from '../../../services/views/common/viewsService.js';
+import { ICodeEditorService } from '../../../../editor/browser/services/codeEditorService.js';
+import { EditorContextKeys } from '../../../../editor/common/editorContextKeys.js';
+import { KeyCode, KeyMod } from '../../../../base/common/keyCodes.js';
+import { KeybindingWeight } from '../../../../platform/keybinding/common/keybindingsRegistry.js';
+import { CloudeideInlineEdit } from './cloudeideInlineEdit.js';
 import { CLOUDEIDE_DEPLOY_CHANNEL, CloudeideCloudEditor } from './cloudeideCloudEditor.js';
 import { Extensions as OutputExtensions, IOutputChannelRegistry } from '../../../services/output/common/output.js';
 import { CloudeideCloudInput } from './cloudeideCloudInput.js';
@@ -221,6 +226,63 @@ class CloudeideCloudInputSerializer implements IEditorSerializer {
 
 Registry.as<IEditorFactoryRegistry>(EditorExtensions.EditorFactory)
 	.registerEditorSerializer(CloudeideCloudInput.ID, CloudeideCloudInputSerializer);
+
+/*
+ * Cmd+I — change the code where the code is.
+ *
+ * The panel is right for "build me a mission control view" and wrong for
+ * "make this loop async": the second is a sentence about four lines already
+ * on screen, and routing it through a chat means describing where you are to
+ * something that cannot see you.
+ *
+ * Bound to Ctrl+I / Cmd+I rather than Ctrl+K, which is what the tool this
+ * borrows the idea from uses. Ctrl+K is a chord prefix in this editor — Ctrl+K
+ * Ctrl+S, Ctrl+K Z, a few dozen others — and binding it alone silently breaks
+ * every one of them. That is a trade somebody should make on purpose rather
+ * than discover, so the safe key is the default and the other one is a line
+ * in keybindings.json.
+ */
+registerAction2(class extends Action2 {
+	constructor() {
+		super({
+			id: 'cloudeide.inlineEdit',
+			title: localize2('cloudeide.inlineEdit', "CloudeIDE: Edit Here"),
+			f1: true,
+			precondition: EditorContextKeys.writable,
+			keybinding: {
+				weight: KeybindingWeight.WorkbenchContrib,
+				when: EditorContextKeys.editorTextFocus,
+				primary: KeyMod.CtrlCmd | KeyCode.KeyI,
+			},
+		});
+	}
+
+	async run(accessor: ServicesAccessor): Promise<void> {
+		const editorService = accessor.get(ICodeEditorService);
+		const editor = editorService.getFocusedCodeEditor() ?? editorService.getActiveCodeEditor();
+		const selection = editor?.getSelection();
+		if (!editor || !editor.hasModel() || !selection) {
+			return;
+		}
+
+		// One at a time. Two of these open in the same editor would be two
+		// answers arriving at overlapping ranges, and the second would land
+		// on text the first had already replaced.
+		open?.dispose();
+
+		const secrets = accessor.get(ISecretStorageService);
+		const configuration = accessor.get(IConfigurationService);
+
+		const client = new CloudeideClient(secrets, configuration);
+		const model = configuration.getValue<string>('cloudeide.model') || 'claude-sonnet-5';
+
+		open = new CloudeideInlineEdit(editor, client, model, () => { open = undefined; });
+		open.start(selection);
+	}
+});
+
+/** The one open box, if there is one. */
+let open: CloudeideInlineEdit | undefined;
 
 /*
  * Putting the last run on GitHub.
