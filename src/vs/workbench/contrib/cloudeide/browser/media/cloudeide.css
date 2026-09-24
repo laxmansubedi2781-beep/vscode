@@ -263,19 +263,6 @@
 	outline-offset: -1px;
 }
 
-.cloudeide-proposal-twisty {
-	flex: 0 0 auto;
-	width: 9px;
-	font-size: 13px;
-	line-height: 1;
-	color: var(--vscode-descriptionForeground);
-	transition: transform 80ms ease-out;
-}
-
-.cloudeide-proposal-open .cloudeide-proposal-twisty {
-	transform: rotate(90deg);
-}
-
 .cloudeide-proposal-kind {
 	flex: 0 0 auto;
 	padding: 1px 6px;
@@ -328,44 +315,6 @@
 }
 
 /* ── diff ────────────────────────────────────────────────────────────────── */
-
-.cloudeide-proposal-diff {
-	max-height: 320px;
-	overflow: auto;
-	padding: 6px 0;
-	user-select: text;
-	-webkit-user-select: text;
-	background: var(--vscode-editor-background);
-	border-top: 1px solid var(--vscode-panel-border, var(--vscode-editorWidget-border));
-	border-bottom: 1px solid var(--vscode-panel-border, var(--vscode-editorWidget-border));
-}
-
-.cloudeide-diff-line {
-	padding: 0 12px;
-	font-family: var(--monaco-monospace-font);
-	font-size: 11.5px;
-	line-height: 1.5;
-	white-space: pre;
-	color: var(--vscode-editor-foreground);
-}
-
-.cloudeide-diff-add {
-	background: var(--vscode-diffEditor-insertedLineBackground, var(--vscode-diffEditor-insertedTextBackground));
-}
-
-.cloudeide-diff-del {
-	background: var(--vscode-diffEditor-removedLineBackground, var(--vscode-diffEditor-removedTextBackground));
-}
-
-.cloudeide-diff-ctx {
-	color: var(--vscode-descriptionForeground);
-}
-
-.cloudeide-diff-meta {
-	color: var(--vscode-descriptionForeground);
-	opacity: 0.8;
-	white-space: pre-wrap;
-}
 
 /* ── proposal actions ────────────────────────────────────────────────────── */
 
