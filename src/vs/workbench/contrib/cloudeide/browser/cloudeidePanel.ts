@@ -36,6 +36,7 @@ import { IMarkerService } from '../../../../platform/markers/common/markers.js';
 import { ILanguageFeaturesService } from '../../../../editor/common/services/languageFeatures.js';
 import { ITextModelService } from '../../../../editor/common/services/resolverService.js';
 import { CloudeideCommandRunner, type CommandRunResult, type IAgentCommandRunner } from './cloudeideAgentCommand.js';
+import { CloudeideAppliedMarks } from './cloudeideAppliedMarks.js';
 import { QueryBuilder } from '../../../services/search/common/queryBuilder.js';
 import { CloudeideAgentTools, type StagedEdit } from './cloudeideAgentTools.js';
 import { runAgentLoop } from './cloudeideAgentLoop.js';
@@ -143,6 +144,8 @@ export class CloudeidePanel extends ViewPane {
 	private runCancellation: CancellationTokenSource | undefined;
 	/** Built on first use and kept, so the agent's shell survives the turn. */
 	private runner: IAgentCommandRunner | undefined;
+	/** The green and red marks left on whatever the last Apply wrote. */
+	private readonly appliedMarks = this._register(new CloudeideAppliedMarks(this.textModelService));
 
 	constructor(
 		options: IViewletViewOptions,
@@ -910,7 +913,21 @@ export class CloudeidePanel extends ViewPane {
 				if (runId) {
 					await this.client.decideProposal(runId, 'applied');
 				}
-				settle(localize('cloudeide.proposal.applied', "Applied to {0} files", written));
+
+				/*
+				 * Mark what changed, and open the first file that did.
+				 *
+				 * "Applied to 2 files" told somebody the write happened and
+				 * nothing about what is now different. The marks answer that
+				 * where the answer belongs — in the file — and opening the
+				 * first one means the very next thing on screen is the change
+				 * itself rather than a sentence about it.
+				 */
+				const marked = await this.markApplied(changes);
+				settle(marked
+					? localize('cloudeide.proposal.appliedMarked',
+						"Applied · {0} added, {1} removed", marked.added, marked.removed)
+					: localize('cloudeide.proposal.applied', "Applied to {0} files", written));
 			} catch (err) {
 				accept.disabled = false;
 				discard.disabled = false;
@@ -941,6 +958,37 @@ export class CloudeidePanel extends ViewPane {
 	 * than written, because a run that asks to edit something outside the
 	 * folder the person opened is either confused or hostile.
 	 */
+	/**
+	 * Paints the change into the files and shows the person the first of them.
+	 *
+	 * Returns the totals for the card's line, or undefined when there was
+	 * nothing to mark — a run that only deleted files, or one whose files the
+	 * workbench cannot open as text.
+	 */
+	private async markApplied(changes: readonly FileChange[]): Promise<{ added: number; removed: number } | undefined> {
+		const folders = this.contextService.getWorkspace().folders;
+		if (folders.length === 0) {
+			return undefined;
+		}
+		const root = folders[0].uri;
+
+		const marked = await this.appliedMarks.mark(root, changes);
+		if (marked.length === 0) {
+			return undefined;
+		}
+
+		const first = root.with({ path: `${root.path.replace(/\/+$/, '')}/${marked[0].path}` });
+		// Not `pinned`: this is somewhere to look, and somebody who opens
+		// three more files should not have to close this one.
+		await this.editorService.openEditor({ resource: first, options: { preserveFocus: true } })
+			.catch(() => { /* the marks are on the model either way */ });
+
+		return {
+			added: marked.reduce((n, m) => n + m.added, 0),
+			removed: marked.reduce((n, m) => n + m.removed, 0),
+		};
+	}
+
 	private async applyChanges(changes: readonly FileChange[]): Promise<number> {
 		const folders = this.contextService.getWorkspace().folders;
 		if (folders.length === 0) {

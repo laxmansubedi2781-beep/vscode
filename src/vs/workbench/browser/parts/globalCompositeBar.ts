@@ -161,7 +161,15 @@ export class GlobalCompositeBar extends Disposable {
 				if (action.id === CLOUD_ACTIVITY_ID) {
 					return this.instantiationService.createInstance(CompositeBarActionViewItem,
 						this.cloudAction,
-						{ ...options, colors: this.colors, hoverOptions: this.activityHoverOptions },
+						{
+							...options,
+							// Without this the item renders its *name* — a
+							// 48px rail showing the clipped word "Cloud"
+							// sideways, which is what the first build did.
+							icon: true,
+							colors: this.colors,
+							hoverOptions: this.activityHoverOptions,
+						},
 						// No badge on this one: nothing counts up here.
 						() => false);
 				}

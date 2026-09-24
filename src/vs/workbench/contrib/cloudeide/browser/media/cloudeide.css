@@ -1270,3 +1270,40 @@
 .cloudeide-cloud-log-link:hover {
 	color: var(--vscode-foreground);
 }
+
+/* ── what the agent just changed, in the file ────────────────────────────── */
+
+/*
+ * The colours come from the registry, not from here, so a theme can override
+ * them and high contrast gets its own. These rules only say where the colour
+ * goes.
+ */
+.monaco-editor .cloudeide-applied-added {
+	background: var(--vscode-cloudeide-appliedAddedBackground);
+}
+
+/*
+ * A solid bar in the gutter, not a tint.
+ *
+ * The band behind the text says *what* changed; this says *where* without
+ * having to look at the text at all, which is what somebody scrolling wants.
+ */
+.monaco-editor .cloudeide-applied-added-gutter {
+	background: var(--vscode-cloudeide-appliedAddedBorder);
+	width: 3px !important;
+	margin-left: 3px;
+}
+
+/*
+ * Deleted lines have nothing left to paint, so the mark sits in the gutter of
+ * the line that closed over the gap, and is shorter than a full-height bar so
+ * it reads as a seam rather than as a changed line.
+ */
+.monaco-editor .cloudeide-applied-removed-gutter {
+	background: var(--vscode-cloudeide-appliedRemovedBorder);
+	width: 3px !important;
+	margin-left: 3px;
+	height: 6px !important;
+	margin-top: -3px;
+	border-radius: 2px;
+}
