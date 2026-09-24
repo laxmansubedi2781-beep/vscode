@@ -560,7 +560,16 @@ jobs:
           npm run gulp compile-build-without-mangling
           npm run gulp vscode-darwin-arm64
         env:
-          NODE_OPTIONS: --max-old-space-size=12288
+          # 6 GB here, not the 12 GB the other two use.
+          #
+          # This step took 1 h 36 min on macOS against 9 min on Linux and 12
+          # on Windows, for the same command on the same sources — 91 min of it
+          # inside compile-src alone. The free macos-latest runner has 7 GB of
+          # memory where the Linux and Windows ones have 16, and a 12 GB heap
+          # ceiling lets the compiler grow past physical memory into swap
+          # instead of collecting garbage. The whole-source typecheck fits in
+          # 6 GB (it runs with that locally), so the heap stays in RAM.
+          NODE_OPTIONS: --max-old-space-size=6144
           # The build downloads the js-debug extensions from the GitHub API,
           # which rate limits unauthenticated callers by runner IP — shared, so
           # the budget can already be gone on arrival. build/lib/fetch.ts sends
