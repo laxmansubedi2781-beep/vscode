@@ -915,12 +915,18 @@ section {
   padding-top: 24px;
 }
 
+/* Wider than the rest of the page: the picture is the point of each tile,
+   and on a large screen the extra width all goes to it. */
+.features .wrap {
+  max-width: 1360px;
+}
+
 .feature {
   display: grid;
-  grid-template-columns: minmax(260px, 5fr) minmax(0, 7fr);
+  grid-template-columns: minmax(220px, 1fr) minmax(0, 3fr);
   align-items: center;
-  gap: 56px;
-  padding: 56px;
+  gap: 40px;
+  padding: 24px 24px 24px 48px;
   background: var(--panel);
   border-radius: 14px;
 }
@@ -930,7 +936,8 @@ section {
 }
 
 .feature--reverse {
-  grid-template-columns: minmax(0, 7fr) minmax(260px, 5fr);
+  grid-template-columns: minmax(0, 3fr) minmax(220px, 1fr);
+  padding: 24px 48px 24px 24px;
 }
 
 .feature--reverse .feature-copy {
@@ -958,6 +965,13 @@ section {
   border-radius: 10px;
   padding: 40px;
   min-width: 0;
+  min-height: 540px;
+  display: flex;
+  align-items: center;
+}
+
+.feature-stage > .mock {
+  width: 100%;
 }
 
 /* ----- the drawn window ----- */
@@ -967,7 +981,7 @@ section {
   border-radius: 10px;
   overflow: hidden;
   background: var(--bg);
-  font-size: 13px;
+  font-size: 13.5px;
   line-height: 1.5;
   color: var(--text-secondary);
 }
@@ -1158,14 +1172,63 @@ section {
 
 .mock-rule {
   display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.mock-rule-head {
+  display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 10px;
   color: var(--text-primary);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px 12px;
+  font-weight: 500;
 }
+
+.mock-rule-body {
+  color: var(--text-tertiary);
+  font-size: 12.5px;
+}
+
+.mock-rule-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+.mock-rule-foot .mock-switch + * { margin-right: 10px; }
+
+.mock-switch {
+  position: relative;
+  width: 24px;
+  height: 14px;
+  border-radius: 999px;
+  background: var(--overlay-4);
+  flex-shrink: 0;
+}
+
+.mock-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+}
+
+.mock-switch--on { background: var(--text-primary); }
+.mock-switch--on::after { left: 12px; background: var(--bg); }
 
 .mock-pill {
   flex-shrink: 0;
@@ -1174,6 +1237,163 @@ section {
   background: var(--text-primary);
   border-radius: 999px;
   padding: 1px 8px;
+}
+
+/* ----- panes: the drawn editor, split the way the real one is ----- */
+
+.mock-split {
+  display: grid;
+  min-height: 430px;
+}
+
+.mock-split--three { grid-template-columns: 150px minmax(0, 1.25fr) minmax(250px, 1fr); }
+.mock-split--two   { grid-template-columns: minmax(0, 1.15fr) minmax(250px, 1fr); }
+.mock-split--tree  { grid-template-columns: 150px minmax(0, 1fr); }
+.mock-split--nav   { grid-template-columns: 170px minmax(0, 1fr); }
+
+.mock-pane {
+  min-width: 0;
+  border-right: 1px solid var(--border);
+}
+
+.mock-pane:last-child {
+  border-right: none;
+}
+
+.mock-grow {
+  flex: 1;
+}
+
+.mock-pane-label {
+  color: var(--text-tertiary);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.mock-tree {
+  padding: 14px 10px;
+  font-size: 12.5px;
+  background: var(--panel);
+}
+
+.mock-file {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 8px 3px 22px;
+  border-radius: 5px;
+  color: var(--text-secondary);
+}
+
+.mock-file--dir { padding-left: 8px; color: var(--text-tertiary); }
+.mock-file--top { padding-left: 8px; }
+.mock-file--open { background: var(--overlay-3); color: var(--text-primary); }
+
+.mock-mark {
+  color: var(--text-tertiary);
+  font-size: 11px;
+}
+
+.mock-code {
+  display: flex;
+  flex-direction: column;
+}
+
+.mock-code .mock-body--code {
+  flex: 1;
+}
+
+.mock-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+
+.mock-tab {
+  padding: 8px 14px;
+  color: var(--text-tertiary);
+  border-right: 1px solid var(--border);
+}
+
+.mock-tab--on {
+  color: var(--text-primary);
+  background: var(--panel);
+}
+
+.mock-plan {
+  margin: 2px 0 0 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--text-primary);
+}
+
+.mock-plan code,
+.mock-plan li code {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.9em;
+  background: var(--overlay-3);
+  border-radius: 4px;
+  padding: 0 4px;
+}
+
+.mock-change {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--text-primary);
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.mock-navs {
+  padding: 14px 10px;
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12.5px;
+}
+
+.mock-nav {
+  padding: 5px 10px;
+  border-radius: 5px;
+  color: var(--text-tertiary);
+}
+
+.mock-nav--on {
+  color: var(--text-primary);
+  background: var(--overlay-3);
+}
+
+.mock-page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.mock-term {
+  padding: 16px 0;
+  min-height: 360px;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.mock-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 15px;
+  vertical-align: -3px;
+  background: var(--text-secondary);
 }
 
 /* The install command, beside the copy button — the one thing in this tile
@@ -1217,6 +1437,16 @@ section {
 
   .feature-stage {
     padding: 14px;
+    min-height: 0;
+  }
+
+  .mock-hide-sm {
+    display: none;
+  }
+
+  .mock-split {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
   }
 
   .mock {
@@ -1764,4 +1994,23 @@ section {
 .hero-actions .btn {
   padding: 11px 20px;
   font-size: 14.5px;
+}
+
+/* Between phone and wide desktop the three-pane editor is too tight for its
+   code to be read, so the tree goes first. */
+@media (min-width: 820px) and (max-width: 1100px) {
+  .mock-split--three {
+    grid-template-columns: minmax(0, 1.2fr) minmax(230px, 1fr);
+  }
+  .mock-split--three .mock-tree {
+    display: none;
+  }
+  .feature,
+  .feature--reverse {
+    padding: 24px;
+    gap: 32px;
+  }
+  .feature-stage {
+    padding: 28px;
+  }
 }

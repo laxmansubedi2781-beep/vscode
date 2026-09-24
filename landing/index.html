@@ -246,41 +246,48 @@
 
       <article class="feature reveal">
         <div class="feature-copy">
-          <p class="feature-lede"><strong>Ask, and it builds.</strong> It reads your project, changes every file the work needs, and asks before it runs a command.</p>
+          <p class="feature-lede"><strong>Ask, and it builds.</strong> It reads your project, changes every file the work needs, checks for errors, and asks before it runs a command.</p>
           <a class="showcase-link" href="#desktop">Download CloudeIDE <span class="showcase-arrow" aria-hidden="true">&rarr;</span></a>
         </div>
         <div class="feature-stage" aria-hidden="true">
-          <div class="mock">
-            <div class="window-bar"><span class="window-dots"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span></span><span class="window-title">Agent</span></div>
-            <div class="mock-body">
-              <div class="mock-ask">Add a dark mode toggle to the settings page</div>
+          <div class="mock mock--wide"><div class="window-bar"><span class="window-dots"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span></span><span class="window-title">menu-app — CloudeIDE</span></div><div class="mock-split mock-split--three"><div class="mock-pane mock-tree mock-hide-sm"><div class="mock-pane-label">Explorer</div><div class="mock-file mock-file--dir"><span>src</span></div><div class="mock-file mock-file--open"><span>settings.tsx</span><span class="mock-mark">M</span></div><div class="mock-file "><span>theme.ts</span><span class="mock-mark">M</span></div><div class="mock-file "><span>ui.tsx</span></div><div class="mock-file "><span>menu.js</span></div><div class="mock-file mock-file--top"><span>package.json</span></div><div class="mock-file mock-file--top"><span>README.md</span></div></div><div class="mock-pane mock-code mock-hide-sm"><div class="mock-tabs"><span class="mock-tab mock-tab--on">settings.tsx</span><span class="mock-tab">theme.ts</span></div><div class="mock-body--code"><div class="mock-line mock-line--add"><span class="mock-ln">1</span>import { useTheme } from "./theme";</div><div class="mock-line"><span class="mock-ln">2</span>import { Page, Profile } from "./ui";</div><div class="mock-line"><span class="mock-ln">3</span></div><div class="mock-line"><span class="mock-ln">4</span>export function Settings() {</div><div class="mock-line"><span class="mock-ln">5</span>  const user = useUser();</div><div class="mock-line mock-line--add"><span class="mock-ln">6</span>  const [dark, setDark] = useTheme();</div><div class="mock-line"><span class="mock-ln">7</span>  return (</div><div class="mock-line"><span class="mock-ln">8</span>    &lt;Page title="Settings"&gt;</div><div class="mock-line mock-line--add"><span class="mock-ln">9</span>      &lt;Toggle label="Dark mode"</div><div class="mock-line mock-line--add"><span class="mock-ln">10</span>        on={dark} onChange={setDark} /&gt;</div><div class="mock-line"><span class="mock-ln">11</span>      &lt;Profile user={user} /&gt;</div><div class="mock-line"><span class="mock-ln">12</span>    &lt;/Page&gt;</div><div class="mock-line"><span class="mock-ln">13</span>  );</div><div class="mock-line"><span class="mock-ln">14</span>}</div></div></div><div class="mock-pane mock-body">
+              <div class="mock-ask">Add a dark mode toggle to the settings page, and remember the choice</div>
               <div class="mock-step">Searching for theme</div>
               <div class="mock-step">Reading src/settings.tsx</div>
-              <div class="mock-step">Editing src/settings.tsx <span class="mock-add">+24</span> <span class="mock-del">&minus;3</span></div>
-              <div class="mock-step">Editing src/theme.ts <span class="mock-add">+11</span></div>
+              <div class="mock-step">Finding what uses applyTheme</div>
+              <div class="mock-step">Editing src/settings.tsx <span class="mock-add">+4</span></div>
+              <div class="mock-step">Editing src/theme.ts <span class="mock-add">+11</span> <span class="mock-del">&minus;2</span></div>
+              <div class="mock-step">Checking for errors</div>
               <div class="mock-card">
                 <div class="mock-card-head">Run this command?</div>
                 <code class="mock-command">npm test</code>
                 <div class="mock-actions"><span class="mock-btn mock-btn--primary">Run</span><span class="mock-btn">Don't run</span></div>
               </div>
-              <div class="mock-composer"><span>Ask for a change…</span><span class="mock-chips"><span class="mock-chip">Agent</span><span class="mock-chip">Claude Sonnet 5</span></span></div>
-            </div>
-          </div>
+              <div class="mock-grow"></div>
+              <div class="mock-composer"><span>Ask for a change…</span><span class="mock-chips"><span class="mock-chip">Agent</span><span class="mock-chip">Claude Sonnet 5</span></span></div></div></div></div>
         </div>
       </article>
 
       <article class="feature feature--reverse reveal">
         <div class="feature-copy">
-          <p class="feature-lede"><strong>Plan first, then build.</strong> Plan mode works out the steps and changes nothing. When there is a real choice, it asks you.</p>
+          <p class="feature-lede"><strong>Plan first, then build.</strong> Plan mode reads the code, writes the steps file by file, and changes nothing. When there is a real choice, it asks you.</p>
         </div>
         <div class="feature-stage" aria-hidden="true">
-          <div class="mock">
-            <div class="window-bar"><span class="window-dots"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span></span><span class="window-title">Plan</span></div>
-            <div class="mock-body">
-              <div class="mock-ask">Remember the theme the user picked</div>
+          <div class="mock mock--wide"><div class="window-bar"><span class="window-dots"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span></span><span class="window-title">Plan</span></div><div class="mock-split mock-split--two">
+            <div class="mock-pane mock-body mock-hide-sm">
+              <div class="mock-ask">Remember the theme the user picked, across devices</div>
               <div class="mock-step">Reading src/theme.ts</div>
               <div class="mock-step">Finding what uses applyTheme</div>
-              <div class="mock-text">Three steps drafted. One question first:</div>
+              <div class="mock-step">Reading api/user.ts</div>
+              <div class="mock-text">Here is the plan. Nothing is changed yet.</div>
+              <ol class="mock-plan">
+                <li><code>api/user.ts</code> — add a <code>theme</code> field to the profile</li>
+                <li><code>src/theme.ts</code> — load it on sign-in, save it on change</li>
+                <li><code>src/settings.tsx</code> — wire the toggle to <code>saveTheme()</code></li>
+              </ol>
+              <div class="mock-text mock-text--quiet">Unsure: whether signed-out visitors should keep their choice.</div>
+            </div>
+            <div class="mock-pane mock-body">
               <div class="mock-card">
                 <div class="mock-card-head">Where should the choice be saved?</div>
                 <div class="mock-option"><span class="mock-n">1</span>In this browser</div>
@@ -288,43 +295,34 @@
                 <div class="mock-option"><span class="mock-n">3</span>Both</div>
                 <div class="mock-actions"><span class="mock-btn">You decide</span><span class="mock-btn mock-btn--primary">Continue</span></div>
               </div>
-              <div class="mock-composer"><span>Ask for a change…</span><span class="mock-chips"><span class="mock-chip">Plan</span><span class="mock-chip">Claude Opus 5</span></span></div>
-            </div>
-          </div>
+              <div class="mock-grow"></div>
+              <div class="mock-composer"><span>Ask for a change…</span><span class="mock-chips"><span class="mock-chip">Plan</span><span class="mock-chip">Claude Opus 5</span></span></div></div></div></div>
         </div>
       </article>
 
       <article class="feature reveal">
         <div class="feature-copy">
-          <p class="feature-lede"><strong>Every change, marked in the file.</strong> Added lines in green, removed lines in red. Keep it, or undo all of it in one click.</p>
+          <p class="feature-lede"><strong>Every change, marked in the file.</strong> Added lines in green, removed lines in red, in every file it touched. Keep it, or undo all of it in one click.</p>
         </div>
         <div class="feature-stage" aria-hidden="true">
-          <div class="mock">
-            <div class="window-bar"><span class="window-dots"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span></span><span class="window-title">settings.tsx</span></div>
-            <div class="mock-body mock-body--code">
-              <div class="mock-line"><span class="mock-ln">12</span>export function Settings() {</div>
-              <div class="mock-line"><span class="mock-ln">13</span>  const user = useUser();</div>
-              <div class="mock-line mock-line--del"><span class="mock-ln">14</span>  return &lt;Page title="Settings"&gt;</div>
-              <div class="mock-line mock-line--add"><span class="mock-ln">14</span>  const [dark, setDark] = useTheme();</div>
-              <div class="mock-line mock-line--add"><span class="mock-ln">15</span>  return &lt;Page title="Settings"&gt;</div>
-              <div class="mock-line mock-line--add"><span class="mock-ln">16</span>    &lt;Toggle on={dark} onChange={setDark} /&gt;</div>
-              <div class="mock-line"><span class="mock-ln">17</span>    &lt;Profile user={user} /&gt;</div>
-              <div class="mock-line"><span class="mock-ln">18</span>  &lt;/Page&gt;;</div>
-              <div class="mock-line"><span class="mock-ln">19</span>}</div>
-              <div class="mock-bar"><span>2 files changed</span><span class="mock-actions"><span class="mock-btn mock-btn--primary">Keep</span><span class="mock-btn">Undo</span></span></div>
-            </div>
-          </div>
+          <div class="mock mock--wide"><div class="window-bar"><span class="window-dots"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span></span><span class="window-title">theme.ts — CloudeIDE</span></div><div class="mock-split mock-split--tree"><div class="mock-pane mock-tree mock-hide-sm"><div class="mock-pane-label">Explorer</div><div class="mock-file mock-file--dir"><span>src</span></div><div class="mock-file "><span>settings.tsx</span><span class="mock-mark">M</span></div><div class="mock-file mock-file--open"><span>theme.ts</span><span class="mock-mark">M</span></div><div class="mock-file "><span>ui.tsx</span></div><div class="mock-file mock-file--dir"><span>api</span></div><div class="mock-file "><span>user.ts</span><span class="mock-mark">M</span></div></div><div class="mock-pane mock-code"><div class="mock-tabs"><span class="mock-tab mock-tab--on">theme.ts</span><span class="mock-tab">settings.tsx</span><span class="mock-tab">user.ts</span></div><div class="mock-body--code"><div class="mock-line"><span class="mock-ln">1</span>const KEY = "theme";</div><div class="mock-line"><span class="mock-ln">2</span></div><div class="mock-line mock-line--del"><span class="mock-ln"></span>export function applyTheme(dark) {</div><div class="mock-line mock-line--del"><span class="mock-ln"></span>  document.body.className = dark ? "dark" : "";</div><div class="mock-line mock-line--add"><span class="mock-ln">3</span>export function applyTheme(dark: boolean) {</div><div class="mock-line mock-line--add"><span class="mock-ln">4</span>  document.documentElement.dataset.theme =</div><div class="mock-line mock-line--add"><span class="mock-ln">5</span>    dark ? "dark" : "light";</div><div class="mock-line"><span class="mock-ln">6</span>}</div><div class="mock-line"><span class="mock-ln">7</span></div><div class="mock-line mock-line--add"><span class="mock-ln">8</span>export async function saveTheme(dark: boolean) {</div><div class="mock-line mock-line--add"><span class="mock-ln">9</span>  applyTheme(dark);</div><div class="mock-line mock-line--add"><span class="mock-ln">10</span>  await api.updateProfile({ theme: dark });</div><div class="mock-line mock-line--add"><span class="mock-ln">11</span>}</div></div><div class="mock-bar"><span>3 files changed · <span class="mock-add">+19</span> <span class="mock-del">&minus;2</span></span><span class="mock-actions"><span class="mock-btn mock-btn--primary">Keep</span><span class="mock-btn">Undo</span></span></div></div></div></div>
         </div>
       </article>
 
       <article class="feature feature--reverse reveal">
         <div class="feature-copy">
-          <p class="feature-lede"><strong>Ship it from the same window.</strong> Type /pr to open a pull request on GitHub, or press Deploy for a live URL.</p>
+          <p class="feature-lede"><strong>Ship it from the same window.</strong> Type /pr and it opens a pull request on GitHub with the branch and commit made for you. Or press Deploy for a live URL.</p>
         </div>
         <div class="feature-stage" aria-hidden="true">
-          <div class="mock">
-            <div class="window-bar"><span class="window-dots"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span></span><span class="window-title">Agent</span></div>
-            <div class="mock-body">
+          <div class="mock mock--wide"><div class="window-bar"><span class="window-dots"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span></span><span class="window-title">Agent</span></div><div class="mock-split mock-split--two">
+            <div class="mock-pane mock-body mock-hide-sm">
+              <div class="mock-pane-label">Changed in this run</div>
+              <div class="mock-change"><span>src/settings.tsx</span><span><span class="mock-add">+4</span></span></div>
+              <div class="mock-change"><span>src/theme.ts</span><span><span class="mock-add">+11</span> <span class="mock-del">&minus;2</span></span></div>
+              <div class="mock-change"><span>api/user.ts</span><span><span class="mock-add">+4</span></span></div>
+              <div class="mock-text mock-text--quiet">Add a dark mode toggle, saved to the user's account</div>
+            </div>
+            <div class="mock-pane mock-body">
               <div class="mock-ask">/pr</div>
               <div class="mock-card">
                 <div class="mock-card-head">Open a pull request?</div>
@@ -332,26 +330,17 @@
                 <div class="mock-actions"><span class="mock-btn mock-btn--primary">Open PR</span><span class="mock-btn">Not now</span></div>
               </div>
               <div class="mock-step">acme/menu-app#42 opened</div>
-            </div>
-          </div>
+              <div class="mock-grow"></div>
+              <div class="mock-composer"><span>Ask for a change…</span><span class="mock-chips"><span class="mock-chip">Agent</span><span class="mock-chip">Claude Sonnet 5</span></span></div></div></div></div>
         </div>
       </article>
 
       <article class="feature reveal">
         <div class="feature-copy">
-          <p class="feature-lede"><strong>Rules your whole team follows.</strong> Write them once, and every agent in your organization follows them, in every repository.</p>
+          <p class="feature-lede"><strong>Rules your whole team follows.</strong> Write them once in the dashboard, and every agent in your organization follows them, in every repository.</p>
         </div>
         <div class="feature-stage" aria-hidden="true">
-          <div class="mock">
-            <div class="window-bar"><span class="window-dots"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span></span><span class="window-title">Agent Rules</span></div>
-            <div class="mock-body">
-              <div class="mock-rule"><span>Never commit a file holding a key</span><span class="mock-pill">required</span></div>
-              <div class="mock-rule"><span>Use the shared fetch helper for API calls</span></div>
-              <div class="mock-rule"><span>Tests live next to the file they test</span></div>
-              <div class="mock-rule"><span>Every migration needs a rollback</span></div>
-              <div class="mock-text mock-text--quiet">Sent with every request, for every member.</div>
-            </div>
-          </div>
+          <div class="mock mock--wide"><div class="window-bar"><span class="window-dots"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span></span><span class="window-title">Acme — Enterprise</span></div><div class="mock-split mock-split--nav"><div class="mock-pane mock-navs mock-hide-sm"><div class="mock-nav">Overview</div><div class="mock-nav">Members</div><div class="mock-nav">Teams</div><div class="mock-nav">Workspaces</div><div class="mock-nav mock-nav--on">Agent Rules</div><div class="mock-nav">SSO &amp; Directory</div><div class="mock-nav">Security Policy</div><div class="mock-nav">Audit Log</div><div class="mock-nav">Usage &amp; Analytics</div></div><div class="mock-pane mock-body"><div class="mock-page-head"><span>Agent Rules</span><span class="mock-btn">New rule</span></div><div class="mock-rule"><div class="mock-rule-head"><span>Never commit a file holding a key</span><span class=mock-pill>required</span></div><div class="mock-rule-body">Secrets go in the environment. If you need a new one, add it to .env.example with an empty value.</div><div class="mock-rule-foot"><span class="mock-switch mock-switch--on"></span>Sent with every request<span class="mock-switch mock-switch--on"></span>Overrides a project's own file</div></div><div class="mock-rule"><div class="mock-rule-head"><span>Use the shared fetch helper</span></div><div class="mock-rule-body">API calls go through lib/http.ts, so retries and auth stay in one place.</div><div class="mock-rule-foot"><span class="mock-switch mock-switch--on"></span>Sent with every request<span class="mock-switch"></span>Overrides a project's own file</div></div><div class="mock-rule"><div class="mock-rule-head"><span>Tests live next to the file they test</span></div><div class="mock-rule-body">settings.tsx is tested in settings.test.tsx, in the same folder.</div><div class="mock-rule-foot"><span class="mock-switch mock-switch--on"></span>Sent with every request<span class="mock-switch"></span>Overrides a project's own file</div></div></div></div></div>
         </div>
       </article>
 
@@ -364,17 +353,19 @@
           </div>
         </div>
         <div class="feature-stage" aria-hidden="true">
-          <div class="mock">
-            <div class="window-bar"><span class="window-dots"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span></span><span class="window-title">Terminal</span></div>
-            <div class="mock-body mock-body--code">
-              <div class="mock-line"><span class="mock-prompt">$</span> cloudeide login</div>
+          <div class="mock mock--wide"><div class="window-bar"><span class="window-dots"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span></span><span class="window-title">Terminal</span></div><div class="mock-body--code mock-term">
+              <div class="mock-line"><span class="mock-prompt">~/menu-app $</span> npm install -g cloudeide</div>
+              <div class="mock-line mock-line--out">added 1 package in 3s</div>
+              <div class="mock-line"><span class="mock-prompt">~/menu-app $</span> cloudeide login</div>
               <div class="mock-line mock-line--out">Signed in as you@acme.com</div>
-              <div class="mock-line"><span class="mock-prompt">$</span> cloudeide deploy .</div>
+              <div class="mock-line"><span class="mock-prompt">~/menu-app $</span> cloudeide deploy .</div>
               <div class="mock-line mock-line--out">Live at https://menu-app.cloudeide.app</div>
-              <div class="mock-line"><span class="mock-prompt">$</span> cloudeide install cursor</div>
+              <div class="mock-line"><span class="mock-prompt">~/menu-app $</span> cloudeide install cursor</div>
               <div class="mock-line mock-line--out">Added the CloudeIDE MCP server for Cursor.</div>
-            </div>
-          </div>
+              <div class="mock-line"><span class="mock-prompt">~/menu-app $</span> cloudeide install claude-code</div>
+              <div class="mock-line mock-line--out">Added the CloudeIDE MCP server for Claude Code.</div>
+              <div class="mock-line"><span class="mock-prompt">~/menu-app $</span> <span class="mock-cursor"></span></div>
+            </div></div>
         </div>
       </article>
 
