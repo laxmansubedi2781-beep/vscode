@@ -15,28 +15,12 @@ if hash update-mime-database 2>/dev/null; then
 	update-mime-database /usr/share/mime
 fi
 
-# Only a package that added these may remove them.
+# Nothing under /etc/apt or /usr/share/keyrings is removed here.
 #
-# Unguarded, this was the worse half of the same bug: uninstalling CloudeIDE
-# deleted /usr/share/keyrings/microsoft.gpg and the vscode apt source — files
-# this package never wrote and that a real VS Code install on the same machine
-# depends on. Removing one editor would have quietly stopped another one
-# updating, with nothing to connect the two events.
-if [ "@@NAME@@" = "code" ] || [ "@@NAME@@" = "code-insiders" ] || [ "@@NAME@@" = "code-exploration" ]; then
-	RET=true
-	if [ -e '/usr/share/debconf/confmodule' ]; then
-		. /usr/share/debconf/confmodule
-		db_get @@NAME@@/add-microsoft-repo || true
-	fi
-	if [ "$RET" = "true" ]; then
-		eval $(apt-config shell APT_SOURCE_PARTS Dir::Etc::sourceparts/d)
-		CODE_SOURCE_PART=${APT_SOURCE_PARTS}vscode.sources
-		rm -f $CODE_SOURCE_PART
-
-		CODE_TRUSTED_PART=/usr/share/keyrings/microsoft.gpg
-		rm -f $CODE_TRUSTED_PART
-	fi
-fi
+# Upstream's script deleted Microsoft's apt source and signing key on
+# uninstall. This package never adds them, and a real VS Code install on the
+# same machine depends on them — removing this editor must not stop that one
+# updating. The block is not shipped at all; the build fails if it returns.
 
 if [ "$1" = "purge" ] && [ -e '/usr/share/debconf/confmodule' ]; then
 	db_purge
