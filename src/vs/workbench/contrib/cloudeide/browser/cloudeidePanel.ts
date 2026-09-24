@@ -66,6 +66,9 @@ const CLOUDEIDE_MODEL_SETTING = 'cloudeide.model';
  */
 const DEFAULT_AGENT_MODEL = 'claude-sonnet-5';
 
+/** How much of a project's instructions file is read into the prompt. */
+const MAX_PROJECT_RULES_CHARS = 16 * 1024;
+
 /**
  * A tool call in a few words, for the line the person watches go by.
  *
@@ -752,10 +755,14 @@ export class CloudeidePanel extends ViewPane {
 			workspaceName: folder.name,
 			openFiles: open,
 			activeFile: open[0],
+			projectRules: await this.readProjectRules(folder.uri),
 		});
 
 		const source = new CancellationTokenSource();
 		this.runCancellation = source;
+
+		const startedAt = Date.now();
+		const used = new Map<string, number>();
 
 		let reply = '';
 		let started = false;
@@ -787,6 +794,7 @@ export class CloudeidePanel extends ViewPane {
 							break;
 
 						case 'toolStart':
+							used.set(event.name, (used.get(event.name) ?? 0) + 1);
 							this.appendStep(describeTool(event.name, event.input), toolPath(event.input));
 							break;
 
@@ -821,7 +829,59 @@ export class CloudeidePanel extends ViewPane {
 		if (!started) {
 			pending.textContent = reply || localize('cloudeide.noAnswer', "The run finished without an answer.");
 		}
+
+		this.appendSummary(used, Date.now() - startedAt);
 		return reply;
+	}
+
+	/**
+	 * One line at the end saying what the run actually did.
+	 *
+	 * The steps scroll past while a run is going and nobody reads them all;
+	 * what is left afterwards is a wall of lines and no sense of whether that
+	 * was a lot of work or a little. A total answers it in a glance, and the
+	 * time is there because "why did that take so long" is the next question
+	 * and the transcript never answered it.
+	 *
+	 * Nothing when the run used no tools. A question answered from the
+	 * conversation did not read anything, and "0 files" is noise.
+	 */
+	private appendSummary(used: ReadonlyMap<string, number>, elapsedMs: number): void {
+		const count = (...names: string[]) => names.reduce((n, name) => n + (used.get(name) ?? 0), 0);
+
+		const parts: string[] = [];
+		const read = count('read_file');
+		const searched = count('search_files', 'find_symbol', 'find_references', 'list_files');
+		const changed = count('edit_file', 'write_file');
+		const ran = count('run_command');
+
+		if (read > 0) {
+			parts.push(read === 1
+				? localize('cloudeide.summary.read1', "read 1 file")
+				: localize('cloudeide.summary.readN', "read {0} files", read));
+		}
+		if (searched > 0) {
+			parts.push(searched === 1
+				? localize('cloudeide.summary.search1', "1 search")
+				: localize('cloudeide.summary.searchN', "{0} searches", searched));
+		}
+		if (changed > 0) {
+			parts.push(changed === 1
+				? localize('cloudeide.summary.changed1', "changed 1 file")
+				: localize('cloudeide.summary.changedN', "changed {0} files", changed));
+		}
+		if (ran > 0) {
+			parts.push(ran === 1
+				? localize('cloudeide.summary.ran1', "1 command")
+				: localize('cloudeide.summary.ranN', "{0} commands", ran));
+		}
+		if (parts.length === 0) {
+			return;
+		}
+
+		const line = DOM.append(this.transcript, $('.cloudeide-summary'));
+		line.textContent = localize('cloudeide.summary', "{0} · {1}", parts.join(' · '), elapsed(elapsedMs));
+		this.transcript.scrollTop = this.transcript.scrollHeight;
 	}
 
 	/**
@@ -862,6 +922,37 @@ export class CloudeidePanel extends ViewPane {
 			return;
 		}
 		await this.configurationService.updateValue(CLOUDEIDE_MODEL_SETTING, picked.label);
+	}
+
+	/**
+	 * The project's own note about how work here should be done.
+	 *
+	 * `AGENTS.md` first, because it is the name other tools settled on and a
+	 * project should not need one file per editor. `.cloudeiderules` after it
+	 * for anyone who wants to say something only to this one.
+	 *
+	 * Read fresh each run rather than cached: somebody who edits the file to
+	 * correct the agent expects the correction to take effect on the next
+	 * question, not on the next window.
+	 */
+	private async readProjectRules(root: URI): Promise<{ path: string; text: string } | undefined> {
+		const base = root.path.replace(/\/+$/, '');
+		for (const name of ['AGENTS.md', '.cloudeiderules']) {
+			try {
+				const content = await this.fileService.readFile(root.with({ path: `${base}/${name}` }));
+				// Capped. A project that puts its whole handbook here would
+				// otherwise spend the run's context on it and leave none for
+				// the code, and the first part is the part that says the rules.
+				const text = content.value.toString().slice(0, MAX_PROJECT_RULES_CHARS);
+				if (text.trim()) {
+					return { path: name, text };
+				}
+			} catch {
+				// Not there, or not readable. Most projects have neither file,
+				// and that is not worth a word to anybody.
+			}
+		}
+		return undefined;
 	}
 
 	/** The model this account should use, from settings, with a sensible default. */
@@ -1267,4 +1358,17 @@ function outcomeLabel(outcome: HistoryRun['outcome']): string {
 		case 'undone': return localize('cloudeide.history.undone', "undone");
 		default: return localize('cloudeide.history.pending', "never decided");
 	}
+}
+
+/** "1m 22s", the way a person would say how long something took. */
+function elapsed(ms: number): string {
+	const seconds = Math.max(1, Math.round(ms / 1000));
+	if (seconds < 60) {
+		return localize('cloudeide.elapsed.seconds', "{0}s", seconds);
+	}
+	const minutes = Math.floor(seconds / 60);
+	const rest = seconds % 60;
+	return rest === 0
+		? localize('cloudeide.elapsed.minutes', "{0}m", minutes)
+		: localize('cloudeide.elapsed.minutesSeconds', "{0}m {1}s", minutes, rest);
 }

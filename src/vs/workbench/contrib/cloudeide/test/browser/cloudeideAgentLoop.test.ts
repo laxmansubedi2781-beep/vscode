@@ -175,6 +175,62 @@ suite('CloudeIDE agent loop', () => {
 		source.dispose();
 	});
 
+	/*
+	 * The context budget.
+	 *
+	 * This is the failure that only shows up on a long run: the message list
+	 * grows, nothing ever leaves it, and eventually the provider refuses the
+	 * request — minutes in, as a raw error, with nothing saying that reading
+	 * one large file is what did it.
+	 */
+	test('old tool output is shed once the conversation gets too big', async () => {
+		// Each read answers with a third of the budget, so the third one has
+		// to push the first one out.
+		const huge = 'x'.repeat(130_000);
+		const host: IAgentToolHost = { async run(): Promise<AgentToolResult> { return { content: huge }; } };
+
+		const { sent } = await run([
+			calling('a', 'read_file', { path: 'one' }),
+			calling('b', 'read_file', { path: 'two' }),
+			calling('c', 'read_file', { path: 'three' }),
+			saying('done'),
+		], host);
+
+		const last = sent.at(-1) as { messages: { role: string; content: unknown }[] };
+		const results = last.messages
+			.flatMap(m => Array.isArray(m.content) ? m.content : [])
+			.filter((b): b is { type: string; content: string } =>
+				typeof b === 'object' && b !== null && (b as { type?: string }).type === 'tool_result');
+
+		assert.strictEqual(results.length, 3, 'every call still has its result block');
+		// The pairing is what the provider checks; dropping a whole message
+		// would be rejected outright.
+		assert.ok(results[0].content.length < 1000, 'the oldest output was shed');
+		assert.ok(/dropped to stay inside the context window/i.test(results[0].content), results[0].content);
+		assert.strictEqual(results.at(-1)!.content, huge, 'the newest output is kept whole');
+
+		const total = JSON.stringify(last.messages).length;
+		assert.ok(total < 400_000, `conversation still ${total} characters`);
+	});
+
+	test('a conversation under the budget is left exactly as it was', async () => {
+		const host: IAgentToolHost = { async run(): Promise<AgentToolResult> { return { content: 'small' }; } };
+
+		const { sent } = await run([
+			calling('a', 'read_file', { path: 'one' }),
+			calling('b', 'read_file', { path: 'two' }),
+			saying('done'),
+		], host);
+
+		const last = sent.at(-1) as { messages: { content: unknown }[] };
+		const results = last.messages
+			.flatMap(m => Array.isArray(m.content) ? m.content : [])
+			.filter((b): b is { type: string; content: string } =>
+				typeof b === 'object' && b !== null && (b as { type?: string }).type === 'tool_result');
+
+		assert.deepStrictEqual(results.map(r => r.content), ['small', 'small']);
+	});
+
 	test('a tool asked for with no input gets an empty object, not a crash', async () => {
 		const calls: Array<Record<string, unknown>> = [];
 		const toolHost: IAgentToolHost = {

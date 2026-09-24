@@ -73,6 +73,80 @@ export interface AgentLoopOptions {
 const DEFAULT_MAX_STEPS = 24;
 const MAX_OUTPUT_TOKENS = 8192;
 
+/*
+ * How much conversation is allowed to travel, in characters.
+ *
+ * The message list only ever grew. Twenty-four steps, each able to carry a
+ * quarter-megabyte file read, and the request eventually went past what the
+ * model will accept — which the person saw as a raw provider error, at the
+ * end of a run that had been going for minutes, with no hint that reading one
+ * large file was what did it.
+ *
+ * Characters rather than tokens because counting tokens properly means
+ * shipping a tokenizer for every model this can run on, and being roughly
+ * right early is worth more here than being exactly right late. Four
+ * characters to a token is the usual rule of thumb, so this is on the order
+ * of ninety thousand tokens: comfortable inside every model in the list,
+ * including the small ones, with the reply and the system prompt still to
+ * come.
+ */
+const MAX_CONVERSATION_CHARS = 360_000;
+
+/** What an elided tool result says in place of what it held. */
+const DROPPED = '(This output was dropped to stay inside the context window. Read it again if you still need it.)';
+
+/**
+ * Sheds the oldest tool output until the conversation fits.
+ *
+ * Only `tool_result` content is touched, and only its text: the `tool_use`
+ * block that asked for it stays exactly where it was, because the provider
+ * rejects a conversation where a result has no matching call. What the model
+ * loses is the contents of a file it read twenty steps ago, which it can
+ * read again — and it is told so, rather than being left to wonder why its
+ * memory of that file has holes in it.
+ *
+ * The newest two messages are never touched. Those are the turn that just
+ * happened, and shedding them would take away the thing the next request is
+ * a reply to.
+ */
+function trimToBudget(messages: Message[]): void {
+	const size = () => messages.reduce((n, m) => n + weigh(m.content), 0);
+	if (size() <= MAX_CONVERSATION_CHARS) {
+		return;
+	}
+
+	for (let i = 0; i < messages.length - 2 && size() > MAX_CONVERSATION_CHARS; i++) {
+		const content = messages[i].content;
+		if (typeof content === 'string') {
+			continue;
+		}
+		messages[i] = {
+			role: messages[i].role,
+			content: content.map(block => block.type === 'tool_result' && block.content !== DROPPED
+				? { ...block, content: DROPPED }
+				: block),
+		};
+	}
+}
+
+function weigh(content: Message['content']): number {
+	if (typeof content === 'string') {
+		return content.length;
+	}
+	return content.reduce((n, block) => {
+		if (block.type === 'text') {
+			return n + block.text.length;
+		}
+		if (block.type === 'tool_result') {
+			return n + block.content.length;
+		}
+		if (block.type === 'tool_use') {
+			return n + JSON.stringify(block.input ?? {}).length + block.name.length;
+		}
+		return n;
+	}, 0);
+}
+
 export async function runAgentLoop(options: AgentLoopOptions): Promise<void> {
 	const messages: Message[] = options.messages.map(m => ({ role: m.role, content: m.content }));
 	const maxSteps = options.maxSteps ?? DEFAULT_MAX_STEPS;
@@ -117,6 +191,10 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<void> {
 			});
 		}
 		messages.push({ role: 'user', content: results });
+
+		// After the results, not before: the turn that just happened is the
+		// one most worth keeping whole, and it is the oldest output that goes.
+		trimToBudget(messages);
 	}
 
 	options.onEvent({ type: 'done', reason: 'stepLimit' });

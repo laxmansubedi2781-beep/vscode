@@ -1493,3 +1493,17 @@
 	margin-left: auto;
 	flex-shrink: 0;
 }
+
+/*
+ * The line that closes a run.
+ *
+ * Quieter than a step, because it is a total rather than a thing that
+ * happened, and it sits under the last of them rather than beside them.
+ */
+.cloudeide-summary {
+	margin: 2px 0 14px;
+	padding-top: 6px;
+	border-top: 1px solid var(--vscode-panel-border, var(--vscode-editorWidget-border));
+	font-size: 11px;
+	color: var(--vscode-descriptionForeground);
+}
