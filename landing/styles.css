@@ -923,7 +923,7 @@ section {
 
 .feature {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(0, 3fr);
+  grid-template-columns: minmax(250px, 0.72fr) minmax(0, 3fr);
   align-items: center;
   gap: 40px;
   padding: 24px 24px 24px 48px;
@@ -936,7 +936,7 @@ section {
 }
 
 .feature--reverse {
-  grid-template-columns: minmax(0, 3fr) minmax(220px, 1fr);
+  grid-template-columns: minmax(0, 3fr) minmax(250px, 0.72fr);
   padding: 24px 48px 24px 24px;
 }
 
@@ -968,10 +968,17 @@ section {
   min-height: 540px;
   display: flex;
   align-items: center;
+  position: relative;
+  overflow: hidden;
 }
 
 .feature-stage > .mock {
   width: 100%;
+}
+
+/* The picker floats in front; it keeps its own width. */
+.feature-stage > .mock.mock--pick {
+  width: 300px;
 }
 
 /* ----- the drawn window ----- */
@@ -1396,6 +1403,268 @@ section {
   background: var(--text-secondary);
 }
 
+/* ----- more of the drawn product ----- */
+
+.mock-split--hero  { grid-template-columns: minmax(290px, 0.9fr) minmax(0, 1.5fr) 170px; min-height: 480px; }
+.mock-split--agent { grid-template-columns: minmax(290px, 1fr) minmax(0, 1.3fr); }
+.mock-split--cloud { grid-template-columns: 1fr 1fr; gap: 24px; min-height: 0; }
+
+.mock-agent { background: var(--panel); }
+.mock-agent .mock-ask { background: var(--bg); }
+
+.mock-text code {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.9em;
+  color: var(--text-primary);
+  background: var(--overlay-3);
+  border-radius: 4px;
+  padding: 0 4px;
+}
+
+.mock-keep {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.mock-line--sel { background: var(--overlay-4); }
+
+/* The Ctrl+I box, drawn inside the file the way the editor opens it. */
+.mock-zone {
+  margin: 6px 16px 8px 42px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--panel);
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 13px;
+  white-space: normal;
+}
+
+.mock-zone-input {
+  padding: 10px 12px;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border);
+}
+
+.mock-zone-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+.mock-cloud { gap: 18px; padding: 22px; }
+
+.mock-cloud-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.mock-cloud-name {
+  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.mock-cloud-live {
+  margin-top: 4px;
+  color: var(--text-tertiary);
+  font-size: 12.5px;
+}
+
+.mock-link {
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-strong);
+  margin-right: 6px;
+}
+
+.mock-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.mock-label-row > span:first-child {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.mock-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 2px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12.5px;
+}
+
+.mock-row-main { color: var(--text-primary); flex: 1; min-width: 0; }
+.mock-row-dim  { color: var(--text-tertiary); }
+
+.mock-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  flex-shrink: 0;
+}
+
+.mock-dot--off {
+  background: transparent;
+  border: 1px solid var(--text-tertiary);
+}
+
+/* The environment picker, open in front of the Cloud tab. */
+.mock--pick {
+  position: absolute;
+  right: 28px;
+  bottom: 28px;
+  width: 300px;
+  padding: 6px;
+  background: var(--panel);
+  border-color: var(--border-strong);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+}
+
+.mock-pick-head {
+  padding: 8px 10px;
+  color: var(--text-primary);
+  font-weight: 500;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+
+.mock-pick-row {
+  display: flex;
+  flex-direction: column;
+  padding: 7px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.mock-pick-row b { color: var(--text-primary); font-weight: 500; font-size: 13px; }
+.mock-pick-row span { color: var(--text-tertiary); }
+.mock-pick-row--on { background: var(--overlay-4); }
+
+.mock-pr-title {
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.mock-url-bar {
+  flex: 1;
+  max-width: 320px;
+  margin: 0 auto;
+  padding: 3px 12px;
+  border-radius: 6px;
+  background: var(--overlay-3);
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* ------------------------------------------------------------ hero stage -- */
+
+.hero-wrap {
+  max-width: 1360px;
+  margin-top: 56px;
+}
+
+.hero-stage {
+  position: relative;
+  overflow: hidden;
+  background: var(--panel-raised);
+  border-radius: 14px;
+  padding: 48px 48px 64px;
+}
+
+.mock--hero {
+  width: 84%;
+}
+
+.mock--float {
+  position: absolute;
+  right: 40px;
+  bottom: 40px;
+  width: 34%;
+  max-width: 420px;
+  border-color: var(--border-strong);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+}
+
+.site {
+  padding: 22px 24px 26px;
+  background: var(--panel-raised);
+}
+
+.site-name {
+  color: var(--text-primary);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.site-sub {
+  color: var(--text-tertiary);
+  font-size: 12.5px;
+  margin: 2px 0 14px;
+}
+
+.site-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.site-item span:last-child { color: var(--text-secondary); }
+
+@media (max-width: 819px) {
+  .hero-wrap { margin-top: 32px; }
+
+  .hero-stage {
+    padding: 16px 0 16px 16px;
+    border-radius: 10px;
+  }
+
+  .mock--hero {
+    width: 860px;
+  }
+
+  .mock--float {
+    left: 215px;
+    right: auto;
+    bottom: 18px;
+    width: 280px;
+  }
+
+  .feature-stage > .mock.mock--pick {
+    width: 260px;
+  }
+
+  .mock--pick {
+    left: 200px;
+    right: auto;
+    bottom: 16px;
+  }
+}
+
 /* The install command, beside the copy button — the one thing in this tile
    a visitor might actually want to take away. */
 .copy-chip {
@@ -1435,18 +1704,19 @@ section {
     font-size: 18px;
   }
 
+  /* The picture keeps its desktop size and the stage crops it at the right
+     edge. Shrunk to fit, the text inside it would be too small to read;
+     cropped, the left of it — where each one keeps the part that matters —
+     reads at full size. */
   .feature-stage {
-    padding: 14px;
+    padding: 16px 0 16px 16px;
     min-height: 0;
+    align-items: flex-start;
   }
 
-  .mock-hide-sm {
-    display: none;
-  }
-
-  .mock-split {
-    grid-template-columns: minmax(0, 1fr);
-    min-height: 0;
+  .feature-stage > .mock {
+    flex: 0 0 auto;
+    width: 720px;
   }
 
   .mock {
